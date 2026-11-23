@@ -99,7 +99,8 @@ Quién la usa:
 
 ### Admin: Proveedores de IA
 Lista de los proveedores con su API, si está activado, su «Variable de la clave» y su «Clave»: «En el entorno» o «Sin
-clave», nunca nada de la clave. La ficha de cada proveedor tiene, en «Conexión», su dirección, la «Variable de la
+clave», nunca nada de la clave. Arriba, si el proveedor de servicios no se puede usar, un aviso dice qué le falta y dónde
+se pone (ASSISTANT-F02). La ficha de cada proveedor tiene, en «Conexión», su dirección, la «Variable de la
 clave» (una de las cinco del entorno) y si la tiene; ningún campo deja escribir una clave. Debajo, sus modelos, con
 su precio de entrada y de salida, su contexto y si están disponibles. Arriba, «Elegir modelos del proveedor».
 
@@ -108,7 +109,8 @@ La lista de modelos de conversación que da la API del proveedor, con una casill
 tiene), su nombre y su contexto, y los botones «Guardar la elección» y «Volver al proveedor».
 
 ### Admin: Modelos de IA
-Todos los modelos de todos los proveedores, con su precio, su contexto y si están disponibles, para corregirlos.
+Todos los modelos de todos los proveedores, con su precio, su contexto y si están disponibles, para corregirlos. En
+la ficha de cada uno, su «Esfuerzo de razonamiento»: vacío, «low», «medium», «high», «xhigh» o «max».
 
 ### Admin: Modelo que contesta
 Una sola página (su lista la abre): «Modelo que contesta» y «Modelo de reserva», cada uno con los modelos que pueden
@@ -148,7 +150,7 @@ negocio, ofrecerlo a otro o cancelar su plan piden además escribir «CONFIRMAR�
 |---|---|
 | Cargando | La carga normal de una página del admin; al probar un modelo, «Enviando…» y el botón «Enviar» apagado hasta que acaba («Hecho.»). En el asistente del panel, la burbuja de «El asistente está escribiendo» hasta la primera palabra y «Parar» en lugar de «Enviar». |
 | Vacío | «0 proveedores de IA» y la lista vacía; en «Registros de uso del asistente», «0 registros de uso del asistente» hasta el primer mensaje de un negocio; un proveedor sin clave dice «Sin clave»; sin modelos que puedan contestar, «Todavía no puede contestar ningún modelo: añade un proveedor con su clave y elige sus modelos.» En el asistente del panel, «Pregúntame por tus negocios, tus facturas o tu cuenta.» con sus tres atajos. |
-| Error | En «Elegir modelos del proveedor», el motivo en rojo: «Este proveedor no tiene clave en el entorno: rellena la variable que dice su ficha.», «El proveedor no ha dado sus modelos: …» o «El proveedor no tiene modelos de conversación en su lista.»; en las fichas, el error en rojo junto al campo: «Usa una dirección https: la clave del proveedor viaja a ella.» o, sin «Variable de la clave», «Este campo es obligatorio.»; al probar un modelo, en rojo: «El modelo no ha contestado: …», «Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo.» o «No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo.». En el asistente del panel, bajo la pregunta: «El asistente no está disponible ahora mismo. Vuelve a intentarlo en unos minutos.» con «Reintentar»; con el mes gastado, «Has usado todos los mensajes del asistente de este mes (30 de 30). Se renuevan el 1 de …» y «Cada negocio tiene su propio asistente, con sus propios mensajes: abre el negocio para seguir preguntando allí.», sin «Mejorar plan»; sin conexión, en el pie, «Sin conexión: puedes escribir y enviar cuando vuelva.»; bajo la caja, lo que impide un dictado: «El acceso al micrófono está denegado. Permítelo en tu navegador para dictar.», «No se ha oído nada. Inténtalo de nuevo más cerca del micrófono.», «La grabación es demasiado larga: dicta un mensaje más corto.» o «No se ha podido transcribir el audio. Inténtalo de nuevo.» |
+| Error | En «Proveedores de IA», si el proveedor de servicios no se puede usar, arriba «La búsqueda en la documentación y el dictado no funcionan: …» con lo que le falta y dónde se pone. En «Elegir modelos del proveedor», el motivo en rojo: «Este proveedor no tiene clave en el entorno: rellena la variable que dice su ficha.», «El proveedor no ha dado sus modelos: …» o «El proveedor no tiene modelos de conversación en su lista.»; en las fichas, el error en rojo junto al campo: «Usa una dirección https: la clave del proveedor viaja a ella.» o, sin «Variable de la clave», «Este campo es obligatorio.»; al probar un modelo, en rojo: «El modelo no ha contestado: …», «Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo.» o «No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo.». En el asistente del panel, bajo la pregunta: «El asistente no está disponible ahora mismo. Vuelve a intentarlo en unos minutos.» con «Reintentar»; con el mes gastado, «Has usado todos los mensajes del asistente de este mes (30 de 30). Se renuevan el 1 de …» y «Cada negocio tiene su propio asistente, con sus propios mensajes: abre el negocio para seguir preguntando allí.», sin «Mejorar plan»; sin conexión, en el pie, «Sin conexión: puedes escribir y enviar cuando vuelva.»; bajo la caja, lo que impide un dictado: «El acceso al micrófono está denegado. Permítelo en tu navegador para dictar.», «No se ha oído nada. Inténtalo de nuevo más cerca del micrófono.», «La grabación es demasiado larga: dicta un mensaje más corto.» o «No se ha podido transcribir el audio. Inténtalo de nuevo.» |
 | Sin permiso | Sin los permisos de la pasarela, el admin contesta que no tiene permiso; quien solo puede mirar ve las fichas, con su variable y si tienen clave, sin poder cambiarlas. «Registros de uso del asistente» no se pueden cambiar ni borrar, ni siquiera un superusuario. Sin sesión, el panel lleva a entrar y no hay botón «Asistente»; una sesión que termina a media conversación dice «Tu sesión ha terminado. Vuelve a entrar para seguir hablando.» con «Volver a entrar». |
 
 ## Flujos
@@ -207,8 +209,9 @@ Pasos:
 1. En «Proveedores de IA», la columna «Clave» de cada proveedor dice «En el entorno» si su variable tiene una clave, o «Sin clave».
 2. En la ficha del proveedor, «Conexión» dice lo mismo junto a su «Variable de la clave».
 3. Para darle una clave, cambiarla o quitarla no se toca el admin: se hace en el secreto del entorno (ASSISTANT-F09).
+4. Si el proveedor de servicios (el de identificador «openai», que calcula las huellas de la búsqueda en la documentación y transcribe el dictado) no se puede usar, la lista avisa arriba «La búsqueda en la documentación y el dictado no funcionan: …» con lo que le falta y dónde se pone: que no existe (se añade con la API de OpenAI y `OPENAI_API_KEY` como variable de la clave), que habla otra API (se elige «OpenAI»), que está apagado (se activa en su ficha) o que su variable no tiene clave (se pone la clave de OpenAI en esa variable, en el secreto de erplora.com, y se despliega). Con el proveedor listo, no avisa de nada.
 Entra: el proveedor y su variable de la clave.
-Sale: si el proveedor tiene clave. Ni la lista, ni la ficha, ni los avisos, ni el registro llevan nunca la clave ni una parte de ella.
+Sale: si el proveedor tiene clave, y si el proveedor de servicios se puede usar. Ni la lista, ni la ficha, ni los avisos, ni el registro llevan nunca la clave ni una parte de ella.
 Si falla: un proveedor sin clave sale como «Sin clave» y sus modelos no contestan ni se pueden probar (ASSISTANT-F06); quien solo puede mirar ve lo mismo sin poder cambiar la ficha; sin permiso, el admin no deja entrar.
 Implicados: ASSISTANT-F01, ASSISTANT-F09
 
@@ -218,8 +221,8 @@ Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. Cuando hay que llamar a un modelo (un turno del asistente, una prueba del admin o la lista de modelos de un proveedor), erplora.com prepara la llamada en la forma que pide la API del proveedor: OpenAI (y los compatibles con ella), Anthropic, Google Gemini o DeepSeek, con la clave del proveedor y su dirección.
-2. Manda la conversación con sus instrucciones, sus imágenes, las herramientas que se ofrecen (una sola por respuesta) y el máximo de salida, y recibe la respuesta en directo, trozo a trozo.
-3. Traduce lo que contesta cada proveedor a lo mismo para todos: el texto según llega, cada herramienta que el modelo pide con sus datos completos, el consumo de entrada y de salida y cómo terminó (normal, porque pidió una herramienta, por largo o por el filtro de contenido).
+2. Manda la conversación con sus instrucciones, sus imágenes, las herramientas que se ofrecen (una sola por respuesta) y el máximo de salida, y recibe la respuesta en directo, trozo a trozo. A un modelo de Anthropic con «Esfuerzo de razonamiento» le pide que piense antes de contestar con ese esfuerzo, y le deja sitio para lo que piensa en el máximo de salida; sin él, la llamada no dice nada de pensar y el modelo hace lo suyo por defecto.
+3. Traduce lo que contesta cada proveedor a lo mismo para todos: el texto según llega, cada herramienta que el modelo pide con sus datos completos, el consumo de entrada y de salida y cómo terminó (normal, porque pidió una herramienta, por largo o por el filtro de contenido). Lo que piensa el modelo nunca es texto ni llega a la persona, y cuenta en el consumo de salida, como lo cobra el proveedor; la respuesta que pide una herramienta de erplora.com vuelve al modelo tal cual, con lo que pensó, en la siguiente ronda del turno (ASSISTANT-F14), salvo en la última, que ya no ofrece esas herramientas.
 4. Para la lista de modelos, pide al proveedor sus modelos de conversación, página a página, y deja fuera los que no conversan (voz, imágenes, huellas de texto).
 Entra: la API, la dirección y la clave del proveedor (la de su variable del entorno); el modelo, la conversación, las instrucciones y las herramientas.
 Sale: el texto, las herramientas pedidas, el consumo y el final del turno, iguales sea cual sea el proveedor; o la lista de modelos de conversación.
@@ -234,7 +237,7 @@ Pasos:
 1. En la ficha del proveedor, pulsa «Elegir modelos del proveedor»: erplora.com pregunta a la API del proveedor, con su clave, qué modelos de conversación tiene.
 2. Marca los que se quedan (ya salen marcados los que tiene) y pulsa «Guardar la elección».
 3. Vuelve a la ficha con el resumen, por ejemplo «Local: 1 nuevos, 0 se quedan, 1 quitados, 0 en uso por el modelo que contesta.»: los marcados quedan disponibles y los no marcados se quitan, salvo los que usa el modelo que contesta, que se quedan.
-4. En la ficha o en «Modelos de IA», escribe el precio de entrada y de salida de cada modelo (dólares por millón de tokens), corrige su nombre o su contexto, o lo apaga.
+4. En la ficha o en «Modelos de IA», escribe el precio de entrada y de salida de cada modelo (dólares por millón de tokens), corrige su nombre o su contexto, o lo apaga. En la ficha de un modelo de «Modelos de IA», elige su «Esfuerzo de razonamiento» con los nombres de la API de Anthropic, o lo deja vacío para que el modelo haga lo suyo por defecto.
 Entra: el proveedor con su clave en el entorno; la elección de modelos; los precios.
 Sale: los modelos del proveedor, exactamente los elegidos más los que están en uso (`assistant.model.selected`, con cuántos se crearon, se quedaron, se quitaron y se protegieron).
 Si falla: sin su clave en el entorno, «Este proveedor no tiene clave en el entorno: rellena la variable que dice su ficha.» y no se pregunta nada al proveedor; si el proveedor rechaza la clave o no contesta, «El proveedor no ha dado sus modelos:» con su motivo; si no tiene modelos de conversación, «El proveedor no tiene modelos de conversación en su lista.»; sin permiso para ver proveedores y para añadir y quitar modelos, el admin no deja entrar; un modelo en uso por el modelo que contesta no se puede borrar.
@@ -274,7 +277,7 @@ Pantalla: Admin: Probar un modelo
 Pasos:
 1. En «Modelo que contesta», pulsa «Probar un modelo».
 2. Elige el «Modelo», escribe el «Mensaje» y, si quiere ver cómo pide herramientas, escribe en «Herramientas» una lista de herramientas con su nombre, como en el ejemplo.
-3. Pulsa «Enviar»: sale «Enviando…», el modelo que contesta y su respuesta según llega, con las herramientas que pide.
+3. Pulsa «Enviar»: sale «Enviando…», el modelo que contesta y su respuesta según llega, con las herramientas que pide. El modelo contesta con su «Esfuerzo de razonamiento», y lo que piensa no sale en la página.
 4. Al acabar, «Hecho.» y la tabla con «Tokens de entrada», «Tokens de salida», «Tiempo» y «Coste» (con los precios del modelo).
 Entra: el modelo, el mensaje y las herramientas.
 Sale: la respuesta del modelo con su consumo, su tiempo y su coste; la prueba queda en el registro de auditoría con quién la hizo, cuánto medía el mensaje y cuántas herramientas llevaba, nunca el mensaje (`assistant.model.tried`). No toca ningún negocio, cupo ni conversación.
@@ -702,7 +705,8 @@ propio texto por `code`.
   decenas). En el Hub es la herramienta `base__docs__search` (`base.docs.search`, ERPlora/hub).
 - **Huellas y voz** (`assistant/media.py`): el proveedor de servicios es el `AIProvider` de slug
   `ASSISTANT_SERVICE_PROVIDER` («openai»), de API OpenAI, activado y con clave (`assistant.service.connection`);
-  modelos fijos `text-embedding-3-small` y `whisper-1`. La lectura en voz alta no tiene motor: `media.SPEECH_ENGINE` es `None`.
+  `queries.provider_keys.services_provider_state` dice por qué no se puede usar, y la lista de proveedores del admin lo
+  avisa (`admin/providers.py`, `test_admin_services_provider.py`); modelos fijos `text-embedding-3-small` y `whisper-1`. La lectura en voz alta no tiene motor: `media.SPEECH_ENGINE` es `None`.
   Un motor que entre ocupa ese sitio:
   `(texto, idioma, voz)` a un mp3, con la voz vacía para la suya del idioma, y `MediaFailed` si falla.
 - **Privacidad**: ni la conversación, ni los adjuntos, ni el audio, ni el texto leído van a la BD, a un log o al

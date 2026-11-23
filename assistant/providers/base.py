@@ -7,9 +7,13 @@ streams the answer over ``httpx`` and yields ``ProviderEvent``s:
 
     text_delta  {"text": str}
     tool_call   {"call_id": str, "name": str, "arguments": str}     # arguments as a JSON string
+    reasoning   {"blocks": list}    # the answer as the provider gave it, its thinking in it: never shown
     usage       {"input_tokens": int, "output_tokens": int}
     error       {"message": str, "retriable": bool, "status": int | None}
     finish      {"reason": "stop" | "tool_use" | "length" | "content_filter" | "error"}
+
+An answer that asks for a tool goes back to its provider with its ``reasoning`` blocks, under the assistant message's
+``REASONING`` key, in the tool rounds of the same turn; a client of another API leaves them out.
 
 A turn always ends with exactly one ``finish``; an upstream failure is an ``error`` followed by ``finish`` ``error``,
 never an exception, so the caller decides whether to try the fallback model (``retriable``). No message ever carries
@@ -35,6 +39,8 @@ from base import tls
 TIMEOUT = httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=10.0)
 #: Listing a provider's models is a quick call.
 LIST_TIMEOUT = httpx.Timeout(15.0)
+#: The key of an assistant message that holds its ``reasoning`` blocks.
+REASONING = "reasoning"
 # Upstream statuses a later attempt can clear: timeout, conflict, too early, rate limit; and every 5xx.
 _RETRIABLE_CLIENT_STATUSES = frozenset({408, 409, 425, 429})
 
@@ -90,6 +96,8 @@ class TurnRequest:
     system: str = ""
     max_tokens: int = 4096
     temperature: float | None = None
+    #: How much the model thinks before it answers (``AIModel.reasoning_effort``); empty, its default.
+    reasoning_effort: str = ""
 
 
 @dataclass(frozen=True)
@@ -128,6 +136,11 @@ async def sse_events(response: httpx.Response) -> AsyncIterator[tuple[str | None
         data.append(line[len("data:") :].removeprefix(" "))
     if data:
         yield name, "\n".join(data)
+
+
+def without_reasoning(messages: list[dict]) -> list[dict]:
+    """``messages`` without the ``reasoning`` blocks of their answers."""
+    return [{key: value for key, value in message.items() if key != REASONING} for message in messages]
 
 
 def error_event(message: str, *, retriable: bool, status: int | None = None) -> ProviderEvent:

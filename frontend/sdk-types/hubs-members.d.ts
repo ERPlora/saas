@@ -49,6 +49,8 @@ export interface MemberRowOut {
 /** `hubs.MemberListOut`. */
 export interface MemberListOut extends Page<MemberRowOut> {
   seats: SeatsOut;
+  /** The roles that take no place of the plan: an invitation with one goes through with every place taken. */
+  free_roles: InvitableRole[];
   invitable_roles: InvitableRole[];
 }
 

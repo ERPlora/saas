@@ -14,7 +14,7 @@ from hubs.models.businesses import Hub
 
 
 class HubMember(models.Model):
-    """Who belongs to a hub, with which of the four roles: access is per hub.
+    """Who belongs to a hub, with which of the five roles: access is per hub.
 
     An invitation is a member without an answer (``accepted_at`` empty): it expires
     ``INVITATION_WINDOW`` after it was sent (``invitation_expires_at``; «Resend» renews it) and
@@ -29,9 +29,12 @@ class HubMember(models.Model):
         ADMIN = "hub_admin", pgettext_lazy("hub role", "Admin")
         MANAGER = "hub_manager", pgettext_lazy("hub role", "Manager")
         EMPLOYEE = "hub_employee", pgettext_lazy("hub role", "Employee")
+        ACCOUNTANT = "hub_accountant", pgettext_lazy("hub role", "Accountant")
 
     #: Authority: lower is more. Nobody acts on a peer or a superior, nor grants their own rank.
-    RANK = {Role.OWNER: 10, Role.ADMIN: 20, Role.MANAGER: 30, Role.EMPLOYEE: 40}
+    RANK = {Role.OWNER: 10, Role.ADMIN: 20, Role.MANAGER: 30, Role.EMPLOYEE: 40, Role.ACCOUNTANT: 40}
+    #: The roles that take no seat of the plan: the accountancy firm only reads (the Hub does not count it either).
+    FREE_ROLES = frozenset({Role.ACCOUNTANT})
     INVITATION_WINDOW = timedelta(days=7)
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
@@ -63,10 +66,10 @@ class HubMember(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["hub", "user"], name="hubs_member_one_per_hub_and_user"),
             models.UniqueConstraint(fields=["hub"], condition=Q(role="hub_owner"), name="hubs_member_one_owner"),
-            # Fail closed: a role outside the four (a retired key from a data migration, a typo in the
+            # Fail closed: a role outside the five (a retired key from a data migration, a typo in the
             # admin) would rank nowhere in the access checks; the database never stores one.
             models.CheckConstraint(
-                condition=Q(role__in=["hub_owner", "hub_admin", "hub_manager", "hub_employee"]),
+                condition=Q(role__in=["hub_owner", "hub_admin", "hub_manager", "hub_employee", "hub_accountant"]),
                 name="hubs_member_role_known",
             ),
         ]

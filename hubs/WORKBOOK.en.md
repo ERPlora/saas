@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:0c6876ef49731b34100fc460b5913ce167048b30b5c219e1bfe876938d6a9539 -->
+<!-- generated from WORKBOOK.md sha256:d7defb2d02eb59c629279e185ef4010b5339d1c25add838659d7cc0c5596bfba -->
 
 ## What it is for and who it is for
 
@@ -19,8 +19,9 @@ Who uses it:
 - **The owner** sees the list of their businesses, changes its web address, deletes it, recovers a deleted one and
   changes its plan; with the **administrators**, they change its name, its language and its time zone.
 - **The owner** and the **administrators** invite the people of the business, change their role and remove them;
-  only the owner hands out the administrator role and transfers the ownership. A **manager** or an **employee** only
-  opens the business.
+  only the owner hands out the administrator role and transfers the ownership. A **manager**, an **employee** or the
+  **accountant** only open the business; the accountant is the accountancy firm that keeps the books, only reads and
+  takes no place of the plan.
 - **ERPlora's staff** keep the plans, the sectors and the business types from the admin and, from there, send a
   business again what it did not receive and look up who has access to each business.
 - The **system** sends each business, after every change and every night, its plan with its caps, its paid apps,
@@ -147,7 +148,7 @@ last access, with a search by business or by email and a filter by role; it is o
 | Error | "We could not load your businesses" with "Retry"; a business that could not be prepared: "Not prepared" and "We could not prepare it. We keep retrying; if it keeps failing, contact us.". |
 | Preparing | The row says "Preparing" and "We are preparing it. It opens by itself when it is ready."; "Open" waits. |
 | Offline | "Reconnecting… what you see may be a few seconds old." while the live connection comes back. |
-| No permission | A business of another account does not exist for that person: it is neither listed nor opened. A manager or an employee who reaches the page of their business sees "You do not have permission to manage this business". |
+| No permission | A business of another account does not exist for that person: it is neither listed nor opened. A manager, an employee or the accountant who reaches the page of their business sees "You do not have permission to manage this business". |
 
 ## Flows
 
@@ -298,7 +299,7 @@ Involved: the business (receives what was pending)
 
 ### HUBS-F09 See the list of businesses
 Status: done
-Actor: owner, administrator, manager, employee
+Actor: owner, administrator, manager, employee, accountant
 Screen: Businesses
 Steps:
 1. In the menu, "Businesses" opens the list of the account's businesses, the last opened first; the old addresses of the businesses panel lead here.
@@ -312,7 +313,7 @@ Involved: billing (the plan of each row and whether its payment is pending)
 
 ### HUBS-F10 See the panel's home
 Status: done
-Actor: owner, administrator, manager, employee
+Actor: owner, administrator, manager, employee, accountant
 Screen: Businesses
 Steps:
 1. From the Entrance, "Go to the panel" opens **Businesses**, the panel's home, with the menu "Businesses", "Store", "Billing" and "Account".
@@ -325,7 +326,7 @@ Involved: billing (Billing), accounts (Account)
 
 ### HUBS-F11 Enter a business from erplora.com
 Status: done
-Actor: owner, administrator, manager, employee
+Actor: owner, administrator, manager, employee, accountant
 Screen: Entrance, Businesses
 Steps:
 1. On the Entrance (with one or several businesses) or in **Businesses**, the person presses "Open" on their business ("Opening …").
@@ -339,7 +340,7 @@ Involved: accounts (the entry pass), the business (opens its session)
 
 ### HUBS-F12 Choose the business in the installed app
 Status: done
-Actor: owner, administrator, manager, employee
+Actor: owner, administrator, manager, employee, accountant
 Screen: Entrance (in the installed app)
 Steps:
 1. The app without a remembered business (or after "Change business") opens the Entrance: with one business, "Open …"; with several, "Where are you working today?" with the last opened on top and each one's status.
@@ -503,18 +504,18 @@ Status: done
 Actor: owner, administrator, integration
 Screen: Members › Invite
 Steps:
-1. In the business's "Members" tab, "Invite" opens "Invite to …" with "Email", "Role" (Employee to start with; only the roles below one's own: the owner also hands out Admin) and "Message (optional)"; below, how many places of the plan are left.
+1. In the business's "Members" tab, "Invite" opens "Invite to …" with "Email", "Role" (Employee to start with; only the roles below one's own: the owner also hands out Admin; Accountant is for the accountancy firm that keeps the books, which only reads) and "Message (optional)"; below, how many places of the plan are left and, with Accountant picked, "An accountancy firm takes no place on the plan.".
 2. They press "Send invitation": "Invitation sent to …" shows and the person appears in the list as a pending invitation, with "Resend" and "Cancel invitation".
 3. The person receives an email with who invites them, to which business, with which role, until when it is valid and the link to accept it; if they have no account yet, also how to get in (with Google or by setting their password).
 4. "Resend" sends the email again and gives it 7 more days; "Cancel invitation" withdraws it and its link no longer lets anyone in. An integration does the same with the account's session.
 In: the email, the role, the message and the business; the session of whoever invites.
-Out: the invitation, valid for 7 days, which holds a place of the plan; the account of that address if it did not exist, without a password. The business does not receive the person until they accept. Records `hubs.member.invited` (when resent, `hubs.member.invitation_resent`; when cancelled, `hubs.member.invitation_cancelled`).
-If it fails: an address that is not valid (too long, for example), the error on the field and "Check the highlighted details." on top until it is corrected; somebody already in the business, "… is already on this business."; with an invitation still valid, "… already has an invitation waiting. Resend it instead." (an expired one is renewed by inviting again). A role equal to or above one's own, "You cannot hand out a role equal to or above yours.". Without places, the dialog says "The plan has no free places left: change the plan or remove someone to invite more people." and sends nothing. An address of ERPlora's staff, "This address belongs to ERPlora's staff and cannot join a business.". An account that never proved that address is released before being invited: it loses its password, its second factor, its Google and its sessions, and only whoever opens that mailbox gets in. A manager or an employee invites nobody; a deleted business takes no invitations; a business of another account does not exist for whoever invites. If the email does not leave, the invitation stays.
+Out: the invitation, valid for 7 days, which holds a place of the plan (the accountant's, none); the account of that address if it did not exist, without a password. The business does not receive the person until they accept. Records `hubs.member.invited` (when resent, `hubs.member.invitation_resent`; when cancelled, `hubs.member.invitation_cancelled`).
+If it fails: an address that is not valid (too long, for example), the error on the field and "Check the highlighted details." on top until it is corrected; somebody already in the business, "… is already on this business."; with an invitation still valid, "… already has an invitation waiting. Resend it instead." (an expired one is renewed by inviting again). A role equal to or above one's own, "You cannot hand out a role equal to or above yours.". Without places, the dialog says "The plan has no free places left: change the plan or remove someone to invite more people." and sends nothing, save with Accountant picked, which is sent. An address of ERPlora's staff, "This address belongs to ERPlora's staff and cannot join a business.". An account that never proved that address is released before being invited: it loses its password, its second factor, its Google and its sessions, and only whoever opens that mailbox gets in. A manager or an employee invites nobody; a deleted business takes no invitations; a business of another account does not exist for whoever invites. If the email does not leave, the invitation stays.
 Involved: accounts (the invited person's account and, if it never proved its address, its release), the business (receives the person when they accept)
 
 ### HUBS-F25 Accept or decline an invitation to a business
 Status: done
-Actor: administrator, manager, employee
+Actor: administrator, manager, employee, accountant
 Screen: You have been invited, Businesses
 Steps:
 1. The invited person enters erplora.com with the invitation's email (or follows its link): "You have been invited" shows one card per business with "… invites you · …"; in **Businesses** and in the Entrance the same invitation shows above the list.
@@ -522,7 +523,7 @@ Steps:
 3. Or they press "Decline" and confirm it in "Decline the invitation": "Invitation declined" shows and whoever invited them would have to invite them again.
 In: the account's invitations waiting for an answer and still within their 7 days.
 Out: on accepting, the person inside the business and the business told, with the list of people up to date; on declining, the invitation deleted. Records `hubs.invitation.accepted` or `hubs.invitation.declined`. The owner and the administrators see the change in "Members" at once.
-If it fails: an expired invitation, "This invitation expired. Ask whoever invited you to send it again."; one already answered, withdrawn or someone else's cannot be answered ("This invitation is no longer valid"). Without the email confirmed, "Confirm your email address before accepting the invitation.". An account that joined ERPlora's staff while the invitation waited does not enter: "This address belongs to ERPlora's staff and cannot join a business.". If the plan has no room left, "This business has no seat left on its plan. Ask whoever invited you to free one or to change the plan.". Accepting twice gives nothing more, and it never touches the person's other businesses.
+If it fails: an expired invitation, "This invitation expired. Ask whoever invited you to send it again."; one already answered, withdrawn or someone else's cannot be answered ("This invitation is no longer valid"). Without the email confirmed, "Confirm your email address before accepting the invitation.". An account that joined ERPlora's staff while the invitation waited does not enter: "This address belongs to ERPlora's staff and cannot join a business.". If the plan has no room left, "This business has no seat left on its plan. Ask whoever invited you to free one or to change the plan."; the accountant is not stopped, because it takes no place. Accepting twice gives nothing more, and it never touches the person's other businesses.
 Involved: accounts (the session and the jump into the business), the business (receives the person)
 
 ### HUBS-F26 Change the role of a person in a business
@@ -535,7 +536,7 @@ Steps:
 3. The business receives the list of people with the new role and, if that person has it open, at that moment they see and may do what their new role allows, without their session ending or signing in again.
 In: the person and the new role; the session of whoever changes it, who has to rank above the person and above the role given.
 Out: the new role and the notice to the business, with that person's session there still open; the role of an unanswered invitation changes without telling the business. Records `hubs.member.role_changed`.
-If it fails: one's own role, "You cannot change your own membership."; somebody of an equal or higher rank, "You cannot manage a member whose role is equal to or above yours."; a role equal to or above one's own, "You cannot hand out a role equal to or above yours.". The ownership is not given from here (HUBS-F28). A manager or an employee changes no roles; a person of a business of another account does not exist for whoever asks.
+If it fails: one's own role, "You cannot change your own membership."; somebody of an equal or higher rank, "You cannot manage a member whose role is equal to or above yours."; a role equal to or above one's own, "You cannot hand out a role equal to or above yours.". Moving the accountant to another role gives it a place of the plan: with none free, "This plan covers … people and they are all taken." and the role does not change. The ownership is not given from here (HUBS-F28). A manager or an employee changes no roles; a person of a business of another account does not exist for whoever asks.
 Involved: the business (BASE-F13: receives the new role and applies it without ending the session)
 
 ### HUBS-F27 Remove a person from a business
@@ -574,10 +575,10 @@ Screen: Members
 Steps:
 1. On the business's page, the "Members" tab shows the "Team" table: the owner first and each person with their email, their role, their status (inside, pending invitation or expired) and their last access; one's own row carries "You".
 2. Each row offers only what the person may do with it (HUBS-F24 to HUBS-F28); on a phone they are cards and, with many people, it goes page by page.
-3. Below it says how many places of the plan are used and "What can each one do?"; the list changes by itself when somebody accepts, changes role or leaves.
+3. Below it says how many places of the plan are used (the accountant takes none) and "What can each one do?", with one line per role, the accountant too; the list changes by itself when somebody accepts, changes role or leaves.
 In: the account's session and the business.
 Out: nothing stored.
-If it fails: "We could not load the members" with "Retry". A manager or an employee sees "You do not have permission to manage this business"; a business of another account does not exist for whoever asks. An unanswered invitation has no joining date.
+If it fails: "We could not load the members" with "Retry". A manager, an employee or the accountant sees "You do not have permission to manage this business"; a business of another account does not exist for whoever asks. An unanswered invitation has no joining date.
 Involved: accounts (the session), billing (the places of the plan)
 
 ### HUBS-F30 Look up the accesses of the people in the admin
@@ -612,10 +613,10 @@ Actor: system, owner, administrator
 Screen: Members › Invite
 Steps:
 1. Each plan says how many people and how many devices at a time it covers in each business: Free, 3 people and 1 device; the paid plans, no cap.
-2. On inviting, erplora.com counts the people already in and the invitations still valid; without a place, the "Invite to …" dialog says "The plan has no free places left: change the plan or remove someone to invite more people." and sends nothing (HUBS-F24). Changing the role of someone already in spends no place.
-3. The business gets both caps in its snapshot (HUBS-F31) and applies the devices one: on entering one device more than the plan covers, the session of the one that has gone longest without entering is closed (BASE-F57). People, also those who enter with a PIN, are always the ones in "Members", so erplora.com applies the people cap on inviting; the business shows in its staff how many places are taken (BASE-F77).
+2. On inviting, erplora.com counts the people already in and the invitations still valid, but for the accountant, which only reads and takes no place (as the invited accountant in QuickBooks); without a place, the "Invite to …" dialog says "The plan has no free places left: change the plan or remove someone to invite more people." and sends nothing (HUBS-F24), save to the accountant. Changing the role of someone already in spends no place, save moving the accountant to another role (HUBS-F26).
+3. The business gets both caps in its snapshot (HUBS-F31) and applies the devices one: on entering one device more than the plan covers, the session of the one that has gone longest without entering is closed (BASE-F57). People, also those who enter with a PIN, are always the ones in "Members", so erplora.com applies the people cap on inviting; the business shows in its staff how many places are taken, also without the accountant (BASE-F77).
 In: the business's plan, its people and its invitations.
-Out: the refusal of the invitation that does not fit and both caps in the snapshot; nothing else is stored.
+Out: the refusal of the invitation or of the role change that does not fit and both caps in the snapshot; nothing else is stored.
 If it fails: accepting an invitation when the plan has no room any more is stopped on accepting (HUBS-F25). Moving down a plan removes nobody and closes no session: it stops new invitations until there is room again, and the cap on devices applies on the next sign-in.
 Involved: billing (the plan), the business (closes the session of the devices left over and shows the places taken)
 

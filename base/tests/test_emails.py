@@ -30,6 +30,7 @@ from django.utils.translation import gettext
 from accounts import emails as account_emails
 from base import emails
 from billing import emails as billing_emails
+from billing.models import PaymentFailure
 from fiscal import emails as fiscal_emails
 from fiscal.models import RepresentationGrant
 from whatsapp import emails as whatsapp_emails
@@ -209,7 +210,11 @@ SENDERS = {
     ),
     "billing.invoice_issued": lambda language: billing_emails.send_invoice_issued(invoice(language)),
     "billing.payment_failed": lambda language: billing_emails.send_payment_failed(
-        HUB, to=ADDRESS, language=language, amount=Decimal("29.99"), declined=True, suspends_on=date(2026, 11, 1)
+        HUB,
+        PaymentFailure(reason=PaymentFailure.Reason.CARD_DECLINED, invoice_created_at=datetime(2026, 10, 25, tzinfo=UTC)),
+        to=ADDRESS,
+        language=language,
+        amount=Decimal("29.99"),
     ),
     "billing.business_suspended": lambda language: billing_emails.send_business_suspended(
         HUB, to=ADDRESS, language=language, amount=Decimal("29.99")

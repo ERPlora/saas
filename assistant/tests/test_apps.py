@@ -30,7 +30,7 @@ def test_every_account_may_ask_the_panels_assistant():
 
     config = apps.get_app_config("assistant")
 
-    assert config.permissions == ["assistant.manage", "assistant.ask"]
+    assert list(config.permissions) == ["assistant.manage", "assistant.ask"]
     assert config.role_permissions == {"account": ["assistant.ask"]}
     assert "assistant.ask" in permissions_for_role(all_live_app_configs(), "account")
 

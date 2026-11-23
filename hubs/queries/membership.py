@@ -16,13 +16,22 @@ from hubs.queries.invitations import _name_of
 from hubs.schemas.membership import MemberListIn, MemberListMineIn, MemberListMineOut, MemberListOut
 
 
+def takes_seat(role: str) -> bool:
+    return role not in HubMember.FREE_ROLES
+
+
+def _seated(hub: Hub):
+    return HubMember.objects.filter(hub=hub).exclude(role__in=HubMember.FREE_ROLES)
+
+
 def seats_of(hub: Hub, now: datetime) -> dict[str, int | None]:
     """The seats of the business: ``used`` = its people, answered or invited (a live
-    invitation holds its seat: it is spent when somebody is added, never when they walk in), and
-    ``limit`` = what its plan covers at ``now``, ``None`` when nothing caps it (``max_users = 0`` on
-    every paid plan and the Starter trial, or no subscription at all)."""
+    invitation holds its seat: it is spent when somebody is added, never when they walk in), but for
+    the roles that take none (``HubMember.FREE_ROLES``), and ``limit`` = what its plan covers at ``now``,
+    ``None`` when nothing caps it (``max_users = 0`` on every paid plan and the Starter trial, or no
+    subscription at all)."""
     used = (
-        HubMember.objects.filter(hub=hub)
+        _seated(hub)
         .filter(
             Q(accepted_at__isnull=False)
             | Q(invitation_expires_at__isnull=True)
@@ -45,8 +54,8 @@ def seat_limit_of(hub: Hub, now: datetime) -> int | None:
 
 
 def people_inside(hub: Hub) -> int:
-    """The people who answered: those an acceptance must find a seat beside."""
-    return HubMember.objects.filter(hub=hub, accepted_at__isnull=False).count()
+    """The people who answered and take a seat: those an acceptance must find a seat beside."""
+    return _seated(hub).filter(accepted_at__isnull=False).count()
 
 
 def owner_id(hub_id: UUID) -> UUID | None:
@@ -113,7 +122,7 @@ def member_list_mine(ctx: OperationContext, data: MemberListMineIn) -> dict[str,
 
 
 #: The roles an invitation or a role change may hand out, from the most authority to the least.
-INVITABLE = [Role.ADMIN, Role.MANAGER, Role.EMPLOYEE]
+INVITABLE = [Role.ADMIN, Role.MANAGER, Role.EMPLOYEE, Role.ACCOUNTANT]
 MEMBER_STATUS_LABELS = {
     "active": gettext_lazy("Active"),
     "pending": gettext_lazy("Pending"),
@@ -191,6 +200,7 @@ def member_list(ctx: OperationContext, data: MemberListIn) -> dict[str, Any]:
         "limit": data.limit,
         "offset": data.offset,
         "seats": seats_of(actor.hub, now),
+        "free_roles": sorted(HubMember.FREE_ROLES),
         "invitable_roles": assignable_roles(actor.role)
         if is_writable(actor.hub)
         else [],

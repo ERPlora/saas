@@ -19,7 +19,10 @@ class FiscalConfig(LiveAppConfig):
     # Every signed-in account reads the state of its businesses' authorisation (``fiscal.view``; which
     # business, and with which role, is checked in the operation). ``fiscal.manage`` is no role's: only the
     # platform (the Hub's upload) and the staff (the review in the admin) run those commands.
-    permissions = ["fiscal.view", "fiscal.manage"]
+    permissions = {
+        "fiscal.view": _("View the state of the businesses' tax authorisation"),
+        "fiscal.manage": _("Submit, review and withdraw the tax authorisation and its proof"),
+    }
     role_permissions = {"account": ["fiscal.view"]}
 
     def ready(self):

@@ -20,7 +20,7 @@ from django.views.generic import RedirectView
 from live.live_view import live_stream
 from live.spa import BASE_NON_SPA_PREFIXES
 
-from accounts import doors, google, handoff, hub_pass, internal
+from accounts import app_sign_in, doors, google, handoff, hub_pass, internal
 from accounts.adapters import SPA_LOGIN
 from accounts.admin.sign_in import admin_has_permission, admin_login
 from assistant import internal as assistant_internal
@@ -124,6 +124,11 @@ urlpatterns = [
     # under allauth's name: allauth builds the redirect_uri of the authorization and of the token
     # exchange from `reverse("google_callback")`.
     path("auth/google/callback/", google.callback, name="google_callback"),
+    # The installed app's «Continue with Google»: Google in the device's browser, the session back in the app.
+    path("auth/app/start/", app_sign_in.start, name="app_sign_in_start"),
+    path("auth/app/google/", app_sign_in.google, name="app_sign_in_google"),
+    path("auth/app/done/", app_sign_in.done, name="app_sign_in_done"),
+    path("auth/app/finish/", app_sign_in.finish, name="app_sign_in_finish"),
     path("launch/", handoff.launch, name="launch"),
     path("hub-login/", handoff.hub_login, name="hub_login"),
     # The way back from a business: a pass the Hub signed opens the session and lands on the plan.

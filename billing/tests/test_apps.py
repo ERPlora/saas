@@ -64,7 +64,7 @@ def test_a_signed_in_account_previews_checks_and_pays_but_does_not_manage_billin
     account OWNS the business; ``billing.manage`` is not handed to every account."""
     config = billing()
 
-    assert config.permissions == ["billing.view", "billing.vat_check", "billing.pay", "billing.manage"]
+    assert list(config.permissions) == ["billing.view", "billing.vat_check", "billing.pay", "billing.manage"]
     assert config.role_permissions == {"account": ["billing.view", "billing.vat_check", "billing.pay"]}
 
 

@@ -3,7 +3,8 @@
 // the account may hand out: the server's `invitable_roles`, employee by default) and an optional
 // message. `hubs.member.invite` creates the invitation (and the account if needed) and mails it; the
 // toast names who was invited. With every place of the plan taken (the list's `seats`, or the server's
-// 409 `hubs.seat_limit` when somebody took the last one meanwhile) it says so and sends nothing more; it waits
+// 409 `hubs.seat_limit` when somebody took the last one meanwhile) it says so and sends nothing more, save to a
+// role that takes no place (the list's `free_roles`, the accountancy firm); it waits
 // for an email that looks like one; a
 // 422 puts its message on its field; anything else stays in the dialog, said in the person's language.
 import { FormModal, InlineFeedback } from '@erplora/ui/components';
@@ -21,6 +22,8 @@ const props = defineProps<{
   business: { id: string; name: string };
   /** The roles the account may invite with (`hubs.member.list`'s `invitable_roles`). */
   invitableRoles: InvitableRole[];
+  /** The roles that take no place of the plan (`hubs.member.list`'s `free_roles`). */
+  freeRoles: InvitableRole[];
   seats: SeatsOut;
 }>();
 
@@ -34,8 +37,11 @@ const email = shallowRef('');
 const role = shallowRef<InvitableRole>('hub_employee');
 const message = shallowRef('');
 
+const freeRole = computed(() => props.freeRoles.includes(role.value));
 const full = computed(
-  () => (props.seats.limit !== null && props.seats.used >= props.seats.limit) || invite.error.value?.code === 'hubs.seat_limit',
+  () =>
+    !freeRole.value &&
+    ((props.seats.limit !== null && props.seats.used >= props.seats.limit) || invite.error.value?.code === 'hubs.seat_limit'),
 );
 /** «Send invitation» waits for an address: the server still checks it. */
 const sendable = computed(() => looksLikeEmail(email.value));
@@ -135,6 +141,10 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
             v-if="seats.limit !== null"
             data-testid="invite-seats"
           >{{ $t('hubs.members.seats', { used: seats.used, limit: seats.limit }) }}</span>
+          <span
+            v-if="freeRole"
+            data-testid="invite-free-role"
+          >{{ $t('hubs.members.inviteModal.freeRole') }}</span>
         </p>
       </div>
     </template>

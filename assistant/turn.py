@@ -1,11 +1,11 @@
 """A turn of the Hub's assistant through the gateway: the conversation made ready for the
 model, the tools offered, the answer streamed as the Hub's frames, and what it spent.
 
-The conversation is the Hub's (the person's browser owns it): erplora.com uses it for
-the call and forgets it. ``prepare`` refuses what is too big (never cuts it), drops the client's system messages for
-the Hub's ``instructions``, drops a tool result whose call is not there and keeps the last ``MAX_MESSAGES``. ``run``
-streams the turn through its route (``assistant.routing.stream``: the model that answers, then its fallback if the
-provider fails before answering) and yields the frames the Hub reads:
+The conversation is the Hub's (the person's browser owns it): erplora.com uses it for the call and forgets it.
+``prepare`` refuses what is too big (never cuts it), drops the client's system messages for the Hub's ``instructions``
+and any ``reasoning`` (only the turn's own goes back), drops a tool result whose call is not there and keeps the last
+``MAX_MESSAGES``. ``run`` streams the turn through its route (``assistant.routing.stream``: the model that answers,
+then its fallback if the provider fails before answering) and yields the frames the Hub reads:
 
     {"type": "text_delta", "text": str}
     {"type": "function_call", "name": str, "call_id": str, "arguments": str}     # a tool of the Hub, for it to run
@@ -50,7 +50,7 @@ from live.errors import OperationError
 from assistant import queries, routing, services
 from assistant.continuation import caller_key, continuation_token, is_continuation, tool_budget
 from assistant.models import estimate_cost
-from assistant.providers.base import ToolSpec, TurnRequest
+from assistant.providers.base import REASONING, ProviderEvent, ToolSpec, TurnRequest, without_reasoning
 from assistant.schemas import Caller, ClaimOut, MessageReleaseIn, RouteCandidate, RouteIn, UsageRecordIn
 from assistant.services.platform_actor import platform_context
 
@@ -133,7 +133,7 @@ def prepare(messages: list[dict], instructions: str, *, answer_kept: bool = Fals
     attachments.check(messages)
     if text_bytes(messages) > MAX_TEXT_BYTES:
         raise TurnRefused(413, "payload_too_large", f"The conversation's text exceeds {MAX_TEXT_BYTES} bytes.")
-    client = [message for message in messages if message["role"] != "system"]
+    client = without_reasoning([message for message in messages if message["role"] != "system"])
     conversation = sanitized(client)[-(MAX_MESSAGES - 1) :]
     while conversation and conversation[0]["role"] == "tool":
         conversation = conversation[1:]
@@ -186,6 +186,25 @@ class Outcome:
         items.extend({"type": "function_call", **call} for call in self.calls)
         return items
 
+    def spent(self, answering: RouteCandidate, payload: dict) -> None:
+        """Add the tokens of one call, at the prices of the model that answered it."""
+        spent_in, spent_out = int(payload["input_tokens"]), int(payload["output_tokens"])
+        self.tokens_input += spent_in
+        self.tokens_output += spent_out
+        self.cost += estimate_cost(answering.price_input_per_1m, answering.price_output_per_1m, spent_in, spent_out)
+
+
+@dataclass
+class Round:
+    """One call to the model within the turn: the model that answered it, its text, the tools it asked for, its
+    ``reasoning`` and its failure."""
+
+    answering: RouteCandidate
+    text: str = ""
+    calls: list[dict] = field(default_factory=list)
+    reasoning: list | None = None
+    failed: dict | None = None
+
 
 def failure(payload: dict) -> dict:
     """The Hub's frame of a provider's failure: retriable or not, never the provider's words."""
@@ -193,8 +212,8 @@ def failure(payload: dict) -> dict:
     return {"type": "error", "code": code, "message": MESSAGES[code], "retriable": bool(payload.get("retriable"))}
 
 
-def assistant_message(text: str, calls: list[dict]) -> dict:
-    return {
+def assistant_message(text: str, calls: list[dict], reasoning: list | None = None) -> dict:
+    message = {
         "role": "assistant",
         "content": text,
         "tool_calls": [
@@ -202,14 +221,89 @@ def assistant_message(text: str, calls: list[dict]) -> dict:
             for call in calls
         ],
     }
+    if reasoning:
+        message[REASONING] = reasoning
+    return message
 
 
-async def run(started: Turn, outcome: Outcome) -> AsyncIterator[dict]:  # noqa: C901, PLR0912, PLR0915
+def requests_for(conversation: list[dict], theirs: list[ToolSpec], ours: list[ToolSpec], *, last: bool):
+    """How each model of the route is asked in this round: with the Hub's tools and ours, but on the last round. That
+    one offers ours no more, and such a change leaves the reasoning of the earlier rounds out of date: it goes without."""
+    from assistant import attachments
+
+    offered, seen = (theirs, without_reasoning(conversation)) if last else (theirs + ours, conversation)
+
+    def build(candidate: RouteCandidate) -> TurnRequest:
+        return TurnRequest(
+            model_id=candidate.model_id,
+            messages=attachments.for_model(seen, vision=candidate.supports_vision),
+            tools=offered,
+            max_tokens=MAX_OUTPUT_TOKENS,
+            reasoning_effort=candidate.reasoning_effort,
+        )
+
+    return build
+
+
+def take(event: ProviderEvent, current: Round, remaining: list, outcome: Outcome) -> dict | None:
+    """Read one event of the model's answer into its round and the turn's outcome; the Hub's frame it makes, if any.
+    The reasoning stays in the round, for the next one: it is never a frame."""
+    payload = event.payload
+    if event.type == "model":
+        current.answering = next(candidate for candidate in remaining if str(candidate.model) == payload["model"])
+    elif event.type == "fallback":
+        logger.warning("assistant.turn.fallback from=%s to=%s status=%s", payload["from"], payload["to"], payload["status"])
+    elif event.type == "text_delta":
+        current.text += payload["text"]
+        outcome.text += payload["text"]
+        outcome.answered = True
+        return {"type": "text_delta", "text": payload["text"]}
+    elif event.type == "tool_call":
+        current.calls.append({"name": payload["name"], "call_id": payload["call_id"], "arguments": payload["arguments"]})
+    elif event.type == "reasoning":
+        current.reasoning = payload["blocks"]
+    elif event.type == "usage":
+        outcome.spent(current.answering, payload)
+    elif event.type == "error":
+        current.failed = payload
+    return None
+
+
+async def run_ours(started: Turn, calls: list[dict], conversation: list[dict], sources: list[str], outcome: Outcome):
+    """Run the tools of erplora.com the model asked for, on the caller's budget: each result goes to the conversation
+    and its sources to ``sources``; the frame ``web`` goes once, when a search brought pages."""
+    from assistant import server_tools
+
+    for call in calls:
+        result = await server_tools.run(call["name"], call["arguments"], tool_budget(started.caller), answer_kept=started.answer_kept)
+        sources.extend(server_tools.sources_of(result))
+        if not outcome.web and server_tools.not_to_keep(call["name"], result):
+            outcome.web = True
+            yield {"type": "web"}
+        conversation.append({"role": "tool", "tool_call_id": call["call_id"], "content": result})
+
+
+def closing(theirs: list[dict], sources: list[str], outcome: Outcome) -> list[dict]:
+    """The last frames: the sources below an answer that names none of them, then the Hub's tool calls."""
+    from assistant import server_tools
+
+    closed = []
+    if line := server_tools.source_line(outcome.text, sources):
+        outcome.text += line
+        closed.append({"type": "text_delta", "text": line})
+    for call in theirs:
+        outcome.calls.append(call)
+        outcome.answered = True
+        closed.append({"type": "function_call", **call})
+    return closed
+
+
+async def run(started: Turn, outcome: Outcome) -> AsyncIterator[dict]:
     """Stream the turn: the frames of the answer as they come; ``outcome`` filled as it goes. The tools erplora.com
     runs itself (``server_tools``) are run here, on the caller's budget, and the model is asked again, at most
     ``server_tools.MAX_ROUNDS`` times; on the last round they are not offered, so the model answers. A tool of the Hub
     named as one of ours is ours. An answer that names none of the sources they gave gets them written below it."""
-    from assistant import attachments, server_tools
+    from assistant import server_tools
 
     conversation = list(started.messages)
     sources: list[str] = []
@@ -218,76 +312,28 @@ async def run(started: Turn, outcome: Outcome) -> AsyncIterator[dict]:  # noqa: 
     ours = server_tools.specs(answer_kept=started.answer_kept)
     rounds = 0
     while True:
-        offered = theirs_offered + (ours if rounds < server_tools.MAX_ROUNDS else [])
-        text, calls, failed, answering = "", [], None, remaining[0]
-
-        def build(candidate: RouteCandidate) -> TurnRequest:
-            return TurnRequest(
-                model_id=candidate.model_id,
-                messages=attachments.for_model(conversation, vision=candidate.supports_vision),
-                tools=offered,
-                max_tokens=MAX_OUTPUT_TOKENS,
-            )
-
-        async for event in routing.stream(remaining, build):
-            payload = event.payload
-            if event.type == "model":
-                answering = next(candidate for candidate in remaining if candidate.model == _uuid(payload["model"]))
-            elif event.type == "fallback":
-                logger.warning("assistant.turn.fallback from=%s to=%s status=%s", payload["from"], payload["to"], payload["status"])
-            elif event.type == "text_delta":
-                text += payload["text"]
-                outcome.text += payload["text"]
-                outcome.answered = True
-                yield {"type": "text_delta", "text": payload["text"]}
-            elif event.type == "tool_call":
-                calls.append({"name": payload["name"], "call_id": payload["call_id"], "arguments": payload["arguments"]})
-            elif event.type == "usage":
-                spent_in, spent_out = int(payload["input_tokens"]), int(payload["output_tokens"])
-                outcome.tokens_input += spent_in
-                outcome.tokens_output += spent_out
-                outcome.cost += estimate_cost(
-                    answering.price_input_per_1m, answering.price_output_per_1m, spent_in, spent_out
-                )
-            elif event.type == "error":
-                failed = payload
-        if failed is not None:
+        last = rounds >= server_tools.MAX_ROUNDS
+        current = Round(answering=remaining[0])
+        async for event in routing.stream(remaining, requests_for(conversation, theirs_offered, ours, last=last)):
+            if (frame := take(event, current, remaining, outcome)) is not None:
+                yield frame
+        if current.failed is not None:
             # The status only: the provider's words may quote what the person wrote.
-            logger.warning("assistant.turn.provider_failed status=%s retriable=%s", failed.get("status"), failed.get("retriable"))
-            outcome.error = failure(failed)
+            logger.warning("assistant.turn.provider_failed status=%s retriable=%s", current.failed.get("status"), current.failed.get("retriable"))
+            outcome.error = failure(current.failed)
             yield outcome.error
             return
-        remaining = remaining[remaining.index(answering) :]
-        mine = [call for call in calls if server_tools.is_server_tool(call["name"])]
-        theirs = [call for call in calls if not server_tools.is_server_tool(call["name"])]
-        if mine and not theirs and rounds < server_tools.MAX_ROUNDS:
-            conversation.append(assistant_message(text, mine))
-            for call in mine:
-                result = await server_tools.run(
-                    call["name"], call["arguments"], tool_budget(started.caller), answer_kept=started.answer_kept
-                )
-                sources += server_tools.sources_of(result)
-                if not outcome.web and server_tools.not_to_keep(call["name"], result):
-                    outcome.web = True
-                    yield {"type": "web"}
-                conversation.append({"role": "tool", "tool_call_id": call["call_id"], "content": result})
-            rounds += 1
-            continue
-        line = server_tools.source_line(outcome.text, sources)
-        if line:
-            outcome.text += line
-            yield {"type": "text_delta", "text": line}
-        for call in theirs:
-            outcome.calls.append(call)
-            outcome.answered = True
-            yield {"type": "function_call", **call}
-        return
-
-
-def _uuid(value: Any):
-    from uuid import UUID
-
-    return value if isinstance(value, UUID) else UUID(str(value))
+        remaining = remaining[remaining.index(current.answering) :]
+        mine = [call for call in current.calls if server_tools.is_server_tool(call["name"])]
+        theirs = [call for call in current.calls if not server_tools.is_server_tool(call["name"])]
+        if not mine or theirs or last:
+            break
+        conversation.append(assistant_message(current.text, mine, current.reasoning))
+        async for frame in run_ours(started, mine, conversation, sources, outcome):
+            yield frame
+        rounds += 1
+    for frame in closing(theirs, sources, outcome):
+        yield frame
 
 
 # --- The turn as a door serves it -------------------------------------------------

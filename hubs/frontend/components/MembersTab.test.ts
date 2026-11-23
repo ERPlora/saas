@@ -20,6 +20,7 @@ import { toastError, toastSuccess } from '@erplora/ui/shell';
 import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
 import { accessibleName, apiError, BYE, closeRowMenu, describeCall, errorFrame, flush, mountHubs, subId } from '../__tests__/mount-hubs';
 import { member } from '../__tests__/members';
+import InviteModal from './InviteModal.vue';
 import MembersTab from './MembersTab.vue';
 
 // The DataTable's test helpers: a row's actions wherever they are, and a phone's viewport.
@@ -53,7 +54,8 @@ const page = (rows = ROWS, extra: Record<string, unknown> = {}) => ({
   limit: 50,
   offset: 0,
   seats: { used: 3, limit: 5 },
-  invitable_roles: ['hub_admin', 'hub_manager', 'hub_employee'],
+  free_roles: ['hub_accountant'],
+  invitable_roles: ['hub_admin', 'hub_manager', 'hub_employee', 'hub_accountant'],
   ...extra,
 });
 
@@ -165,6 +167,7 @@ describe('MembersTab: the list', () => {
     expect(s.testid('members-seats').text()).toBe('3 of 5 places on the plan');
     expect(s.testid('members-roles').text()).toContain('What can each one do?');
     expect(s.testid('members-roles').text()).toContain('Owner: everything, also the plan, transferring and deleting the business.');
+    expect(s.testid('members-roles').text()).toContain('Accountant: the accountancy firm that keeps the books.');
   });
 
   it('an error is the table’s, with «Retry»', async () => {
@@ -247,6 +250,7 @@ describe('MembersTab: actions', () => {
     await s.testid('members-add').trigger('click');
     await flush();
     expect(s.q('invite-modal')?.getAttribute('aria-label')).toBe('Invite to Panadería López');
+    expect(s.wrapper.findComponent(InviteModal).props('freeRoles')).toEqual(['hub_accountant']);
   });
 
   it('«Change role», «Remove», «Cancel invitation» and «Transfer ownership» open their dialogs', async () => {

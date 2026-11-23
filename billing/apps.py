@@ -20,7 +20,12 @@ class BillingConfig(LiveAppConfig):
     # number in VIES and reaches the operations that pay (``billing.pay``: buy, change, cancel,
     # the portal), each of which checks that the account owns the business. ``billing.manage`` is no
     # account's by default.
-    permissions = ["billing.view", "billing.vat_check", "billing.pay", "billing.manage"]
+    permissions = {
+        "billing.view": _("View invoices and preview the tax of a purchase"),
+        "billing.vat_check": _("Check a VAT number in VIES"),
+        "billing.pay": _("Buy, change and cancel plans and modules"),
+        "billing.manage": _("Record invoices, refunds and credit notes"),
+    }
     role_permissions = {"account": ["billing.view", "billing.vat_check", "billing.pay"]}
 
     def ready(self):

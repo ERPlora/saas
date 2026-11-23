@@ -10,6 +10,7 @@ on the business. Anything else opens nothing and lands on ``/login/error?code=â€
 import time
 import uuid
 from datetime import date
+from types import SimpleNamespace
 from unittest import mock
 from urllib.parse import quote
 
@@ -42,13 +43,20 @@ def shared_secret(settings):
     settings.HUB_PASS_MAX_AGE_SECONDS = 60
 
 
+@pytest.fixture(autouse=True)
+def stopped_clock(monkeypatch):
+    """Django's signer reads a clock that stands still for the whole test: a slow machine never ages a pass."""
+    now = time.time()
+    monkeypatch.setattr(signing, "time", SimpleNamespace(time=lambda: now))
+
+
 @pytest.fixture
 def business(plans, ana):  # noqa: F811 - the plans fixture
     return create_business(ana, name="Bar Manolo")
 
 
 def mint(account, slug: str, next_: str = "plan", *, key: str = SECRET, salt: str = SALT, age: int = 0, **change) -> str:
-    """The pass as the Hub signs it, ``age`` seconds ago; ``change`` overrides any of its fields."""
+    """The pass as the Hub signs it, ``age`` seconds before the stopped clock; ``change`` overrides any of its fields."""
     payload = {
         "user": str(account.pk) if hasattr(account, "pk") else account,
         "hub": slug,
@@ -56,7 +64,8 @@ def mint(account, slug: str, next_: str = "plan", *, key: str = SECRET, salt: st
         "nonce": uuid.uuid4().hex,
     }
     payload.update(change)
-    with mock.patch("django.core.signing.time.time", return_value=time.time() - age):
+    signed_at = signing.time.time() - age
+    with mock.patch.object(signing, "time", SimpleNamespace(time=lambda: signed_at)):
         return signing.dumps(payload, key=key, salt=salt)
 
 
