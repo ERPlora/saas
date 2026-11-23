@@ -33,6 +33,7 @@ from billing import emails as billing_emails
 from billing.models import PaymentFailure
 from fiscal import emails as fiscal_emails
 from fiscal.models import RepresentationGrant
+from hubs import hub_client
 from whatsapp import emails as whatsapp_emails
 
 pytestmark = pytest.mark.django_db
@@ -160,9 +161,12 @@ LANGUAGES = ("en", "es")
 
 
 def invoice(language: str) -> SimpleNamespace:
+    """An issued invoice: the platform hub hands over its PDF, which the mail carries attached."""
     return SimpleNamespace(
         pk=1,
+        id=uuid.UUID("0199a0c4-7f3e-7000-8000-000000000003"),
         payment_status="paid",
+        fiscal_status="issued",
         payer_account=None,
         payer_email="facturas@example.com",
         language=language,
@@ -230,7 +234,9 @@ SENDERS = {
 
 @pytest.mark.parametrize("language", LANGUAGES)
 @pytest.mark.parametrize("family", sorted(SENDERS))
-def test_a_mail_to_a_person_is_branded_in_their_language(family, language):
+def test_a_mail_to_a_person_is_branded_in_their_language(family, language, monkeypatch):
+    monkeypatch.setattr(hub_client, "get_platform_invoice_pdf", lambda invoice_id: b"%PDF-1.7")
+
     SENDERS[family](language)
 
     [message] = mail.outbox

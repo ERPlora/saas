@@ -525,10 +525,10 @@ Pantalla: ninguna
 Pasos:
 1. Stripe avisa de un cobro pagado (alta, renovación, cambio de plan o módulo).
 2. erplora.com califica la venta (BILLING-F03), le pone número de su serie (ERP-año-número, correlativo sin huecos) y la fecha del día, y copia los datos de quien paga ese día.
-3. La manda al negocio de plataforma de ERPlora, que la registra con VeriFactu y devuelve su estado y su QR; cuando la emite, se avisa por correo a quien paga.
+3. La manda al negocio de plataforma de ERPlora, que la registra con VeriFactu y devuelve su estado y su QR; cuando la emite, quien paga recibe un correo con el PDF de la factura adjunto, sin enlaces: «La factura va adjunta. También la tienes en tu panel, en Facturación.».
 Entra: el cobro de Stripe con sus líneas y los datos de quien paga.
-Sale: la factura y sus líneas (`billing.invoice.recorded`), su estado fiscal y el correo.
-Si falla: si el negocio de plataforma no responde, la factura queda «emitiéndose» y se reintenta (a los 15 minutos, después el doble cada vez, como mucho 6 horas); si lo rechaza, se guarda el motivo y se reintenta. Una renovación sin cobrar se lista «No cobrada», sin número, y se numera al pagarla. Un cobro de 0 € de una prueba no hace factura; el de un descuento de un código sí (BILLING-F12), con el descuento en cada línea. El mismo cobro avisado varias veces hace una sola. Con claves reales, sin ruta de emisión no se cobra.
+Sale: la factura y sus líneas (`billing.invoice.recorded`), su estado fiscal y el correo con su PDF.
+Si falla: si el negocio de plataforma no responde, la factura queda «emitiéndose» y se reintenta (a los 15 minutos, después el doble cada vez, como mucho 6 horas); si lo rechaza, se guarda el motivo y se reintenta. Si aún no entrega el PDF, el correo no sale sin él: se vuelve a mandar en la pasada siguiente. Una renovación sin cobrar se lista «No cobrada», sin número, y se numera al pagarla. Un cobro de 0 € de una prueba no hace factura; el de un descuento de un código sí (BILLING-F12), con el descuento en cada línea. El mismo cobro avisado varias veces hace una sola. Con claves reales, sin ruta de emisión no se cobra.
 Implicados: el negocio de plataforma de ERPlora (emite la factura)
 
 ### BILLING-F26 Devolver un cobro
@@ -540,7 +540,7 @@ Pasos:
 2. Stripe avisa a erplora.com, que emite una factura rectificativa con importes negativos, la calificación y el destinatario de la original, su tipo (R1 para devoluciones y cambios de precio, R4 para lo demás) y su motivo.
 3. La rectificativa sale en **Facturación › Facturas** con «Rectificativa R1 · motivo» y la factura que rectifica.
 Entra: el aviso de la devolución o de la nota de crédito.
-Sale: la rectificativa de su serie propia (ERPR-año-número), emitida como cualquier factura (`billing.credit_note.recorded`).
+Sale: la rectificativa de su serie propia (ERPR-año-número), emitida como cualquier factura (`billing.credit_note.recorded`), y su correo con el PDF adjunto: «La factura rectificativa va adjunta. También la tienes en tu panel, en Facturación.».
 Si falla: una devolución de una factura que aún no existe espera y Stripe vuelve a avisar; la misma devolución nunca rectifica dos veces. Una nota de crédito anulada en Stripe (solo se puede mientras su factura no está cobrada) nunca se vuelve rectificativa, aunque su aviso llegue después; y si ya lo era, la rectificativa no se toca —una factura enviada a la AEAT no se modifica— y soporte recibe un correo para emitir a mano la factura que la anula.
 Implicados: el negocio de plataforma de ERPlora (emite la rectificativa)
 

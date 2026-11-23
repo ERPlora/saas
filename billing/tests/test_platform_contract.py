@@ -208,6 +208,7 @@ def test_an_invoice_the_hub_refused_goes_again_with_the_same_number(hub_double, 
     assert owed.fiscal_status == "issuing"
 
     hub_double.answer("POST", PLATFORM, 200, {"status": "accepted", "qr": "https://example.com/qr"})
+    hub_double.answer("GET", r"/pdf$", 200, {"pdf": "the platform hub's"})
     Invoice.objects.filter(pk=owed.pk).update(next_post_at=timezone.now() - dt.timedelta(minutes=1))
     call_command("reconcile_platform_invoices", stdout=None)
 

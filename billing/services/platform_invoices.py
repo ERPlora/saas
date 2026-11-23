@@ -238,8 +238,9 @@ MAILED, MAIL_SKIPPED, MAIL_FAILED = "mailed", "mail_skipped", "mail_failed"
 
 
 def send_invoice_mail(invoice_id) -> str:
-    """Send the payer the mail of an issued invoice (``billing.emails``) and mark it sent. Nothing to send
-    (nobody to send it to) is done too; a mail that cannot leave stays owed for ``reconcile_platform_invoices``."""
+    """Send the payer the mail of an issued invoice, with its PDF attached (``billing.emails``), and mark it sent.
+    Nothing to send (nobody to send it to) is done too; a mail that cannot leave, also for want of its PDF, stays
+    owed for ``reconcile_platform_invoices``."""
     invoice = Invoice.objects.select_related("hub", "payer_account").get(pk=invoice_id)
     try:
         sent = emails.send_invoice_issued(invoice)

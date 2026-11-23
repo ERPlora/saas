@@ -507,7 +507,8 @@ PDF). Aquí nunca se simula VeriFactu: sin respuesta del Hub la factura sigue «
 - `GET /internal/platform/invoices/{id}` — la misma respuesta: el SaaS pregunta por las `issued` y `rejected`
   hasta que la AEAT acepta (una rechazada la corrige el Hub con un registro nuevo; su siguiente respuesta manda).
 - `GET /internal/platform/invoices/{id}/pdf` — el PDF (`application/pdf`); 404 si no la tiene. El SaaS no lo
-  guarda: lo pide al descargarlo (PLAN-SAAS §3.6 punto 7).
+  guarda: lo pide al descargarlo (PLAN-SAAS §3.6 punto 7) y al mandar el correo de la factura, que lo lleva
+  adjunto y sin enlaces; sin el PDF el correo no sale y queda pendiente para la pasada siguiente.
 
 ### Reintentos
 
