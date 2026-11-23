@@ -1,11 +1,12 @@
-"""The mail of billing: an invoice of ERPlora was issued, and a renewal could not be collected or the business
-was suspended for it (BILLING-F16).
+"""The mail of billing: an invoice of ERPlora was issued (BILLING-F25, BILLING-F26), and a renewal could not be
+collected or the business was suspended for it (BILLING-F16).
 
-Branded, as text and as HTML (``base.emails``, ACCOUNTS-F46), in the language of the invoice (its payer's). It
-LINKS to the panel's Billing page instead of attaching the PDF: the PDF is the platform hub's, asked on demand,
-and it carries the QR. Sent after the COMMIT by ``billing.services`` the first time the platform hub issues the
-invoice; one that cannot leave (also when its HTML cannot be drawn) is logged and reported as ``MailNotSent``, so
-it is sent again later (the invoice is the source of truth). No database here.
+Branded, as text and as HTML (``base.emails``, ACCOUNTS-F46), in the language of the invoice (its payer's). The
+invoice's mail carries its PDF attached and no link: the PDF is the platform hub's, with its QR, asked of it as the
+mail leaves (``billing.queries.platform_invoice_pdf``). Sent after the COMMIT by ``billing.services`` the first time
+the platform hub issues the invoice; one that cannot leave (also when its HTML cannot be drawn or the platform hub
+does not hand its PDF over) is logged and reported as ``MailNotSent``, so it is sent again later (the invoice is the
+source of truth). No database here.
 """
 
 import logging
@@ -20,6 +21,7 @@ from base.navigation import BILLING
 from billing.models import PaymentFailure
 from billing.money import from_cents
 from billing.oss import OSS_WARNING_PERCENT
+from billing.queries import platform_invoice_pdf
 from hubs.models.subscriptions import grace_end
 
 logger = logging.getLogger(__name__)
@@ -34,8 +36,9 @@ def _money(euros) -> str:
 
 
 def send_invoice_issued(invoice) -> bool:
-    """Tell the payer that ``invoice`` is issued, with its amounts and where to download it. ``False`` when
-    there is nothing to send (not paid, nobody to send it to); ``MailNotSent`` when the mail could not leave."""
+    """Tell the payer that ``invoice`` is issued, with its amounts and its PDF attached. ``False`` when there is
+    nothing to send (not paid, nobody to send it to); ``MailNotSent`` when the mail could not leave, also when the
+    platform hub does not hand its PDF over: never a mail without it."""
     if invoice.payment_status != "paid":
         logger.info(
             "[EMAIL] Invoice %s is %s: no mail",
@@ -55,9 +58,11 @@ def send_invoice_issued(invoice) -> bool:
                 "number": invoice.number
             }
             opening = _("ERPlora issued credit note %(number)s for %(business)s.")
+            attached = _("The credit note is attached. You can also find it in your panel, under Billing.")
         else:
             subject = _("Invoice %(number)s from ERPlora") % {"number": invoice.number}
             opening = _("ERPlora issued invoice %(number)s for %(business)s.")
+            attached = _("The invoice is attached. You can also find it in your panel, under Billing.")
         lines = [
             opening % {"number": invoice.number, "business": invoice.business_name},
             "",
@@ -71,11 +76,12 @@ def send_invoice_issued(invoice) -> bool:
             },
             _("Total: %(amount)s") % {"amount": _money(invoice.total)},
             "",
-            _("Download it from Billing: %(url)s")
-            % {"url": f"https://{settings.PUBLIC_HOST}{BILLING}"},
+            attached,
         ]
     try:
-        branded_message(subject, lines, [to], language=language).send()
+        message = branded_message(subject, lines, [to], language=language)
+        message.attach(f"{invoice.number}.pdf", platform_invoice_pdf(invoice), "application/pdf")
+        message.send()
     except Exception as failed:  # noqa: BLE001 - reported to the caller, which sends it again later
         logger.error("[EMAIL] Invoice %s not sent to %s: %s", invoice.number, to, failed)
         raise MailNotSent(str(failed)) from failed

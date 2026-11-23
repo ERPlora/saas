@@ -277,6 +277,7 @@ class TestTheMailOfAnIssuedInvoice:
         from django.core import mail
 
         invoice = owed(fiscal_status="accepted", qr=QR, payer_email="pagos@example.com")
+        hub_double.answer("GET", r"/pdf$", 200, {"pdf": "the platform hub's"})
 
         output = run()
 
@@ -284,6 +285,23 @@ class TestTheMailOfAnIssuedInvoice:
         assert [message.to for message in mail.outbox] == [["pagos@example.com"]]
         invoice.refresh_from_db()
         assert invoice.emailed_at is not None
+
+    @pytest.mark.parametrize("status", [503, 404])
+    def test_a_mail_whose_pdf_the_hub_does_not_hand_over_waits_for_it(self, hub_double, status):
+        """Never a mail without its invoice: it stays owed, the run says so, and the next one sends it."""
+        from django.core import mail
+
+        owed(fiscal_status="accepted", qr=QR, payer_email="pagos@example.com")
+        hub_double.answer("GET", r"/pdf$", status, {"error": {"code": "not_found", "message": "No PDF yet."}})
+
+        with pytest.raises(CommandError, match="mail_failed=1"):
+            run()
+        assert mail.outbox == []
+        assert Invoice.objects.get().emailed_at is None
+
+        hub_double.answer("GET", r"/pdf$", 200, {"pdf": "the platform hub's"})
+        assert "mailed=1" in run()
+        assert len(mail.outbox) == 1
 
     def test_one_mailed_already_is_not_sent_again(self, hub_double):
         from django.core import mail
@@ -296,6 +314,7 @@ class TestTheMailOfAnIssuedInvoice:
 
     def test_a_mail_that_still_cannot_leave_fails_the_run(self, hub_double, monkeypatch):
         owed(fiscal_status="accepted", qr=QR, payer_email="pagos@example.com")
+        hub_double.answer("GET", r"/pdf$", 200, {"pdf": "the platform hub's"})
         monkeypatch.setattr("django.core.mail.EmailMessage.send", lambda *a, **k: (_ for _ in ()).throw(ConnectionRefusedError()))
 
         with pytest.raises(CommandError, match="mail_failed=1"):

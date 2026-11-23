@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:742268d76f3a89b94d843f1d2b9616feb295da5c78f35dbd00bd7b3b994a6cb5 -->
+<!-- generated from WORKBOOK.md sha256:4515fd0f7902cce54de2b913b0e388c121ec019b64dc1ff9e98afe542591dc6c -->
 
 ## What it is for and who it is for
 
@@ -508,10 +508,10 @@ Screen: none
 Steps:
 1. Stripe sends a notice of a paid charge (sign-up, renewal, plan change or module).
 2. erplora.com qualifies the sale (BILLING-F03), gives it a number of its series (ERP-year-number, consecutive without gaps) and the day's date, and copies the payer's details of that day.
-3. It sends it to ERPlora's platform business, which records it with VeriFactu and returns its status and its QR; when it issues it, the payer is told by email.
+3. It sends it to ERPlora's platform business, which records it with VeriFactu and returns its status and its QR; when it issues it, the payer gets an email with the invoice's PDF attached and no links: "The invoice is attached. You can also find it in your panel, under Billing.".
 In: Stripe's charge with its lines and the payer's details.
-Out: the invoice and its lines (`billing.invoice.recorded`), its tax status and the email.
-If it fails: if the platform business does not answer, the invoice stays "issuing" and is retried (after 15 minutes, then double each time, at most 6 hours); if it refuses it, the reason is saved and it is retried. An uncollected renewal is listed "Not collected", without a number, and is numbered when paid. A €0 charge of a trial makes no invoice; the one of a code's discount does (BILLING-F12), with the discount on each line. The same charge notified several times makes only one. With live keys, without a way to issue, nothing is charged.
+Out: the invoice and its lines (`billing.invoice.recorded`), its tax status and the email with its PDF.
+If it fails: if the platform business does not answer, the invoice stays "issuing" and is retried (after 15 minutes, then double each time, at most 6 hours); if it refuses it, the reason is saved and it is retried. If it does not hand over the PDF yet, the email does not go without it: it is sent again in the next pass. An uncollected renewal is listed "Not collected", without a number, and is numbered when paid. A €0 charge of a trial makes no invoice; the one of a code's discount does (BILLING-F12), with the discount on each line. The same charge notified several times makes only one. With live keys, without a way to issue, nothing is charged.
 Involved: ERPlora's platform business (issues the invoice)
 
 ### BILLING-F26 Refund a charge
@@ -523,7 +523,7 @@ Steps:
 2. Stripe sends a notice to erplora.com, which issues a corrective invoice with negative amounts, the qualification and the recipient of the original, its type (R1 for refunds and price changes, R4 for the rest) and its reason.
 3. The corrective invoice appears in **Billing › Invoices** with "Credit note R1 · reason" and the invoice it corrects.
 In: the notice of the refund or the credit note.
-Out: the corrective invoice of its own series (ERPR-year-number), issued as any invoice (`billing.credit_note.recorded`).
+Out: the corrective invoice of its own series (ERPR-year-number), issued as any invoice (`billing.credit_note.recorded`), and its email with the PDF attached: "The credit note is attached. You can also find it in your panel, under Billing.".
 If it fails: a refund of an invoice that does not exist yet waits and Stripe sends the notice again; the same refund never corrects twice. A credit note voided in Stripe (only possible while its invoice is not paid) never becomes a corrective invoice, even if its notice arrives later; and if it already was one, the corrective invoice is not touched —an invoice sent to the AEAT is not modified— and support gets an email to issue by hand the invoice that cancels it.
 Involved: ERPlora's platform business (issues the corrective invoice)
 

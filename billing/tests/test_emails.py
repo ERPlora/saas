@@ -1,14 +1,16 @@
 """The mail that tells the payer their invoice is issued.
 
-Without it the customer paid and got nothing, and had to remember to look in the panel. The mail LINKS to Billing
-instead of attaching the PDF: the PDF is the platform hub's and carries the QR only once issued. It leaves
-the first time the platform hub issues the invoice (``billing.invoice.apply_fiscal_status``), once.
+Without it the customer paid and got nothing, and had to remember to look in the panel. The mail carries the
+invoice's PDF attached, as the platform hub issued it (with its QR), and no link: it says the invoice is attached
+and that it is also in the panel's Billing. It leaves the first time the platform hub issues the invoice
+(``billing.invoice.apply_fiscal_status``), once; without its PDF it does not leave and is sent again later.
 
 Changed: in the payer's language, branded as text and as HTML on the common template (``base.emails``, whose
-shape ``base/tests/test_emails.py`` checks; ACCOUNTS-F46); the link is the panel's Billing page, not the old
-invoice page; the recipient is the payer's billing e-mail (the invoice's addressee), the account's otherwise.
+shape ``base/tests/test_emails.py`` checks; ACCOUNTS-F46); the recipient is the payer's billing e-mail (the
+invoice's addressee), the account's otherwise.
 """
 
+import re
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from types import SimpleNamespace
@@ -16,10 +18,28 @@ from types import SimpleNamespace
 import pytest
 from django.core import mail
 
+from base.navigation import BILLING
 from billing import emails
 from billing.models import Invoice, InvoiceLine, PaymentFailure
+from hubs import hub_client
+from hubs.hub_client import HubRefused, HubUnavailable
 
 pytestmark = pytest.mark.django_db
+
+PDF = b"%PDF-1.7 the platform hub's invoice"
+
+
+@pytest.fixture(autouse=True)
+def platform_pdf(monkeypatch):
+    """The platform hub hands over the PDF of each invoice it is asked for; the ids asked, in order."""
+    asked = []
+
+    def pdf_of(invoice_id):
+        asked.append(invoice_id)
+        return PDF
+
+    monkeypatch.setattr(hub_client, "get_platform_invoice_pdf", pdf_of)
+    return asked
 
 
 @pytest.fixture
@@ -34,6 +54,7 @@ def invoice(make_user):
         payer_email="facturas@example.com",
         language="es",
         payment_status="paid",
+        fiscal_status="issued",
         series="ERP",
         sequence=500,
         number="ERP-2026-00500",
@@ -85,29 +106,88 @@ class TestTheMailGoesOut:
         body = mail.outbox[0].body
         assert "1,21" in body and "0,21" in body and "1,00" in body
 
-    def test_it_links_to_billing(self, invoice, settings):
-        settings.PUBLIC_HOST = "erplora.com"
+
+class TestThePdfGoesAttached:
+    def test_the_pdf_is_attached_named_after_its_number(self, invoice, platform_pdf):
+        emails.send_invoice_issued(invoice)
+
+        assert mail.outbox[0].attachments == [("ERP-2026-00500.pdf", PDF, "application/pdf")]
+        assert platform_pdf == [str(invoice.id)]
+
+    def test_a_credit_note_carries_its_own_pdf(self, invoice):
+        invoice.kind = "credit_note"
+        invoice.number = "ERPR-2026-00007"
 
         emails.send_invoice_issued(invoice)
 
-        assert "https://erplora.com/dashboard/billing" in mail.outbox[0].body
+        assert mail.outbox[0].attachments == [("ERPR-2026-00007.pdf", PDF, "application/pdf")]
+
+    @pytest.mark.parametrize("kind", ["invoice", "credit_note"])
+    def test_it_carries_no_link(self, invoice, kind, settings):
+        """The PDF is in the mail itself: no download link in its text, and in its HTML only the brand's own link
+        to erplora.com."""
+        settings.PUBLIC_HOST = "erplora.com"
+        invoice.kind = kind
+
+        emails.send_invoice_issued(invoice)
+
+        [message] = mail.outbox
+        [(html, _)] = message.alternatives
+        assert "http" not in message.body
+        assert BILLING not in message.body and BILLING not in html
+        assert set(re.findall(r'href="([^"]*)"', html)) == {"https://erplora.com"}
+
+    @pytest.mark.parametrize(
+        ("language", "kind", "line"),
+        [
+            ("en", "invoice", "The invoice is attached. You can also find it in your panel, under Billing."),
+            ("es", "invoice", "La factura va adjunta. También la tienes en tu panel, en Facturación."),
+            ("en", "credit_note", "The credit note is attached. You can also find it in your panel, under Billing."),
+            ("es", "credit_note", "La factura rectificativa va adjunta. También la tienes en tu panel, en Facturación."),
+        ],
+    )
+    def test_it_says_the_pdf_is_attached_and_where_else_it_is(self, invoice, language, kind, line):
+        invoice.language = language
+        invoice.kind = kind
+
+        emails.send_invoice_issued(invoice)
+
+        assert mail.outbox[0].body.splitlines()[-1] == line
+
+
+@pytest.mark.parametrize(
+    "failure", [HubUnavailable("timed out"), HubRefused(404, "platform.invoice_not_found")], ids=["away", "refusing"]
+)
+def test_without_its_pdf_the_mail_does_not_leave(invoice, monkeypatch, failure):
+    """Never a mail without its invoice: it is ``MailNotSent``, so ``reconcile_platform_invoices`` sends it again
+    once the platform hub hands the PDF over."""
+    def no_pdf(invoice_id):
+        raise failure
+
+    monkeypatch.setattr(hub_client, "get_platform_invoice_pdf", no_pdf)
+
+    with pytest.raises(emails.MailNotSent):
+        emails.send_invoice_issued(invoice)
+    assert mail.outbox == []
 
 
 class TestItIsNotSentWhenItShouldNot:
-    def test_nobody_to_send_it_to(self, invoice):
+    def test_nobody_to_send_it_to(self, invoice, platform_pdf):
         """The account goes with SET_NULL (GDPR 17(3)); the invoice survives, and without an address there is
-        nobody to tell."""
+        nobody to tell, so its PDF is not even asked for."""
         invoice.payer_account = None
         invoice.payer_email = ""
 
         assert emails.send_invoice_issued(invoice) is False
         assert mail.outbox == []
+        assert platform_pdf == []
 
-    def test_an_unpaid_invoice(self, invoice):
+    def test_an_unpaid_invoice(self, invoice, platform_pdf):
         invoice.payment_status = "open"
 
         assert emails.send_invoice_issued(invoice) is False
         assert mail.outbox == []
+        assert platform_pdf == []
 
 
 def test_a_mail_that_cannot_leave_raises_so_it_is_sent_again_later(invoice, monkeypatch):

@@ -243,8 +243,8 @@ class InvoiceAdmin(ReadOnlyAdmin):
 
     @admin.action(description=gettext_lazy("Send the invoice mail again"), permissions=["send"])
     def send_mail_again(self, request, queryset):
-        """Send the payer the mail of the selected invoices again (it says where to download them): only of
-        the ones the platform hub issued."""
+        """Send the payer the mail of the selected invoices again, each with its PDF attached: only of the ones
+        the platform hub issued."""
         for invoice in queryset.order_by("series", "sequence"):
             label = invoice.number or invoice.stripe_invoice_id
             if invoice.fiscal_status not in platform_invoices.ISSUED_STATUSES:

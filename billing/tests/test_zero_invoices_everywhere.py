@@ -94,6 +94,7 @@ def test_the_zip_of_pdfs_carries_it(zero, staff_client, hub_double):
 def test_the_run_posts_it_while_the_platform_hub_owes_it(zero, hub_double):
     Invoice.objects.filter(pk=zero.pk).update(next_post_at=timezone.now() - timezone.timedelta(minutes=1))
     hub_double.answer("POST", r"^/internal/platform/invoices$", 200, {"status": "accepted", "qr": "https://example.com/qr"})
+    hub_double.answer("GET", rf"/{zero.pk}/pdf$", 200, {"pdf": "zero"})
 
     out = io.StringIO()
     call_command("reconcile_platform_invoices", stdout=out)
@@ -103,11 +104,16 @@ def test_the_run_posts_it_while_the_platform_hub_owes_it(zero, hub_double):
     assert (post.body["number"], post.body["total_cents"]) == (zero.number, 0)
 
 
-def test_the_payer_gets_its_mail(zero):
+def test_the_payer_gets_its_mail_with_its_pdf(zero, monkeypatch):
+    from hubs import hub_client
+
+    monkeypatch.setattr(hub_client, "get_platform_invoice_pdf", lambda invoice_id: PDF)
+
     assert platform_invoices.send_invoice_mail(accepted(zero).id) == platform_invoices.MAILED
 
     assert [message.to for message in mail.outbox] == [["pagos@example.com"]]
     assert zero.number in mail.outbox[0].body
+    assert mail.outbox[0].attachments == [(f"{zero.number}.pdf", PDF, "application/pdf")]
 
 
 def test_the_report_for_the_accountant_counts_it(zero):

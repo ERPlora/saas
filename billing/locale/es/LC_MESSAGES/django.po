@@ -309,6 +309,10 @@ msgid "ERPlora issued credit note %(number)s for %(business)s."
 msgstr ""
 "ERPlora ha emitido la factura rectificativa %(number)s de %(business)s."
 
+#: emails.py:59
+msgid "The credit note is attached. You can also find it in your panel, under Billing."
+msgstr "La factura rectificativa va adjunta. También la tienes en tu panel, en Facturación."
+
 #: emails.py:56
 #, python-format
 msgid "Invoice %(number)s from ERPlora"
@@ -318,6 +322,10 @@ msgstr "Factura %(number)s de ERPlora"
 #, python-format
 msgid "ERPlora issued invoice %(number)s for %(business)s."
 msgstr "ERPlora ha emitido la factura %(number)s de %(business)s."
+
+#: emails.py:63
+msgid "The invoice is attached. You can also find it in your panel, under Billing."
+msgstr "La factura va adjunta. También la tienes en tu panel, en Facturación."
 
 #: emails.py:61
 #, python-format
@@ -338,11 +346,6 @@ msgstr "IVA (%(rate)s %%): %(amount)s"
 #, python-format
 msgid "Total: %(amount)s"
 msgstr "Total: %(amount)s"
-
-#: emails.py:71
-#, python-format
-msgid "Download it from Billing: %(url)s"
-msgstr "Descárgala en Facturación: %(url)s"
 
 #: emails.py:106
 #, python-format

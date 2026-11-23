@@ -394,6 +394,7 @@ def test_the_payer_is_told_once_the_platform_hub_issues_it(running, hub_double, 
     from django.core import mail
 
     hub_double.answer("POST", PLATFORM, 201, {"status": "issued", "qr": QR})
+    hub_double.answer("GET", r"/pdf$", 200, {"pdf": "the platform hub's"})
     deliver(paid(), django_capture_on_commit_callbacks)
     recorded = Invoice.objects.get()
     hub_double.answer("POST", PLATFORM, 200, {"status": "accepted", "qr": QR})
@@ -401,6 +402,10 @@ def test_the_payer_is_told_once_the_platform_hub_issues_it(running, hub_double, 
         platform_invoices.post_platform_invoice(recorded.id)
 
     assert [message.subject for message in mail.outbox] == [f"Factura {recorded.number} de ERPlora"]
+    assert [attachment.filename for attachment in mail.outbox[0].attachments] == [f"{recorded.number}.pdf"]
+    assert [call.path for call in hub_double.calls_to("GET", "/pdf")] == [
+        f"/internal/platform/invoices/{recorded.id}/pdf"
+    ]
     assert Invoice.objects.get().emailed_at is not None
 
 
