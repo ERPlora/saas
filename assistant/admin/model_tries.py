@@ -95,17 +95,25 @@ def prepare_try(request, ctx: OperationContext) -> tuple[RouteCandidate, TurnReq
         services.model_choice.model_try(ctx, ModelTryIn(model=model, prompt_chars=len(prompt), tools=len(tools)))
     except OperationError as refused:
         return refused.message
-    return candidate, TurnRequest(model_id=candidate.model_id, messages=[{"role": "user", "content": prompt}], tools=tools)
+    turn = TurnRequest(
+        model_id=candidate.model_id,
+        messages=[{"role": "user", "content": prompt}],
+        tools=tools,
+        reasoning_effort=candidate.reasoning_effort,
+    )
+    return candidate, turn
 
 
 async def try_events(candidate: RouteCandidate, turn: TurnRequest):
-    """The events of the model's answer, then its ``metrics`` (tokens, milliseconds and USD) and ``done``."""
+    """The events of the model's answer but its thinking, then its ``metrics`` (tokens, milliseconds and USD) and
+    ``done``."""
     started = time.monotonic()
     usage = {"input_tokens": 0, "output_tokens": 0}
     async for event in routing.stream([candidate], lambda _candidate: turn):
         if event.type == "usage":
             usage = {"input_tokens": event.payload["input_tokens"], "output_tokens": event.payload["output_tokens"]}
-        yield sse(event.type, event.payload)
+        if event.type != "reasoning":
+            yield sse(event.type, event.payload)
     cost = estimate_cost(
         candidate.price_input_per_1m, candidate.price_output_per_1m, usage["input_tokens"], usage["output_tokens"]
     )

@@ -64,6 +64,7 @@ def route_candidate(model: AIModel, api_key: str) -> dict:
         "price_output_per_1m": model.price_output_per_1m,
         "supports_tools": model.supports_tools,
         "supports_vision": model.supports_vision,
+        "reasoning_effort": model.reasoning_effort,
     }
 
 

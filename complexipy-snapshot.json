@@ -48,20 +48,6 @@
     ]
   },
   {
-    "path": "assistant/providers/anthropic.py",
-    "file_name": "anthropic.py",
-    "functions": [
-      {
-        "name": "AnthropicProvider::to_messages",
-        "complexity": 24
-      },
-      {
-        "name": "AnthropicProvider::parse_stream",
-        "complexity": 45
-      }
-    ]
-  },
-  {
     "path": "assistant/providers/base.py",
     "file_name": "base.py",
     "functions": [
@@ -116,16 +102,6 @@
       {
         "name": "logged_secrets",
         "complexity": 22
-      }
-    ]
-  },
-  {
-    "path": "assistant/turn.py",
-    "file_name": "turn.py",
-    "functions": [
-      {
-        "name": "run",
-        "complexity": 30
       }
     ]
   },

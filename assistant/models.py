@@ -144,6 +144,15 @@ class AIProvider(models.Model):
 class AIModel(models.Model):
     """A model of a provider that the staff keep: it can be tried and chosen to answer."""
 
+    class ReasoningEffort(models.TextChoices):
+        """Anthropic's effort levels, by the names of its API (``output_config.effort``)."""
+
+        LOW = "low", "low"
+        MEDIUM = "medium", "medium"
+        HIGH = "high", "high"
+        XHIGH = "xhigh", "xhigh"
+        MAX = "max", "max"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     provider = models.ForeignKey(AIProvider, on_delete=models.CASCADE, related_name="models", verbose_name=_("provider"))
     model_id = models.CharField(_("model"), max_length=128, help_text=_("The name the provider's API gives it."))
@@ -159,6 +168,17 @@ class AIModel(models.Model):
     )
     supports_tools = models.BooleanField(_("tools"), default=True)
     supports_vision = models.BooleanField(_("images"), default=False)
+    reasoning_effort = models.CharField(
+        _("reasoning effort"),
+        max_length=8,
+        blank=True,
+        default="",
+        choices=ReasoningEffort.choices,
+        help_text=_(
+            "How much an Anthropic model thinks before it answers. Empty: what the model does by default. The person "
+            "never sees the thinking; other providers' models do not use this."
+        ),
+    )
     is_available = models.BooleanField(
         _("available"), default=True, help_text=_("Off: it can neither be tried nor answer.")
     )
