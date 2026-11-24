@@ -24,7 +24,8 @@ def test_its_name_has_its_spanish_translation():
         assert str(apps.get_app_config("fiscal_gateway").verbose_name) == "Pasarela fiscal"
 
 
-def test_the_platform_hub_is_a_slug_no_customer_can_take():
-    """The platform's hub presents in ERPlora's name through its seal (``PLATFORM_HUB_SLUG``): a business
-    bearing that slug would too, so it is a reserved one (``live.slugs``), ``erplora`` unless configured."""
-    assert is_reserved_hub_slug(settings.PLATFORM_HUB_SLUG)
+def test_the_platform_hub_goes_by_its_name_and_the_one_it_had_and_no_customer_can_take_them():
+    """The platform's hub presents in ERPlora's name through its seal (``PLATFORM_HUB_SLUGS``): a business
+    bearing one of its names would too, so they are reserved (``live.slugs``), and there is no other."""
+    assert sorted(settings.PLATFORM_HUB_SLUGS) == ["erp", "erplora"]
+    assert all(is_reserved_hub_slug(slug) for slug in settings.PLATFORM_HUB_SLUGS)
