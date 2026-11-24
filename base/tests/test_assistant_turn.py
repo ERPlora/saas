@@ -866,7 +866,7 @@ class TestWhatStopsATurn:
         got = frames(post_turn(signed_in, {"messages": [ask("Hello")]}))
 
         assert {"type": "error", "code": "assistant.provider_failed", "retriable": False} in got
-        assert got[-1] == {"type": "done", "append": [], "pending": [], "continuation": None, "web": False}
+        assert got[-1] == {"type": "done", "append": [], "pending": [], "continuation": None, "web": False, "sources": []}
         assert used_by(account) == 0
 
     def test_too_many_rounds_of_tools_stop_before_the_model(self, signed_in, account, answering, fake_provider):

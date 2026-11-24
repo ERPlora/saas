@@ -11,6 +11,7 @@ provider fails before answering) and yields the frames the Hub reads:
     {"type": "function_call", "name": str, "call_id": str, "arguments": str}     # a tool of the Hub, for it to run
     {"type": "error", "code": str, "message": str, "retriable": bool}
     {"type": "web"}     # once, when a search brought pages: the caller keeps the mark with the answer (saas#287)
+    {"type": "sources", "sources": [str]}     # the web addresses one of erplora.com's tools consulted
 
 The mark goes back with a report of the answer, whose text is then not mailed: section 3(b)(i) of Brave Search's
 terms forbids keeping its results, and a mailbox keeps.
@@ -215,7 +216,8 @@ async def ask(asked: Round, remaining: list, build, outcome: Outcome) -> AsyncIt
 
 async def run_ours(started: Turn, conversation: list, asked: Round, mine: list, outcome: Outcome) -> AsyncIterator[dict]:
     """Run erplora.com's own tools the round asked for, on the caller's budget, and add their results to the
-    conversation; the ``web`` frame once, when one brought pages that may not be kept."""
+    conversation; the ``web`` frame once, when one brought pages that may not be kept, and the ``sources`` of each that
+    consulted any, for the caller to check the answer's addresses against."""
     from assistant import server_tools
 
     conversation.append(assistant_message(asked.text, mine))
@@ -223,10 +225,13 @@ async def run_ours(started: Turn, conversation: list, asked: Round, mine: list, 
         result = await server_tools.run(
             call["name"], call["arguments"], tool_budget(started.caller), answer_kept=started.answer_kept
         )
-        outcome.sources += server_tools.sources_of(result)
+        consulted = server_tools.sources_of(result)
+        outcome.sources += consulted
         if not outcome.web and server_tools.not_to_keep(call["name"], result):
             outcome.web = True
             yield {"type": "web"}
+        if consulted:
+            yield {"type": "sources", "sources": consulted}
         conversation.append({"role": "tool", "tool_call_id": call["call_id"], "content": result})
 
 

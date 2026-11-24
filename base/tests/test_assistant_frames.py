@@ -96,8 +96,11 @@ def as_sent(frames: list[dict]) -> list[str]:
     return [json.dumps(frame) for frame in frames]
 
 
-def done(append, pending=(), continuation=None, web=False) -> dict:
-    return {"type": "done", "append": append, "pending": list(pending), "continuation": continuation, "web": web}
+def done(append, pending=(), continuation=None, web=False, sources=()) -> dict:
+    return {
+        "type": "done", "append": append, "pending": list(pending), "continuation": continuation, "web": web,
+        "sources": list(sources),
+    }
 
 
 def said(text: str, calls=()) -> dict:
@@ -179,6 +182,15 @@ class TestWhatTheDoneCarries:
         scripted(CALL, {"type": "response", "continuation": ""}, "[DONE]")
         assert as_sent(turn()) == as_sent([done([said("", [KEPT_CALL])], [KEPT_CALL], None)])
 
+    def test_the_addresses_the_tools_consulted_are_told_to_the_browser(self, scripted):
+        law, rate = "https://www.boe.es/doc", "https://frankfurter.dev"
+        scripted(
+            {"type": "sources", "sources": [law]}, {"type": "sources", "sources": [rate]},
+            {"type": "text_delta", "text": "Hoy"}, "[DONE]",
+        )
+        expected = [{"type": "text", "text": "Hoy"}, done([said("Hoy")], sources=[law, rate])]
+        assert as_sent(turn()) == as_sent(expected)
+
     def test_pages_from_the_web_are_told_to_the_browser(self, scripted):
         scripted({"type": "text_delta", "text": "1 € = 1.08 $"}, {"type": "web"}, "[DONE]")
         expected = [{"type": "text", "text": "1 € = 1.08 $"}, done([said("1 € = 1.08 $")], web=True)]
@@ -201,6 +213,16 @@ class TestATurnThatDoesNotEnd:
             done([said("Half")], web=True),
         ]
         assert as_sent(turn()) == as_sent(expected)
+
+    def test_what_the_tools_consulted_before_a_failure_stays_with_what_was_said(self, scripted):
+        law = "https://www.boe.es/doc"
+        scripted(
+            {"type": "sources", "sources": [law]},
+            {"type": "text_delta", "text": "Half"},
+            {"type": "error", "code": "assistant.provider_unavailable", "retriable": True},
+            "[DONE]",
+        )
+        assert turn()[-1] == done([said("Half")], sources=[law])
 
     def test_a_failure_that_cannot_be_retried_says_so(self, scripted):
         scripted({"type": "error", "code": "assistant.provider_rejected"}, "[DONE]")
