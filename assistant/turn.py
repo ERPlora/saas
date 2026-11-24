@@ -216,14 +216,23 @@ async def ask(asked: Round, remaining: list, build, outcome: Outcome) -> AsyncIt
             asked.failed = payload
 
 
-async def run_ours(started: Turn, conversation: list, asked: Round, mine: list, outcome: Outcome) -> AsyncIterator[dict]:
-    """Run erplora.com's own tools the round asked for, on the caller's budget, and add their results to the
-    conversation; the ``web`` frame once, when one brought pages that may not be kept, and the ``sources`` of each that
-    consulted any, for the caller to check the answer's addresses against."""
+#: What the model gets for a tool of the Hub it asked for along with erplora.com's: what ours give never reaches the
+#: Hub, so the Hub's tool waits for an answer of its own.
+NOT_RUN = json.dumps({"error": "Not run: ask for it again now, without erplora.com's tools.", "code": "assistant.tool_not_run"})
+
+
+async def run_ours(started: Turn, conversation: list, asked: Round, outcome: Outcome) -> AsyncIterator[dict]:
+    """Run erplora.com's own tools the round asked for, on the caller's budget, and add every result to the
+    conversation in the order asked (a tool of the Hub among them gets ``NOT_RUN``); the ``web`` frame once, when one
+    brought pages that may not be kept, and the ``sources`` of each that consulted any, for the caller to check the
+    answer's addresses against."""
     from assistant import server_tools
 
-    conversation.append(assistant_message(asked.text, mine))
-    for call in mine:
+    conversation.append(assistant_message(asked.text, asked.calls))
+    for call in asked.calls:
+        if not server_tools.is_server_tool(call["name"]):
+            conversation.append({"role": "tool", "tool_call_id": call["call_id"], "content": NOT_RUN})
+            continue
         result = await server_tools.run(
             call["name"], call["arguments"], tool_budget(started.caller), answer_kept=started.answer_kept
         )
@@ -256,8 +265,9 @@ def closing_frames(outcome: Outcome, theirs: list) -> list[dict]:
 async def run(started: Turn, outcome: Outcome) -> AsyncIterator[dict]:
     """Stream the turn: the frames of the answer as they come; ``outcome`` filled as it goes. The tools erplora.com
     runs itself (``server_tools``) are run here, on the caller's budget, and the model is asked again, at most
-    ``server_tools.MAX_ROUNDS`` times; on the last round they are not offered, so the model answers. A tool of the Hub
-    named as one of ours is ours. An answer that names none of the sources they gave gets them written below it."""
+    ``server_tools.MAX_ROUNDS`` times; on the last round they are not offered, so the model answers. An answer may ask
+    for several tools: the Hub's, when none of ours is among them, all go to the Hub at once. A tool of the Hub named as
+    one of ours is ours. An answer that names none of the sources they gave gets them written below it."""
     from assistant import attachments, server_tools
 
     conversation = list(started.messages)
@@ -287,10 +297,9 @@ async def run(started: Turn, outcome: Outcome) -> AsyncIterator[dict]:
             yield outcome.error
             return
         remaining = remaining[remaining.index(asked.answering) :]
-        mine = [call for call in asked.calls if server_tools.is_server_tool(call["name"])]
         theirs = [call for call in asked.calls if not server_tools.is_server_tool(call["name"])]
-        if mine and not theirs and rounds < server_tools.MAX_ROUNDS:
-            async for frame in run_ours(started, conversation, asked, mine, outcome):
+        if len(theirs) < len(asked.calls) and rounds < server_tools.MAX_ROUNDS:
+            async for frame in run_ours(started, conversation, asked, outcome):
                 yield frame
             rounds += 1
             continue

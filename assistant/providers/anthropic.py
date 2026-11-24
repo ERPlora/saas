@@ -3,7 +3,7 @@
 
 The instructions go apart (``system``), tool results are ``tool_result`` blocks of a user turn, the assistant's tool
 calls ``tool_use`` blocks, images ``image`` blocks and PDFs ``document`` blocks; user and assistant alternate
-(consecutive turns of one role are merged). One tool per answer (``disable_parallel_tool_use``).
+(consecutive turns of one role are merged). An answer may ask for several tools, whose results go back together.
 
 Each call asks Anthropic to cache what it sent, in the order Anthropic reads it: the tools up to the last one, the
 instructions, and the conversation up to its last message. The next call of the same request sends the same start
@@ -197,7 +197,6 @@ class AnthropicProvider(Provider):
             tools = [{"name": t.name, "description": t.description, "input_schema": t.parameters} for t in req.tools]
             tools[-1]["cache_control"] = CACHED
             body["tools"] = tools
-            body["tool_choice"] = {"type": "auto", "disable_parallel_tool_use": True}
         return f"{self.base_url}/v1/messages", self.headers(), body
 
     async def parse_stream(self, response: httpx.Response, req: TurnRequest) -> AsyncIterator[ProviderEvent]:

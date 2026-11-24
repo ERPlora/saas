@@ -455,6 +455,20 @@ class TestAWrite:
         assert not Hub.objects.filter(name="Sol Hair").exists()
         assert model_requests(fake_provider) == [] and used_by(account) == 0
 
+    def test_a_read_and_a_write_of_one_answer_run_the_read_and_stop_at_the_writes_card(
+        self, signed_in, account, answering, fake_provider
+    ):
+        listed = {"call_id": "c0", "name": "hubs__business__list", "arguments": "{}"}
+        messages = self.asked()
+        messages[-1]["tool_calls"].insert(0, {"id": "c0", "type": "function", "function": {"name": listed["name"], "arguments": "{}"}})
+
+        got = frames(post_turn(signed_in, {"messages": messages, "pending": [listed, self.CREATE]}))
+
+        assert types(got) == ["executed", "confirm", "done"]
+        assert (got[0]["name"], got[1]["call"], got[2]["pending"]) == ("hubs.business.list", self.CREATE, [self.CREATE])
+        assert [m["tool_call_id"] for m in got[2]["append"]] == ["c0"]
+        assert model_requests(fake_provider) == [] and not Hub.objects.filter(name="Sol Hair").exists()
+
     def test_it_runs_only_with_the_word_typed(self, signed_in, account, answering, fake_provider):
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Done: Sol Hair is ready."))
         decision = {"call_id": "c1", "accepted": True, "typed": " confirm "}
