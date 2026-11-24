@@ -4,10 +4,10 @@ ASSISTANT-F13 · the same turn answered at once, in JSON; ASSISTANT-F15 · refus
 ``POST /internal/assistant/chat/stream`` answers ``text/event-stream`` (over HTTP, no channels nor WebSocket)
 and ``POST /internal/assistant/chat`` the whole turn in one JSON. The conversation
 is the Hub's (the person's browser owns it): erplora.com puts the Hub's ``instructions`` as the only system
-message, keeps the last 100 messages, offers the Hub's tools and sends the turn to the model of the routing policy
-(ASSISTANT-F06), passing to its fallback if the provider fails before answering. What can be decided before the model
-is called is an HTTP status (quota, size, no model); a failure of the provider once the answer started is an ``error``
-frame. The provider is the local fake (``fake_provider``), never a real one.
+message, lightens the earlier requests (``assistant.history``), offers the Hub's tools and sends the turn to the
+model of the routing policy (ASSISTANT-F06), passing to its fallback if the provider fails before answering. What can
+be decided before the model is called is an HTTP status (quota, size, no model); a failure of the provider once the
+answer started is an ``error`` frame. The provider is the local fake (``fake_provider``), never a real one.
 """
 
 import logging
@@ -17,7 +17,7 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
-from assistant import queries, server_tools
+from assistant import history, queries, server_tools
 from assistant.models import AIModel, AIRoutingPolicy, AssistantUsage
 from assistant.tests.conftest import API_KEY, on_plan, openai_answer, openai_tool_call
 from assistant.tests.doors import door, error_code, frames, hang_up
@@ -114,16 +114,36 @@ class TestTheLiveAnswer:
         assert sent.body["max_tokens"] == 4096
         assert sent.headers["authorization"] == f"Bearer {API_KEY}"
 
-    def test_the_whole_conversation_reaches_the_model_trimmed_to_the_last_100(self, client, internal, business, answering, fake_provider):
+    def test_a_long_conversation_of_short_messages_reaches_the_model_whole(self, client, internal, business, answering, fake_provider):
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))
         conversation = [user(f"message {n}") if n % 2 == 0 else {"role": "assistant", "content": f"answer {n}"} for n in range(150)]
 
         frames(door(client, STREAM, turn(business, *conversation)))
 
         [sent] = chat_requests(fake_provider)
-        assert len(sent.body["messages"]) == 100
         assert sent.body["messages"][0]["role"] == "system"
-        assert sent.body["messages"][-1] == {"role": "assistant", "content": "answer 149"}
+        assert sent.body["messages"][1:] == conversation
+
+    def test_what_a_tool_gave_an_older_request_reaches_the_model_as_a_short_note(self, client, internal, business, answering, fake_provider):
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))
+        listed = '{"rows": [' + ", ".join(f'{{"name": "Product {n}"}}' for n in range(200)) + "]}"
+
+        def asked(n: int, question: str) -> list[dict]:
+            call = {"id": f"call_{n}", "type": "function", "function": {"name": "inventory_product_list", "arguments": "{}"}}
+            return [
+                user(question),
+                {"role": "assistant", "content": "", "tool_calls": [call]},
+                {"role": "tool", "tool_call_id": f"call_{n}", "content": listed},
+            ]
+
+        older, before, in_progress = asked(1, "How many products?"), asked(2, "And the cheapest?"), asked(3, "And the dearest?")
+        answered = [*older, {"role": "assistant", "content": "200."}, *before, {"role": "assistant", "content": "Water."}]
+
+        frames(door(client, STREAM, turn(business, *answered, *in_progress)))
+
+        [sent] = chat_requests(fake_provider)
+        results = [message["content"] for message in sent.body["messages"] if message["role"] == "tool"]
+        assert results == [history.CLEARED, listed, listed]
 
     def test_a_tool_result_without_its_call_is_dropped(self, client, internal, business, answering, fake_provider):
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))

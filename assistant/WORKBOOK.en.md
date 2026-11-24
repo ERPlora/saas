@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:228ba3d8cee946b96be1e7ad614aaff4a30588b6dc511a3fd7e7ac2f565b959c -->
+<!-- generated from WORKBOOK.md sha256:e182c4be26a56124cea1f3b44c1a51f02550f81ec094f8c70bc760049e30cf47 -->
 
 ## What it is for and who uses it
 
@@ -334,7 +334,7 @@ Actor: the Hub's assistant of a business
 Screen: none
 Steps:
 1. The person writes to the Hub's assistant; the Hub sends erplora.com the whole conversation (it is its own: it lives in the person's browser), its instructions and the tools the business offers.
-2. erplora.com prepares the conversation: its instructions are the only system ones, the last 100 messages stay, the answer of a tool nobody asked for goes and the attachments become what the model can read.
+2. erplora.com prepares the conversation: its instructions are the only system ones; the request in progress and the one before (each message of the person with what answered it) go whole; of the older ones, what their tools returned goes as a short note, which the model knows it can ask for again, and only the newest that fit in about 16,000 tokens go; the answer of a tool nobody asked for goes and the attachments become what the model can read.
 3. It takes a message from the business's allowance and sends the turn to the model that answers (or to its fallback, if its provider fails before answering anything).
 4. It sends the answer back live, piece by piece, and each tool of the business the model asks for; at the end, the whole answer with its consumption, what the business has left of its allowance and the close.
 5. If the model asked for tools of the business, the turn ends there with a continuation pass: the Hub runs them and sends the conversation back with their results and that pass, and that return spends no other message.
