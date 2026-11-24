@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:639c396de6ac02cf31c4c8f693a441f2ee3a46ffc132d7460acde1ad6b252096 -->
+<!-- generated from WORKBOOK.md sha256:883be92bfc2ac0170a0a57b5c342ca3316a6e607e7d63a734b634eefdcac2c6a -->
 
 ## What it is for and who it is for
 
@@ -303,9 +303,9 @@ Actor: owner, administrator, manager, employee, accountant
 Screen: Businesses
 Steps:
 1. In the menu, "Businesses" opens the list of the account's businesses, the last opened first; the old addresses of the businesses panel lead here.
-2. Each row shows the business (a link to its page), its web address, its "Status" ("Active", "Preparing", "Payment due", "Suspended", "Being deleted"), with the reason and the date when it matters ("Deleted. You can recover it until …"), its "Plan", the person's "Role" and its "Last used".
+2. Each row shows the business (a link to its page), its web address, its "Status" ("Active", "Preparing", "Payment due", "Suspended", "Being deleted"), with the reason and the date when it matters ("Deleted. You can recover it until …"; an active business with a maintenance scheduled for its night, "Scheduled maintenance: the business will be unavailable while it lasts, from …", with the day and the hour in the business's time zone), its "Plan", the person's "Role" and its "Last used".
 3. They search by name or web address and open the row's action: "Open", "Manage" (owner and administrators) or "Recover" (the owner, a deleted business within its 90 days).
-4. The list changes by itself when a business becomes ready, changes plan or people, without reloading.
+4. The list changes by itself when a business becomes ready, changes plan or people, without reloading. The notice of the scheduled maintenance arrives at most a quarter of an hour after ERPlora's team schedules it, and goes away when it starts or when they cancel it.
 In: the businesses the person is a member of with the invitation accepted.
 Out: nothing; the list keeps itself up to date.
 If it fails: without businesses, "Create your first business" with the sign-up form; a search without results, "Nothing matches the search" with "Show all"; offline, the error with "Retry", never an empty list. A purged business no longer shows.
@@ -463,7 +463,7 @@ Status: done
 Actor: owner, administrator
 Screen: Business summary
 Steps:
-1. On the business's page, the header says its status ("Active", "Preparing", "Payment due", "Suspended" or deleted) and the Summary, its plan with the devices, the apps it can have turned on at once and the people against the seats. It is what the business's own plan covers, also an internal plan that is not on sale, such as "Payment Test (internal)" (BILLING-F27).
+1. On the business's page, the header says its status ("Active", "Preparing", "Payment due", "Suspended" or deleted), with the notice of the maintenance scheduled for its night while it has not started (HUBS-F09), and the Summary, its plan with the devices, the apps it can have turned on at once and the people against the seats. It is what the business's own plan covers, also an internal plan that is not on sale, such as "Payment Test (internal)" (BILLING-F27).
 2. The "Usage" card ("How your business is doing in ERPlora") shows the "Storage" used of its plan's space, with a warning when it nears the limit, and the people "Active yesterday" and over the "Last 30 days", with "Yesterday's data: updated every night.".
 3. This card does not show each day's requests, the peak connections or the requests with no room: those are for ERPlora's team, in its admin (HUBS-F22), and for whoever runs the business, in System · Resources of its hub (BASE-F40).
 In: the business and what it measured last night.

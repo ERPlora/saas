@@ -9,7 +9,8 @@ body-only v1), records every call and answers what the test asks for, with the H
   one applied (the Hub ignores an older snapshot); 422 ``internal.payload_invalid`` for a ``custom_domain`` the
   Hub would refuse, which refuses the whole snapshot;
 - ``GET /internal/hubs/{id}`` → 200 with the registry's status (a demo's too: ``requested`` until the test says
-  ``ready``, ``expired`` once it ended), 404 for a hub it never got;
+  ``ready``, ``expired`` once it ended), its ``maintenance`` and its ``move_scheduled_for`` (``null`` until the test
+  sets one), 404 for a hub it never got;
 - ``GET /internal/hubs/{id}/dumps`` → 200 ``{"available": bool, "dumps": [...]}``: the copies of ``dumps[id]`` as the
   test sets them (``{id, kind, created_at, bytes}``), newest first, each with a fresh ``url`` (a presigned link of 15
   minutes in the Hub); ``[]`` for a known hub without any; ``available`` false for a hub in ``without_copies`` (no
@@ -26,7 +27,7 @@ body-only v1), records every call and answers what the test asks for, with the H
   it never made, 410 ``base.hub_gone`` once it ended, 403 ``base.demo_not_owner`` for another browser's.
 
 A bad or missing signature answers 401 and is recorded as refused. Only tests use it; the e2e double
-of the whole ``/internal`` is ``tests/doubles/hub.py``.
+of what the specs play is ``tests/e2e/panel/hub.ts``.
 """
 
 import json
@@ -215,7 +216,11 @@ class HubDouble:
         demo = self._demo_by_id(hub_id)
         if method == "GET" and rest is None and demo is not None:
             ended = demo["expires_at"] <= datetime.now(UTC)
-            return 200, {"status": "expired" if ended else demo["status"], "maintenance": demo.get("maintenance")}
+            return 200, {
+                "status": "expired" if ended else demo["status"],
+                "maintenance": demo.get("maintenance"),
+                "move_scheduled_for": None,
+            }
         if method == "GET" and rest == "/dumps":
             return self._dumps(hub_id)
         if method == "PUT" and rest is None:
@@ -228,9 +233,11 @@ class HubDouble:
         if method == "GET" and rest is None:
             if hub_id not in self.registry:
                 return 404, {"error": {"code": "not_found", "message": "Unknown hub."}}
+            row = self.registry[hub_id]
             return 200, {
-                "status": self.registry[hub_id]["status"],
-                "maintenance": self.registry[hub_id].get("maintenance"),
+                "status": row["status"],
+                "maintenance": row.get("maintenance"),
+                "move_scheduled_for": row.get("move_scheduled_for"),
             }
         if method == "PUT" and rest == "/state":
             if not _hub_takes_this_domain((body or {}).get("custom_domain")):

@@ -95,6 +95,10 @@ export interface BusinessRowOut {
   open_blocked_reason: OpenBlockedReason | null;
   hub_error: string | null;
   maintenance?: HubMaintenanceOut | null;
+  /** When the maintenance scheduled for its night starts, while it is still ahead. */
+  move_scheduled_for?: string | null;
+  /** Its time zone: that moment is said on its clock. */
+  timezone: string;
   deletion_requested_at: string | null;
   purge_after: string | null;
   created_at: string;
@@ -190,6 +194,7 @@ export interface BusinessDetailOut {
   status_label: string;
   hub_error: string | null;
   maintenance?: HubMaintenanceOut | null;
+  move_scheduled_for?: string | null;
   ready_at: string | null;
   created_at: string;
   deletion_requested_at: string | null;

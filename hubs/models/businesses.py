@@ -73,6 +73,9 @@ class Hub(models.Model):
     provision_requested_at = models.DateTimeField(_("provisioning asked at"), null=True, blank=True)
     #: The Hub's real platform-wide provisioning pause from its signed status poll; ``None`` when there is none.
     maintenance = models.JSONField(_("provisioning maintenance"), null=True, blank=True, default=None)
+    #: When the Hub starts moving the business to another server, in its night (a few minutes of maintenance), from
+    #: its signed status poll (``services.scheduled_moves``); ``None`` without one, once started or cancelled.
+    move_scheduled_for = models.DateTimeField(_("maintenance scheduled for"), null=True, blank=True)
     deletion_requested_at = models.DateTimeField(_("deletion asked at"), null=True, blank=True)
     can_buy_internal_plans = models.BooleanField(
         _("internal plans"),

@@ -41,6 +41,7 @@
       "suspended": "Suspendido por una factura sin pagar. Tus datos están a salvo: paga la factura y vuelve a funcionar al momento.",
       "suspendedApp": "Suspendido por una factura sin pagar. Tus datos están a salvo. Para pagarla, entra en erplora.com desde el navegador.",
       "deleting": "Eliminado. Puedes recuperarlo hasta el {date}.",
+      "moveScheduled": "Mantenimiento programado: el negocio no estará disponible mientras dure, a partir del {date}.",
       "preparingSoon": "Listo en unos segundos",
       "pastDueUntil": "Hay una factura sin pagar. Págala antes del {date} o el negocio se suspende.",
       "pastDueUntilApp": "Hay una factura sin pagar: sigue funcionando hasta el {date}. Para pagarla, entra en erplora.com desde el navegador.",

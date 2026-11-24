@@ -174,6 +174,8 @@ def test_every_operation_on_a_business_has_its_row():
         "hubs.business.mark_ready",
         "hubs.business.record_hub_error",
         "hubs.business.record_maintenance",
+        # The platform's (the worker's question about each night): ``test_scheduled_moves.py``.
+        "hubs.business.record_scheduled_move",
         "hubs.business.notify_people",
         # The platform's (billing writes what Stripe says): ``test_subscription_apply.py``.
         "hubs.subscription.apply",
