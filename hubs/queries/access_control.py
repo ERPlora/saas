@@ -80,6 +80,12 @@ def maintenance_of(hub: Hub) -> dict[str, Any] | None:
     return hub.maintenance if hub.status == Hub.Status.PREPARING and hub.ready_at is None else None
 
 
+def scheduled_move_of(hub: Hub, now: datetime) -> datetime | None:
+    """When the maintenance scheduled for the business's night starts, while it is still ahead; from then the move
+    is under way and the next poll says it is over."""
+    return hub.move_scheduled_for if hub.move_scheduled_for is not None and hub.move_scheduled_for > now else None
+
+
 def is_writable(hub: Hub) -> bool:
     """Whether the business takes changes: a deleted one answers every write with 409 until recovered."""
     return hub.status not in (Hub.Status.DELETING, Hub.Status.DELETED)

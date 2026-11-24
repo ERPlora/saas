@@ -41,6 +41,7 @@
       "suspended": "Suspended because of an unpaid invoice. Your data is safe: pay the invoice and it works again at once.",
       "suspendedApp": "Suspended because of an unpaid invoice. Your data is safe. To pay it, go to erplora.com in your browser.",
       "deleting": "Deleted. You can recover it until {date}.",
+      "moveScheduled": "Scheduled maintenance: the business will be unavailable while it lasts, from {date}.",
       "preparingSoon": "Ready in a few seconds",
       "pastDueUntil": "There is an unpaid invoice. Pay it before {date} or the business is suspended.",
       "pastDueUntilApp": "There is an unpaid invoice: it keeps working until {date}. To pay it, go to erplora.com in your browser.",

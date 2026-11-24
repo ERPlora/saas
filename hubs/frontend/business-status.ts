@@ -20,6 +20,10 @@ export interface BusinessState {
   unpaid_since?: string | null;
   /** Deleted: until when it can be recovered. */
   purge_after?: string | null;
+  /** When the maintenance scheduled for its night starts, while it is still ahead. */
+  move_scheduled_for?: string | null;
+  /** Its time zone: that moment is said on its clock. */
+  timezone?: string;
 }
 
 /**
@@ -70,12 +74,13 @@ export function reasonKey(business: BusinessState, inApp: boolean): string | nul
     case 'deleting':
       return 'hubs.reason.deleting';
     default:
-      return null;
+      return business.move_scheduled_for ? 'hubs.reason.moveScheduled' : null;
   }
 }
 
 /** The `{date}` of the reason's sentence: the deadline of an unpaid invoice, since when a business is suspended
- *  (both a day) or until when a deleted one can be recovered; `''` for the rest. */
+ *  (both a day), until when a deleted one can be recovered or when an active one's scheduled maintenance starts, on
+ *  its clock; `''` for the rest. */
 export function reasonDate(business: BusinessState, locale: string): string {
   switch (business.status) {
     case 'past_due':
@@ -84,6 +89,8 @@ export function reasonDate(business: BusinessState, locale: string): string {
       return formatDate(business.unpaid_since, locale);
     case 'deleting':
       return business.purge_after ? formatDateTime(business.purge_after, locale) : '';
+    case 'active':
+      return formatDateTime(business.move_scheduled_for, locale, { timeZone: business.timezone });
     default:
       return '';
   }

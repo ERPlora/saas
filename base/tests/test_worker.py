@@ -145,7 +145,7 @@ def test_the_two_reconciliations_run_every_quarter_of_an_hour_in_the_process(mon
 
 def test_the_real_reconciliations_are_the_ones_of_the_commands():
     from billing.services import platform_invoices
-    from hubs.services import reconciliation
+    from hubs.services import reconciliation, scheduled_moves
 
     assert [(task.name, task.run, task.failed) for task in worker.PERIODIC] == [
         ("reconcile_hub_states", reconciliation.reconcile_exclusively, reconciliation.run_failed),
@@ -154,6 +154,7 @@ def test_the_real_reconciliations_are_the_ones_of_the_commands():
             platform_invoices.reconcile_platform_invoices_exclusively,
             platform_invoices.platform_run_failed,
         ),
+        ("check_scheduled_moves", scheduled_moves.check_scheduled_moves_exclusively, scheduled_moves.run_failed),
     ]
     assert worker.ROUND == timedelta(minutes=15)
 

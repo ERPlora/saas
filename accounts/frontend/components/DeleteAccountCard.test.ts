@@ -33,6 +33,7 @@ function business(id: string, name: string, overrides: Partial<BusinessRowOut> =
     can_open: true,
     open_blocked_reason: null,
     hub_error: null,
+    timezone: 'Europe/Madrid',
     deletion_requested_at: null,
     purge_after: null,
     created_at: '2026-01-01T00:00:00Z',

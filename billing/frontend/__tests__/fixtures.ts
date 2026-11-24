@@ -26,6 +26,7 @@ export function businessRow(id: string, name: string, extra: Partial<BusinessRow
     can_open: true,
     open_blocked_reason: null,
     hub_error: null,
+    timezone: 'Europe/Madrid',
     deletion_requested_at: null,
     purge_after: null,
     created_at: '2026-03-02T10:00:00Z',

@@ -1,5 +1,5 @@
 """Schemas of what the platform records of the Hub about a business: ready, its last refusal, its
-maintenance pause and its status."""
+maintenance pause, the maintenance scheduled for its night and its status."""
 
 from datetime import datetime
 from uuid import UUID
@@ -31,6 +31,13 @@ class HubMaintenanceIn(Schema):
 
     id: UUID
     maintenance: HubMaintenanceOut | None = None
+
+
+class HubScheduledMoveIn(Schema):
+    """When the Hub's move of the business, asked for its night, starts; ``None`` without one."""
+
+    id: UUID
+    move_scheduled_for: datetime | None = None
 
 
 class HubStatusOut(Schema):

@@ -64,6 +64,10 @@ class BusinessRowOut(Schema):
     #: The Hub's last refusal of this business (its error code), until a call succeeds; else None.
     hub_error: str | None
     maintenance: HubMaintenanceOut | None
+    #: When the maintenance scheduled for its night starts, while it is still ahead; else None.
+    move_scheduled_for: datetime | None
+    #: The business's time zone: that moment is said on its clock.
+    timezone: str
     deletion_requested_at: datetime | None
     purge_after: datetime | None
     created_at: datetime
@@ -130,6 +134,8 @@ class BusinessDetailOut(Schema):
     status_label: str
     hub_error: str | None
     maintenance: HubMaintenanceOut | None
+    #: As in ``BusinessRowOut``.
+    move_scheduled_for: datetime | None
     ready_at: datetime | None
     created_at: datetime
     deletion_requested_at: datetime | None

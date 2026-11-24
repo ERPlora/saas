@@ -1,4 +1,5 @@
-"""What the Hub reports of a business (ready, its last refusal, a provisioning pause), as the platform."""
+"""What the Hub reports of a business (ready, its last refusal, a provisioning pause, the maintenance scheduled for
+its night), as the platform."""
 
 from functools import partial
 from uuid import UUID
@@ -15,7 +16,7 @@ from hubs import emails, events
 from hubs.models import Hub, HubMember
 from hubs.queries import access_control, membership
 from hubs.queries.access_control import Role
-from hubs.schemas.hub_callbacks import HubErrorIn, HubMaintenanceIn, HubStatusOut, MarkReadyIn
+from hubs.schemas.hub_callbacks import HubErrorIn, HubMaintenanceIn, HubScheduledMoveIn, HubStatusOut, MarkReadyIn
 
 
 #: The Hub's last error recorded on a business it says it could not prepare (``failed``): the panel shows «We could not
@@ -82,7 +83,7 @@ def business_mark_ready(ctx: OperationContext, data: MarkReadyIn) -> dict:
     return {"id": hub.id, "status": hub.status, "ready_at": hub.ready_at}
 
 
-def _system_hub(ctx: OperationContext, data: HubErrorIn | HubMaintenanceIn) -> Hub:
+def _system_hub(ctx: OperationContext, data: HubErrorIn | HubMaintenanceIn | HubScheduledMoveIn) -> Hub:
     """The business a platform answer changes, after refusing any caller that is not the platform."""
     if ctx.actor != "system":
         raise PermissionDenied(_("Only the platform records the Hub's answers."), code="internal_command")
@@ -138,4 +139,24 @@ def business_record_maintenance(ctx: OperationContext, data: HubMaintenanceIn) -
         hub.maintenance = maintenance
         hub.save(update_fields=["maintenance", "updated_at"])
         record_event(ctx, events.BUSINESS_MAINTENANCE_CHANGED, {"id": str(hub.id), "maintenance": maintenance})
+    return {"id": hub.id, "status": hub.status, "ready_at": hub.ready_at}
+
+
+@operation(
+    "hubs.business.record_scheduled_move",
+    kind="command",
+    permission="hubs.manage",
+    input=HubScheduledMoveIn,
+    output=HubStatusOut,
+    ai=INTERNAL,
+)
+def business_record_scheduled_move(ctx: OperationContext, data: HubScheduledMoveIn) -> dict:
+    """Persist when the Hub's move of the business, asked for its night, starts (or that none is ahead) and tell the
+    owner's live pages; the same answer again records nothing. Not part of the snapshot: ``state_version`` stays."""
+    hub = _system_hub(ctx, data)
+    if hub.move_scheduled_for != data.move_scheduled_for:
+        hub.move_scheduled_for = data.move_scheduled_for
+        hub.save(update_fields=["move_scheduled_for", "updated_at"])
+        at = None if data.move_scheduled_for is None else data.move_scheduled_for.isoformat()
+        record_event(ctx, events.BUSINESS_MOVE_SCHEDULED_CHANGED, {"id": str(hub.id), "move_scheduled_for": at})
     return {"id": hub.id, "status": hub.status, "ready_at": hub.ready_at}
