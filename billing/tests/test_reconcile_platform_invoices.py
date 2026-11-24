@@ -450,13 +450,14 @@ class TestWhatItAsks:
     def asked(self, hub_double):
         return [call.path for call in hub_double.calls_to("GET")]
 
-    def test_one_the_aeat_has_not_answered_yet_waits(self, hub_double):
-        owed(fiscal_status="issued", qr=QR, emailed_at=timezone.now())
+    def test_those_the_aeat_has_not_answered_yet_wait(self, hub_double):
+        for sequence in (1, 2):
+            owed(sequence, fiscal_status="issued", qr=QR, emailed_at=timezone.now())
         hub_double.answer("GET", r"^/internal/platform/invoices/", 200, {"status": "issued", "qr": QR})
 
         output = run()
 
-        assert "accepted=0 waiting=1" in output
+        assert "accepted=0 waiting=2" in output
 
     @pytest.mark.parametrize("status, outcome", [(503, "unreachable=1 refused=0"), (404, "unreachable=0 refused=1")])
     def test_one_the_hub_does_not_answer_for_fails_the_run(self, hub_double, status, outcome):
