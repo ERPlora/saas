@@ -320,9 +320,9 @@ Actor: propietario, administrador, encargado, empleado, gestoría
 Pantalla: Negocios
 Pasos:
 1. En el menú, «Negocios» abre la lista de los negocios de la cuenta, el último abierto primero; las direcciones viejas del panel de negocios llevan aquí.
-2. Cada fila enseña el negocio (enlace a su página), su dirección web, su «Estado» («Activo», «Preparando», «Pago pendiente», «Suspendido», «En eliminación»), con el porqué y la fecha cuando importa («Eliminado. Puedes recuperarlo hasta el …»), su «Plan», el «Rol» de la persona y su «Último uso».
+2. Cada fila enseña el negocio (enlace a su página), su dirección web, su «Estado» («Activo», «Preparando», «Pago pendiente», «Suspendido», «En eliminación»), con el porqué y la fecha cuando importa («Eliminado. Puedes recuperarlo hasta el …»; un negocio activo con un mantenimiento programado para su madrugada, «Mantenimiento programado: el negocio no estará disponible mientras dure, a partir del …», con el día y la hora en la zona horaria del negocio), su «Plan», el «Rol» de la persona y su «Último uso».
 3. Busca por nombre o dirección web y abre la acción de la fila: «Abrir», «Gestionar» (propietario y administradores) o «Recuperar» (el propietario, un negocio eliminado dentro de sus 90 días).
-4. La lista cambia sola cuando un negocio pasa a estar listo, cambia de plan o de personas, sin recargar.
+4. La lista cambia sola cuando un negocio pasa a estar listo, cambia de plan o de personas, sin recargar. El aviso del mantenimiento programado llega como mucho un cuarto de hora después de que el equipo de ERPlora lo programe, y se va cuando empieza o cuando lo cancela.
 Entra: los negocios de los que la persona es miembro con la invitación aceptada.
 Sale: nada; la lista se mantiene al día sola.
 Si falla: sin negocios, «Crea tu primer negocio» con el formulario del alta; una búsqueda sin resultados, «Nada coincide con la búsqueda» con «Mostrar todo»; sin conexión, el error con «Reintentar», nunca una lista vacía. Un negocio purgado ya no sale.
@@ -480,7 +480,7 @@ Estado: hecho
 Actor: propietario, administrador
 Pantalla: Resumen del negocio
 Pasos:
-1. En la página del negocio, la cabecera dice su estado («Activo», «Preparando», «Pago pendiente», «Suspendido» o eliminado) y el Resumen, su plan con los dispositivos, las apps que puede tener activadas a la vez y las personas frente a las plazas. Es lo que cubre el plan que tiene el negocio, también un plan interno que no está a la venta, como «Prueba de pago (interno)» (BILLING-F27).
+1. En la página del negocio, la cabecera dice su estado («Activo», «Preparando», «Pago pendiente», «Suspendido» o eliminado), con el aviso del mantenimiento programado para su madrugada mientras no ha empezado (HUBS-F09), y el Resumen, su plan con los dispositivos, las apps que puede tener activadas a la vez y las personas frente a las plazas. Es lo que cubre el plan que tiene el negocio, también un plan interno que no está a la venta, como «Prueba de pago (interno)» (BILLING-F27).
 2. La tarjeta «Uso» («Cómo va tu negocio en ERPlora») enseña el «Almacenamiento» usado del espacio de su plan, con aviso al acercarse al tope, y las personas «Activos ayer» y de los «Últimos 30 días», con «Datos de ayer: se actualizan cada noche.».
 3. Esta tarjeta no enseña las peticiones de cada día, el pico de conexiones ni las peticiones sin hueco: son para el equipo de ERPlora, en su admin (HUBS-F22), y para quien lleva el negocio, en Sistema · Recursos de su hub (BASE-F40).
 Entra: el negocio y lo que midió la última noche.
@@ -714,6 +714,16 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   conexión o rechazado escribe la línea ERROR `saas.worker.pass_failed task=reconcile_hub_states left work owed: …`,
   que es lo que avisa la alarma. En el worker la pasada tiene 50 s y oye la
   parada entre dos negocios (`go_on`): lo que no entra queda pendiente para la pasada siguiente (`cut_short=1`).
+- El mantenimiento programado (F09, F21) es el traslado del negocio a otro servidor que el personal de ERPlora pide
+  en el admin del Hub para su madrugada. El Hub no avisa: en cada vuelta del `saas-worker` (cada 15 minutos, con su
+  propio cerrojo y sus 50 s), `services.scheduled_moves.check_scheduled_moves_exclusively` pregunta por cada negocio
+  activo, con el pago pendiente o suspendido (`GET /internal/hubs/{id}`, el mismo sondeo firmado del alta) y guarda
+  `move_scheduled_for` en `Hub.move_scheduled_for` con `hubs.business.record_scheduled_move`, que emite
+  `hubs.business.move_scheduled_changed` en el canal del propietario sin tocar `state_version`. Nunca se pregunta al
+  Hub por la petición de una persona. La lista y la página solo lo dicen mientras ese instante está por llegar
+  (`access_control.scheduled_move_of`); la frase sale de `reasonKey` (`hubs.reason.moveScheduled`), en la zona
+  horaria del negocio. Un Hub que aún no manda el campo cuenta como sin mantenimiento; uno que no contesta deja lo
+  guardado y la línea `saas.worker.pass_failed task=check_scheduled_moves`.
 - Alta (F01–F03): `hubs.business.create` (una transacción: `BillingProfile`, `Hub`, `HubMember` propietario y
   `Subscription` Gratis) y el empuje tras el COMMIT (`services.hub_push.sync_hub`). El pago es de `billing`
   (`billing.checkout.start`). El país sugerido sale de `navigator.languages` (`regions.suggestedCountry`, con

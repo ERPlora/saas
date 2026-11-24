@@ -456,6 +456,13 @@ listo al responder, y lo dice.
   (`provision_failed`). El aviso `ready` (o el sondeo que lo oye) borra ese error; una llamada entregada después no
   lo borra (la preparación sigue debida). Los estados viven en `hub_client` (`PREPARING_STATUSES`, `FAILED_STATUS`,
   `ENDED_STATUSES`).
+- **Mantenimiento programado** (HUBS-F09, HUBS-F21): el mismo sondeo trae `move_scheduled_for`, cuándo empieza el
+  traslado del negocio a otro servidor que el personal pidió para su madrugada (UTC; `null` sin él, una vez arrancado
+  o cancelado; opcional: un Hub que no lo manda cuenta como `null`). A un negocio listo (activo, con el pago pendiente
+  o suspendido) solo se le pregunta por eso, y no por la petición de una persona: lo hace el `saas-worker` en cada
+  vuelta (`services.scheduled_moves`, cerrojo `check_scheduled_moves`). `hubs.business.record_scheduled_move` lo
+  guarda en `Hub.move_scheduled_for` y emite `hubs.business.move_scheduled_changed` en el canal del propietario, sin
+  tocar `state_version`; la lista y la ficha lo dicen mientras ese instante está por llegar.
 - **Demo asíncrona** (PUBLIC-F28; `public/demo.py`): `POST /internal/demos` responde 202 con `status: "requested"`.
   `/demo/start/` guarda la demo con `ready: false` y vuelve a la puerta, que dice «Preparando tu demo…»
   (`data-testid="demo-state-preparing"`, `role="status"`) mientras su página pregunta `GET /demo/status/` cada segundo

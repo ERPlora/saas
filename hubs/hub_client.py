@@ -10,7 +10,8 @@ verify v1 only, every body names the hub of its path (``id`` or ``hub_id``) and 
   vertical); 202 while the Hub provisions it, 200 when it already knew it.
 - ``put_state`` → ``PUT /internal/hubs/{id}/state``: the snapshot of the business with its monotonic version.
 - ``get_hub`` → ``GET /internal/hubs/{id}``: the registry's status (``PREPARING_STATUSES``, ``ready``, ``failed``,
-  ``ENDED_STATUSES``), to poll a sign-up stuck without its ``ready`` callback and a demo the door waits for.
+  ``ENDED_STATUSES``), to poll a sign-up stuck without its ``ready`` callback, a demo the door waits for and the
+  maintenance scheduled for a ready business's night (``move_scheduled_for``).
 - ``get_dumps`` → ``GET /internal/hubs/{id}/dumps``: the copies of the hub's data, each with a link of 15 minutes
   (the panel's «Download the data», asked on each click).
 - ``delete_hub`` → ``DELETE /internal/hubs/{id}``; ``restore_hub`` → ``POST /internal/hubs/{id}/restore``.
