@@ -53,6 +53,7 @@ from assistant.providers.base import ToolSpec, TurnRequest
 from assistant.schemas import Caller, ClaimIn, ClaimOut, MessageReleaseIn, RouteCandidate, RouteIn, UsageRecordIn
 from assistant.services.platform_actor import platform_context
 from assistant.turn_outcome import Outcome
+from assistant.usage_cost import Tokens
 
 logger = logging.getLogger(__name__)
 
@@ -209,7 +210,7 @@ async def ask(asked: Round, remaining: list, build, outcome: Outcome) -> AsyncIt
         elif event.type == "tool_call":
             asked.calls.append({"name": payload["name"], "call_id": payload["call_id"], "arguments": payload["arguments"]})
         elif event.type == "usage":
-            outcome.add_usage(asked.answering, int(payload["input_tokens"]), int(payload["output_tokens"]))
+            outcome.add_usage(asked.answering, Tokens.of(payload))
         elif event.type == "error":
             asked.failed = payload
 
@@ -408,14 +409,16 @@ def settle(started: Turn, outcome: Outcome) -> dict:
         given_back = MessageReleaseIn(caller=started.caller, month=claim.month, model=claim.model)
         services.turn_usage.message_release(platform_context(), given_back)
     for model, spent in outcome.spent.items():
-        if spent.tokens_input or spent.tokens_output:
+        if spent.tokens.input or spent.tokens.output:
             services.turn_usage.usage_record(
                 platform_context(),
                 UsageRecordIn(
                     caller=started.caller,
                     model=model,
-                    tokens_input=spent.tokens_input,
-                    tokens_output=spent.tokens_output,
+                    tokens_input=spent.tokens.input,
+                    tokens_output=spent.tokens.output,
+                    tokens_cache_read=spent.tokens.cache_read,
+                    tokens_cache_write=spent.tokens.cache_write,
                     cost_usd=spent.cost,
                 ),
             )

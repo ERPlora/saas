@@ -4,16 +4,16 @@ the pages erplora.com's own tools brought and what each model that answered spen
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-from assistant.models import estimate_cost
+from assistant import usage_cost
 from assistant.schemas import RouteCandidate
+from assistant.usage_cost import Tokens
 
 
 @dataclass
 class Spent:
     """What one model spent in a turn: its tokens and their cost (USD, with its prices)."""
 
-    tokens_input: int = 0
-    tokens_output: int = 0
+    tokens: Tokens = Tokens()
     cost: Decimal = Decimal("0")
 
 
@@ -33,19 +33,16 @@ class Outcome:
 
     @property
     def tokens_input(self) -> int:
-        return sum(spent.tokens_input for spent in self.spent.values())
+        return sum(spent.tokens.input for spent in self.spent.values())
 
     @property
     def tokens_output(self) -> int:
-        return sum(spent.tokens_output for spent in self.spent.values())
+        return sum(spent.tokens.output for spent in self.spent.values())
 
-    def add_usage(self, answering: RouteCandidate, tokens_input: int, tokens_output: int) -> None:
+    def add_usage(self, answering: RouteCandidate, tokens: Tokens) -> None:
         spent = self.spent.setdefault(answering.model_id, Spent())
-        spent.tokens_input += tokens_input
-        spent.tokens_output += tokens_output
-        spent.cost += estimate_cost(
-            answering.price_input_per_1m, answering.price_output_per_1m, tokens_input, tokens_output
-        )
+        spent.tokens += tokens
+        spent.cost += usage_cost.cost(answering, tokens)
 
     def output(self) -> list[dict]:
         items: list[dict] = []

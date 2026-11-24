@@ -110,7 +110,9 @@ La lista de modelos de conversación que da la API del proveedor, con una casill
 tiene), su nombre y su contexto, y los botones «Guardar la elección» y «Volver al proveedor».
 
 ### Admin: Modelos de IA
-Todos los modelos de todos los proveedores, con su precio, su contexto y si están disponibles, para corregirlos.
+Todos los modelos de todos los proveedores, con su precio, su contexto y si están disponibles, para corregirlos. La
+ficha de cada uno tiene, además del «Precio de entrada» y el «Precio de salida», el «Precio de lectura de la caché» y el
+«Precio de escritura en la caché» del proveedor (vacíos: el de entrada).
 
 ### Admin: Modelo que contesta
 Una sola página (su lista la abre): «Modelo que contesta» y «Modelo de reserva», cada uno con los modelos que pueden
@@ -126,7 +128,8 @@ entrada», «Tokens de salida», «Tiempo» y «Coste» (en dólares).
 Una fila por negocio, mes y modelo (una demo, una por modelo en toda su vida; una cuenta, una por mes y modelo con el
 asistente del panel) con «Negocio, demo o cuenta» (de una cuenta, su correo), «Mes», «Modelo» (el nombre que le da su
 proveedor; «Sin registrar» en las filas de antes de que se guardara), «Mensajes», «Coste (USD)», «Tokens de entrada»,
-«Tokens de salida», «Tokens de huellas», «Dictados» y «Caracteres leídos en voz alta». Arriba, el buscador (por nombre
+«Tokens leídos de la caché», «Tokens escritos en la caché», «Tokens de salida», «Tokens de huellas», «Dictados» y
+«Caracteres leídos en voz alta». Arriba, el buscador (por nombre
 o dirección del negocio, por la dirección de la demo, por el correo de la cuenta o por el modelo) y los meses; a la
 derecha, el filtro «Por tipo» («Negocios», «Demos» o «Cuentas»), el del mes y el del modelo. Cada fila se abre para
 verla entera, sin poder cambiarla.
@@ -223,8 +226,8 @@ Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. Cuando hay que llamar a un modelo (un turno del asistente, una prueba del admin o la lista de modelos de un proveedor), erplora.com prepara la llamada en la forma que pide la API del proveedor: OpenAI (y los compatibles con ella), Anthropic, Google Gemini o DeepSeek, con la clave del proveedor y su dirección.
-2. Manda la conversación con sus instrucciones, sus imágenes, las herramientas que se ofrecen (una sola por respuesta) y el máximo de salida, y recibe la respuesta en directo, trozo a trozo.
-3. Traduce lo que contesta cada proveedor a lo mismo para todos: el texto según llega, cada herramienta que el modelo pide con sus datos completos, el consumo de entrada y de salida y cómo terminó (normal, porque pidió una herramienta, por largo o por el filtro de contenido).
+2. Manda la conversación con sus instrucciones, sus imágenes, las herramientas que se ofrecen (una sola por respuesta) y el máximo de salida, y recibe la respuesta en directo, trozo a trozo. A Anthropic le pide que guarde en su caché lo que manda, en el orden en que lo lee: las herramientas, las instrucciones y la conversación hasta su último mensaje. La siguiente llamada de la misma petición empieza igual y Anthropic lee de su caché ese principio en vez de procesarlo otra vez; si solo cambian las instrucciones, sigue leyendo las herramientas. OpenAI, Gemini y DeepSeek guardan solos lo que se repite al principio.
+3. Traduce lo que contesta cada proveedor a lo mismo para todos: el texto según llega, cada herramienta que el modelo pide con sus datos completos, el consumo de entrada (toda, y de ella lo que la caché del proveedor leyó y escribió, si lo dice) y de salida y cómo terminó (normal, porque pidió una herramienta, por largo o por el filtro de contenido).
 4. Para la lista de modelos, pide al proveedor sus modelos de conversación, página a página, y deja fuera los que no conversan (voz, imágenes, huellas de texto).
 Entra: la API, la dirección y la clave del proveedor (la de su variable del entorno); el modelo, la conversación, las instrucciones y las herramientas.
 Sale: el texto, las herramientas pedidas, el consumo y el final del turno, iguales sea cual sea el proveedor; o la lista de modelos de conversación.
@@ -280,7 +283,7 @@ Pasos:
 1. En «Modelo que contesta», pulsa «Probar un modelo».
 2. Elige el «Modelo», escribe el «Mensaje» y, si quiere ver cómo pide herramientas, escribe en «Herramientas» una lista de herramientas con su nombre, como en el ejemplo.
 3. Pulsa «Enviar»: sale «Enviando…», el modelo que contesta y su respuesta según llega, con las herramientas que pide.
-4. Al acabar, «Hecho.» y la tabla con «Tokens de entrada», «Tokens de salida», «Tiempo» y «Coste» (con los precios del modelo).
+4. Al acabar, «Hecho.» y la tabla con «Tokens de entrada» (toda la entrada, también la que la caché del proveedor leyó o escribió), «Tokens de salida», «Tiempo» y «Coste» (con los precios del modelo, también los de la caché).
 Entra: el modelo, el mensaje y las herramientas.
 Sale: la respuesta del modelo con su consumo, su tiempo y su coste; la prueba queda en el registro de auditoría con quién la hizo, cuánto medía el mensaje y cuántas herramientas llevaba, nunca el mensaje (`assistant.model.tried`). No toca ningún negocio, cupo ni conversación.
 Si falla: sin modelo de la lista, «Elige de la lista el modelo que quieres probar.»; sin mensaje, «Escribe el mensaje que quieres enviar.»; unas herramientas mal escritas, «Las herramientas no están bien escritas: escribe una lista de herramientas como la del ejemplo, cada una con su nombre.»; un modelo apagado o de un proveedor apagado, «Este modelo está apagado o lo está su proveedor: enciéndelos para usarlo.»; un proveedor sin clave en el entorno, «Ningún modelo puede contestar: los proveedores de los modelos elegidos no tienen ninguna clave activa.»; si el proveedor falla, «El modelo no ha contestado: …» con su motivo, nunca la clave; más de 10 pruebas en un minuto, «Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo.»; sin red, «No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo.». Solo prueba quien puede cambiar el modelo que contesta (cada prueba gasta la clave de ERPlora); sin ese permiso, el admin no deja entrar.
@@ -512,7 +515,7 @@ Pantalla: Admin: Registros de uso del asistente
 Pasos:
 1. En el admin de erplora.com, abre «Registros de uso del asistente».
 2. Busca el negocio por su nombre o su dirección (la demo por su dirección, la cuenta por su correo), o filtra «Por tipo» («Negocios», «Demos» o «Cuentas»), por mes y por modelo.
-3. Lee sus filas del mes, una por modelo: «Modelo», los «Mensajes» del cupo que se le pidieron, «Coste (USD)» (con los precios de ese modelo), «Tokens de entrada», «Tokens de salida», «Tokens de huellas», «Dictados» y «Caracteres leídos en voz alta». El cupo del mes cuenta los mensajes de todos sus modelos; si contestó el modelo de reserva, el mensaje sigue en la fila del modelo al que se le pidió y los tokens y el coste van a la de la reserva.
+3. Lee sus filas del mes, una por modelo: «Modelo», los «Mensajes» del cupo que se le pidieron, «Coste (USD)» (con los precios de ese modelo: lo leído de la caché del proveedor y lo escrito en ella, a los suyos, y lo demás de la entrada, al de entrada), «Tokens de entrada» (toda la entrada), «Tokens leídos de la caché» y «Tokens escritos en la caché» (de la entrada, lo que el proveedor leyó de su caché y lo que escribió en ella), «Tokens de salida», «Tokens de huellas», «Dictados» y «Caracteres leídos en voz alta». El cupo del mes cuenta los mensajes de todos sus modelos; si contestó el modelo de reserva, el mensaje sigue en la fila del modelo al que se le pidió y los tokens y el coste van a la de la reserva.
 4. Abre la fila para verla entera, con cuándo se creó y cuándo se cambió.
 Entra: el negocio, la demo o la cuenta y el mes.
 Sale: lo gastado por el negocio (o la cuenta) en el mes con cada modelo, sin poder cambiarlo.
@@ -619,15 +622,20 @@ Implicados: ASSISTANT-F25, ASSISTANT-F26, ACCOUNTS-F23
   `ROTATED_FIELD_CLASSES` (`services.encryption.encrypted_columns`, derivada de los modelos: hoy el token y el PIN de
   WhatsApp): rota cada token tal cual (`crypto.rotate`, por `UPDATE` sin pasar por `save`) y nunca
   escribe uno ilegible. Un test falla si aparece un campo cifrado que la rotación no conoce. Los documentos fiscales usan su propia clave (`FISCAL_DOCUMENTS_KEY`) y no entran aquí.
-- Clientes (`assistant/providers/`): `httpx` contra cada API (sin SDK ni LiteLLM), sin caché, uno por llamada;
+- Clientes (`assistant/providers/`): `httpx` contra cada API (sin SDK ni LiteLLM), un cliente HTTP por llamada; el de
+  Anthropic marca la caché del proveedor con `cache_control` tras la última herramienta, en las instrucciones (un bloque
+  de `system`) y en la petición entera (la caché automática, que avanza hasta el último mensaje), y su uso suma a
+  `input_tokens` lo que la caché leyó (`cache_read_input_tokens`) y escribió (`cache_creation_input_tokens`), que da
+  aparte (`test_prompt_cache.py`: la segunda llamada de una petición empieza byte a byte como la primera);
   todos terminan con un solo `finish` y un fallo es un `error` con `retriable`, nunca una excepción. Se prueban contra
   `assistant/tests/fake_provider.py` (servidor HTTP en `127.0.0.1` que habla el formato de cada proveedor).
 - Trampas cubiertas por tests: una clave guardada en una tabla (`test_models.py`), una clave de verdad del entorno de
   quien corre la suite (`config/tests/test_settings.py`) y el nombre de la app sin traducir en el admin (`test_apps.py`).
 
 - El turno pide su ruta con `assistant.route.resolve` como la plataforma (`services.platform_actor.platform_context()`)
-  y la recorre con `assistant.routing.stream`; el coste sale de `models.estimate_cost` con los precios del modelo que
-  contestó. No hay siembra de proveedores: los da el admin. La migración `0010_haiku_answers` puso, donde ya contestaba un
+  y la recorre con `assistant.routing.stream`; el coste sale de `usage_cost.cost` con los precios del modelo que
+  contestó (los de su caché, si los tiene; si no, el de entrada). La migración `0012_prompt_cache` puso a Claude Haiku 5.5
+  de Anthropic los precios de su caché (leer 0,01 y escribir 0,125 USD por millón). No hay siembra de proveedores: los da el admin. La migración `0010_haiku_answers` puso, donde ya contestaba un
   modelo, Claude Haiku 5.5 a contestar con Qwen 3.7 Plus de reserva; en una base de datos nueva no crea nada.
 
 ### Las puertas del Hub (`assistant/internal.py`, ASSISTANT-F11…F23, F28)

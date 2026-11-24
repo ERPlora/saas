@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:8f1695aa439a8a64df72759e6b860d5275f3c98d2b80bf743b26a0be01241aaf -->
+<!-- generated from WORKBOOK.md sha256:228ba3d8cee946b96be1e7ad614aaff4a30588b6dc511a3fd7e7ac2f565b959c -->
 
 ## What it is for and who uses it
 
@@ -97,7 +97,9 @@ The list of conversation models the provider's API gives, with a "Keep" checkbox
 their name and context, and the "Save the choice" and "Back to the provider" buttons.
 
 ### Admin: AI models
-Every model of every provider, with its price, its context and whether it is available, to correct them.
+Every model of every provider, with its price, its context and whether it is available, to correct them. Each one's
+page has, besides the "Input price" and the "Output price", the provider's "Cache read price" and "Cache write price"
+(empty: the input price).
 
 ### Admin: Model that answers
 One page (its list opens it): "Model that answers" and "Fallback model", each with the models that can answer
@@ -113,7 +115,8 @@ and "Cost" (in dollars).
 One row per business, month and model (a demo, one per model in its whole life; an account, one per month and model
 with the panel's assistant) with "Business, demo or account" (an account's, its email), "Month", "Model" (the name its
 provider gives it; "Not recorded" in the rows from before it was kept), "Messages", "Cost (USD)", "Input tokens",
-"Output tokens", "Embedding tokens", "Dictations" and "Characters read aloud". On top, the search box (by the
+"Cache read tokens", "Cache write tokens", "Output tokens", "Embedding tokens", "Dictations" and "Characters read
+aloud". On top, the search box (by the
 business's name or address, by the demo's address, by the account's email or by the model) and the months; on the
 right, the "By kind" filter ("Businesses", "Demos" or "Accounts"), the month's and the model's. Each row opens to see
 it whole, without being able to change it.
@@ -208,8 +211,8 @@ Actor: system
 Screen: none
 Steps:
 1. When a model has to be called (an assistant turn, an admin trial or a provider's list of models), erplora.com prepares the call in the shape the provider's API asks: OpenAI (and those compatible with it), Anthropic, Google Gemini or DeepSeek, with the provider's key and address.
-2. It sends the conversation with its instructions, its images, the tools offered (only one per answer) and the output maximum, and receives the answer live, piece by piece.
-3. It translates what each provider answers into the same for all: the text as it arrives, each tool the model asks for with its complete data, the input and output consumption and how it ended (normally, because it asked for a tool, for length or by the content filter).
+2. It sends the conversation with its instructions, its images, the tools offered (only one per answer) and the output maximum, and receives the answer live, piece by piece. It asks Anthropic to keep what it sends in its cache, in the order Anthropic reads it: the tools, the instructions and the conversation up to its last message. The next call of the same request starts the same way and Anthropic reads that start from its cache instead of processing it again; if only the instructions change, it still reads the tools. OpenAI, Gemini and DeepSeek keep by themselves what repeats at the start.
+3. It translates what each provider answers into the same for all: the text as it arrives, each tool the model asks for with its complete data, the input consumption (all of it, and of it what the provider's cache read and wrote, when it says so) and the output consumption, and how it ended (normally, because it asked for a tool, for length or by the content filter).
 4. For the list of models, it asks the provider for its conversation models, page by page, and leaves out those that do not converse (voice, images, text fingerprints).
 In: the provider's API, address and key (the one of its variable of the environment); the model, the conversation, the instructions and the tools.
 Out: the text, the tools asked for, the consumption and the end of the turn, the same whatever the provider; or the list of conversation models.
@@ -265,7 +268,7 @@ Steps:
 1. On "Model that answers", click "Try a model".
 2. Choose the "Model", write the "Message" and, to see how it asks for tools, write in "Tools" a list of tools with their name, as in the example.
 3. Click "Send": "Sending…" shows, then the model that answers and its answer as it arrives, with the tools it asks for.
-4. At the end, "Done." and the table with "Input tokens", "Output tokens", "Time" and "Cost" (with the model's prices).
+4. At the end, "Done." and the table with "Input tokens" (all of the input, also what the provider's cache read or wrote), "Output tokens", "Time" and "Cost" (with the model's prices, the cache's too).
 In: the model, the message and the tools.
 Out: the model's answer with its usage, its time and its cost; the try stays in the audit trail with who made it, how long the message was and how many tools it had, never the message (`assistant.model.tried`). No business, quota nor conversation is touched.
 If it fails: without a model of the list, "Choose the model to try from the list."; without a message, "Write the message to send."; badly written tools, "The tools are not well written: write a list of tools as in the example, each with its name."; a model that is off or of a provider that is off, "This model is off or its provider is: turn them on to use it."; a provider without its key in the environment, "No model can answer: the providers of the chosen models have no active key."; if the provider fails, "The model did not answer: …" with its reason, never the key; more than 10 tries in a minute, "Too many tries in a minute: wait a moment and try again."; without network, "The try could not be sent: check the connection and try again.". Only whoever may change the model that answers tries one (each try spends ERPlora's key); without that permission, the admin does not let in.
@@ -497,7 +500,7 @@ Screen: Admin: Assistant usage records
 Steps:
 1. In erplora.com's admin, open "Assistant usage records".
 2. Search the business by its name or its address (the demo by its address, the account by its email), or filter "By kind" ("Businesses", "Demos" or "Accounts"), by month and by model.
-3. Read its rows of the month, one per model: "Model", the "Messages" of the allowance asked of it, "Cost (USD)" (with that model's prices), "Input tokens", "Output tokens", "Embedding tokens", "Dictations" and "Characters read aloud". The month's allowance counts the messages of all its models; when the fallback model answered, the message stays in the row of the model it was asked of and the tokens and the cost go to the fallback's.
+3. Read its rows of the month, one per model: "Model", the "Messages" of the allowance asked of it, "Cost (USD)" (with that model's prices: what was read from the provider's cache and written to it, at its own, and the rest of the input at the input's), "Input tokens" (all of the input), "Cache read tokens" and "Cache write tokens" (of the input, what the provider read from its cache and what it wrote to it), "Output tokens", "Embedding tokens", "Dictations" and "Characters read aloud". The month's allowance counts the messages of all its models; when the fallback model answered, the message stays in the row of the model it was asked of and the tokens and the cost go to the fallback's.
 4. Open the row to see it whole, with when it was created and when it changed.
 In: the business, the demo or the account and the month.
 Out: what the business (or the account) spent in the month with each model, without being able to change it.

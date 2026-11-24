@@ -203,3 +203,13 @@ def test_every_provider_offers_its_models_to_choose(as_ai_admin, listed_provider
 
     assert "models-TOTAL_FORMS" in change and choose_url(listed_provider) in change
 
+
+
+def test_a_model_keeps_the_prices_of_the_providers_cache_to_correct_by_hand(as_ai_admin, listed_provider):
+    model = AIModel.objects.create(provider=listed_provider, model_id="gpt-e2e-mini", display_name="Mini")
+
+    page = as_ai_admin.get(f"/admin/assistant/aimodel/{model.pk}/change/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+
+    assert 'name="price_cache_read_per_1m"' in page and 'name="price_cache_write_per_1m"' in page
+    assert "Precio de lectura de la caché" in page and "Precio de escritura en la caché" in page
+    assert "Vacío: el precio de entrada." in page
