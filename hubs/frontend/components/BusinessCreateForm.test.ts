@@ -212,21 +212,16 @@ describe('BusinessCreateForm: creating', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Business created: Pastelería Dulce');
   });
 
-  it('sends no type when the person does not know it', async () => {
+  it.each<[string, string[]]>([
+    ['the person does not know it', []],
+    ["the person goes back to \"I don't know yet\"", ['bakery', '']],
+  ])('sends no type when %s', async (_when, picks) => {
     const s = await setup({ api: (c) => (c.path === '/api/hubs/businesses' ? Response.json(DETAIL, { status: 201 }) : undefined) });
     await s.type('create-name', 'Bar');
-    await s.get('create-submit').trigger('click');
-    await flush();
-    expect(s.calls().find((c) => c.path === '/api/hubs/businesses')?.body).toEqual({ name: 'Bar', country: 'ES', business_type: null });
-    expect(s.created).toHaveBeenCalledWith(DETAIL, { typeName: null });
-  });
-
-  it("going back to \"I don't know yet\" keeps it chosen and sends no type", async () => {
-    const s = await setup({ api: (c) => (c.path === '/api/hubs/businesses' ? Response.json(DETAIL, { status: 201 }) : undefined) });
-    await s.type('create-name', 'Bar');
-    await s.pick('create-type', 'bakery');
-    await s.pick('create-type', '');
-    expect(props(s.get('create-type'), 'value')).toEqual({ value: '' });
+    for (const code of picks) {
+      await s.pick('create-type', code);
+      expect(props(s.get('create-type'), 'value')).toEqual({ value: code });
+    }
     await s.get('create-submit').trigger('click');
     await flush();
     expect(s.calls().find((c) => c.path === '/api/hubs/businesses')?.body).toEqual({ name: 'Bar', country: 'ES', business_type: null });
