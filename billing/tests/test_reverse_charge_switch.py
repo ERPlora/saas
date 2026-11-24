@@ -16,22 +16,18 @@ import pytest
 from billing import queries
 from billing.models import VatCheck
 from billing.services import sale_tax
-from billing.vat import resolve_vat
+from billing.tests.vat_sales import charged
 
 pytestmark = pytest.mark.django_db
 
 PLAN = "service.saas_subscription"
 
 
-def _resolve(total, **kwargs):
-    return resolve_vat(Decimal(total), **kwargs)
-
-
 def _french_business(**extra):
     return {
-        "customer_country": "FR",
-        "customer_tax_id": "FR12345678901",
-        "customer_tax_id_type": "eu_vat",
+        "country": "FR",
+        "tax_id": "FR12345678901",
+        "tax_id_type": "eu_vat",
         **extra,
     }
 
@@ -51,7 +47,7 @@ class TestTheSwitch:
     def test_off_means_a_french_business_pays_spanish_vat(self):
         _switch_reverse_charge(False)
 
-        result = _resolve("121.00", **_french_business(customer_tax_id_verified=True))
+        result = charged("121.00", **_french_business(tax_id_verified=True))
 
         assert result.treatment == "domestic"
         assert result.rate == Decimal("21.00")
@@ -61,7 +57,7 @@ class TestTheSwitch:
     def test_on_and_verified_means_reverse_charge(self):
         _switch_reverse_charge(True)
 
-        result = _resolve("100.00", **_french_business(customer_tax_id_verified=True))
+        result = charged("100.00", **_french_business(tax_id_verified=True))
 
         assert result.treatment == "reverse_charge"
         assert result.tax == Decimal("0.00")
@@ -72,7 +68,7 @@ class TestItFailsClosed:
     def test_an_unverified_vat_id_still_pays_spanish_vat(self):
         _switch_reverse_charge(True)
 
-        result = _resolve("121.00", **_french_business(customer_tax_id_verified=False))
+        result = charged("121.00", **_french_business(tax_id_verified=False))
 
         assert result.treatment == "domestic"
         assert result.tax == Decimal("21.00")
@@ -81,18 +77,18 @@ class TestItFailsClosed:
         """The parameter's default cannot be «I trust it»."""
         _switch_reverse_charge(True)
 
-        assert _resolve("121.00", **_french_business()).treatment == "domestic"
+        assert charged("121.00", **_french_business()).treatment == "domestic"
 
     def test_a_spanish_business_is_never_reverse_charge(self):
         """Even though Stripe types its NIF as ``eu_vat``, which it does."""
         _switch_reverse_charge(True)
 
-        result = _resolve(
+        result = charged(
             "121.00",
-            customer_country="ES",
-            customer_tax_id="B27593136",
-            customer_tax_id_type="eu_vat",
-            customer_tax_id_verified=True,
+            country="ES",
+            tax_id="B27593136",
+            tax_id_type="eu_vat",
+            tax_id_verified=True,
         )
 
         assert result.treatment == "domestic"

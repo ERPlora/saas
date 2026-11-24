@@ -21,6 +21,7 @@ from billing.services.invoice_discounts import is_fully_discounted, line_amounts
 from billing.tests.stripe_captured import paid
 from billing.tests.stripe_double import event, invoice, subscription
 from billing.tests.test_invoice_recording import deliver
+from billing.tests.vat_sales import charged
 
 pytestmark = pytest.mark.django_db
 
@@ -180,8 +181,8 @@ class TestEveryDiscount:
 
 
 def test_a_subject_sale_of_nothing_is_not_reconciled_nor_reported(caplog):
-    breakdown = vat.resolve_vat(
-        Decimal("0"), customer_country="ES", customer_postal_code="28001",
+    breakdown = charged(
+        "0", country="ES", postal_code="28001",
         category_key=vat.SAAS_SUBSCRIPTION_CATEGORY, tax_cents=0, tax_included=False,
     )
 
@@ -191,8 +192,8 @@ def test_a_subject_sale_of_nothing_is_not_reconciled_nor_reported(caplog):
 
 
 def test_a_subject_sale_charged_without_tax_is_still_reported(caplog):
-    breakdown = vat.resolve_vat(
-        Decimal("29.99"), customer_country="ES", customer_postal_code="28001",
+    breakdown = charged(
+        "29.99", country="ES", postal_code="28001",
         category_key=vat.SAAS_SUBSCRIPTION_CATEGORY, tax_cents=0, tax_included=False,
     )
 

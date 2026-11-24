@@ -15,7 +15,7 @@ import pytest
 
 from billing import queries
 from billing.services import sale_tax
-from billing.vat import quote_vat
+from billing.tests.vat_sales import priced
 from billing.vat_breakdown import NOT_SUBJECT
 from billing.vat_countries import BILLING_COUNTRIES
 
@@ -28,10 +28,10 @@ def _quote(country: str, postal_code: str = "", **kwargs):
     """A Spanish sale is priced with its 5-digit postal code (Madrid by default): without it the place is
     unknown and the sale is not priced."""
     postal_code = postal_code or ("28001" if country == "ES" else "")
-    return quote_vat(
-        Decimal("100.00"),
-        customer_country=country,
-        customer_postal_code=postal_code,
+    return priced(
+        "100.00",
+        country=country,
+        postal_code=postal_code,
         category_key=PLAN,
         **kwargs,
     )
@@ -91,9 +91,9 @@ class TestUnitedKingdom:
         quote = _quote(
             "GB",
             "SW1A 1AA",
-            customer_tax_id="GB123456789",
-            customer_tax_id_type="gb_vat",
-            customer_tax_id_verified=True,
+            tax_id="GB123456789",
+            tax_id_type="gb_vat",
+            tax_id_verified=True,
         )
 
         assert quote is not None

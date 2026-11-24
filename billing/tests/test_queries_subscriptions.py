@@ -13,7 +13,8 @@ forgets it. Stripe away is ``unavailable``, never an invented card. The list is 
 subscription is not there.
 """
 
-from datetime import timedelta
+from datetime import date, timedelta
+from decimal import Decimal
 
 import pytest
 from django.core.cache import cache
@@ -22,7 +23,7 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from billing import queries
-from billing.models import Invoice, PaymentFailure, PlanChangeSchedule
+from billing.models import Invoice, PaymentFailure, PlanChangeSchedule, TaxCategory, TaxRule, VatCheck
 from billing.schemas.common import HubIn
 from billing.schemas.payment_methods import PaymentMethodIn
 from billing.schemas.subscriptions import SubscriptionListIn
@@ -242,6 +243,32 @@ class TestTheRow:
         [row] = subscriptions(owner, "es")
 
         assert row["plan"]["name"] == shop.subscription.plan.translated("name", "es")
+
+
+class TestTheVatOfTheNextInvoice:
+    """What the payer is charged by its place and the VIES verdict on file, over a plan of 29.99 and a module of 10.00."""
+
+    @pytest.mark.parametrize("status, total", [(VatCheck.VERIFIED, 3999), (VatCheck.INVALID, 4839)])
+    def test_a_european_business_is_reverse_charged_only_with_a_proof(self, owner, shop, inventory, status, total):
+        pay(shop, modules=["inventory"])
+        BillingProfile.objects.filter(pk=shop.billing_profile_id).update(
+            billing_country="DE", billing_postal_code="10115", tax_id="DE812871812"
+        )
+        VatCheck.objects.create(vat_number="DE812871812", status=status, consultation_number="WAPIAAAAX1")
+
+        assert subscriptions(owner)[0]["next_invoice"]["total_cents"] == total
+
+    def test_a_module_is_priced_by_its_own_category(self, owner, shop, inventory):
+        pay(shop, modules=["inventory"])
+        TaxRule.objects.create(
+            category=TaxCategory.objects.get(key="service.software_license"),
+            country_code="ES",
+            rate_pct=Decimal("10.00"),
+            valid_from=date(2020, 1, 1),
+        )
+
+        # 36.29 + 11.00
+        assert subscriptions(owner)[0]["next_invoice"]["total_cents"] == 4729
 
 
 class TestTheActions:
