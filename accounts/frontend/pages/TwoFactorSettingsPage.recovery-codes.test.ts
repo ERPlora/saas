@@ -2,9 +2,10 @@
 // and generating a new set (`mfa/recovery_codes/generate.html`).
 import { ionIconSrc } from '@erplora/ui/shell';
 import { IonIcon } from '@ionic/vue';
+import { flushPromises } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import { type Answer, fakeAllauth, offline, reauthenticationRequired, rejected } from '../__tests__/allauth-server';
+import { type Answer, fakeAllauth, held, offline, reauthenticationRequired, rejected } from '../__tests__/allauth-server';
 import { CODES, codes, list, mountPage, recovery, setUpTwoFactorSettingsPage, TOTP } from '../__tests__/two-factor-settings-page';
 
 setUpTwoFactorSettingsPage();
@@ -80,6 +81,17 @@ describe('TwoFactorSettingsPage: the recovery codes (mfa/recovery_codes/index.ht
     const page = await openCodes(codes(CODES, 3, 10));
     await page.click('codes-back');
     expect(page.server.callsTo('GET /account/authenticators')).toHaveLength(2);
+    expect(page.has('recovery-section')).toBe(true);
+  });
+
+  it('holds «Generate new codes» while «Back» reads the settings again', async () => {
+    const again = held(list(TOTP, recovery(9)));
+    const page = await openCodes(codes(CODES, 3, 10), { 'GET /account/authenticators': [list(TOTP, recovery(9)), again.answer] });
+    expect(page.button('codes-generate')!.props('disabled')).toBe(false);
+    await page.click('codes-back');
+    expect(page.button('codes-generate')!.props('disabled')).toBe(true);
+    again.release();
+    await flushPromises();
     expect(page.has('recovery-section')).toBe(true);
   });
 

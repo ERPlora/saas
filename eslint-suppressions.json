@@ -1,9 +1,4 @@
 {
-  "accounts/frontend/pages/TwoFactorSettingsPage.vue": {
-    "vue/max-lines-per-block": {
-      "count": 2
-    }
-  },
   "frontend/live-state.ts": {
     "max-lines-per-function": {
       "count": 1
