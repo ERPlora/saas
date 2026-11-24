@@ -4,10 +4,12 @@ the tokens its provider counted. Only numbers: the log keeps no word of what was
 
 import json
 import logging
+from decimal import Decimal
 
 import pytest
 from django.test import Client
 
+from assistant.models import AIModel, AIRoutingPolicy
 from assistant.tests.conftest import openai_answer, openai_tool_call
 from assistant.tests.doors import door, frames
 from base.logging import GDPRSafeFormatter
@@ -94,6 +96,20 @@ class TestEachCall:
         assert len(records) == 2
         formatter = GDPRSafeFormatter("%(message)s")
         assert [formatter.format(record) for record in records] == [record.getMessage() for record in records]
+
+
+class TestACallTheFallbackAnswered:
+    def test_its_line_names_the_fallback_and_its_tokens(self, internal, business, answering, fake_provider, every_log):
+        backup = AIModel.objects.create(
+            provider=answering.provider, model_id="gpt-backup", display_name="Backup", price_input_per_1m=Decimal("1"), price_output_per_1m=Decimal("1")
+        )
+        AIRoutingPolicy.objects.filter(slot=AIRoutingPolicy.SLOT).update(fallback_model=backup)
+        fake_provider.reply("POST", COMPLETIONS, status=503, json={"error": {"message": "overloaded"}})
+
+        a_day_question(business, fake_provider)
+
+        lines = [fields(record) for record in lines_of_calls(every_log)]
+        assert [(line["model"], line["input_tokens"]) for line in lines] == [(str(backup.pk), "1200"), (str(backup.pk), "1450")]
 
 
 class TestACallWithoutItsUsage:

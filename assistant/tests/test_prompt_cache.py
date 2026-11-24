@@ -170,8 +170,12 @@ class TestWhatEachCallLogs:
 
         frames(door(Client(), STREAM, turn(business, ask("¿Qué día es hoy?"))))
 
+        lines = [fields(record) for record in lines_of_calls(caplog)]
         tokens = ("input_tokens", "cache_read_tokens", "cache_write_tokens", "provider")
-        assert [[line[name] for name in tokens] for line in map(fields, lines_of_calls(caplog))] == [
+        assert [[line[name] for name in tokens] for line in lines] == [
             ["2540", "0", "2500", "anthropic"],
             ["2710", "2500", "150", "anthropic"],
         ]
+        row = AssistantUsage.objects.get(hub=business, month=queries.usage.month_of(timezone.now()), model=HAIKU)
+        summed = [sum(int(line[name]) for line in lines) for name in tokens[:3]]
+        assert summed == [row.tokens_input, row.tokens_cache_read, row.tokens_cache_write]
