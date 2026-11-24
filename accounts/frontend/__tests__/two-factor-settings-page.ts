@@ -1,8 +1,10 @@
 // The two-factor settings page (`TwoFactorSettingsPage`) mounted for its tests on `/2fa`, signed in, and the
-// authenticators allauth answers with. A test file calls `setUpTwoFactorSettingsPage()` at its top.
+// authenticators allauth answers with. A test file calls `setUpTwoFactorSettingsPage()` at its top. Its views that are
+// components of their own are mounted alone with `mountTwoFactorPiece`.
 import { IonButton } from '@ionic/vue';
-import { flushPromises } from '@vue/test-utils';
+import { flushPromises, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, vi } from 'vitest';
+import type { Component } from 'vue';
 
 import TwoFactorSettingsPage from '../pages/TwoFactorSettingsPage.vue';
 import { type Answer, json, ok } from './allauth-server';
@@ -44,14 +46,27 @@ export async function mountPage(locale: 'en' | 'es' = 'en', options: { call?: Re
     call: options.call,
   });
   const { wrapper } = mounted;
-  const button = (testid: string) => wrapper.findAllComponents(IonButton).find((b) => b.attributes('data-testid') === testid);
+  const { button, text, has } = finders(wrapper);
   async function click(testid: string) {
     const target = button(testid);
     if (!target) throw new Error(`no button ${testid}`);
     await target.trigger('click');
     await flushPromises();
   }
-  const text = (testid: string) => wrapper.get(`[data-testid="${testid}"]`).text();
-  const has = (testid: string) => wrapper.find(`[data-testid="${testid}"]`).exists();
   return { ...mounted, button, click, text, has };
+}
+
+/** A view of the page that is a component of its own, mounted alone with the props the page would hand it. */
+export async function mountTwoFactorPiece(component: Component, props: Record<string, unknown>, locale: 'en' | 'es' = 'en') {
+  const { wrapper } = await mountAccountPage(component, { props, locale });
+  return { wrapper, ...finders(wrapper) };
+}
+
+/** Its buttons, texts and parts, by `data-testid`. */
+function finders(wrapper: VueWrapper) {
+  return {
+    button: (testid: string) => wrapper.findAllComponents(IonButton).find((b) => b.attributes('data-testid') === testid),
+    text: (testid: string) => wrapper.get(`[data-testid="${testid}"]`).text(),
+    has: (testid: string) => wrapper.find(`[data-testid="${testid}"]`).exists(),
+  };
 }
