@@ -3,9 +3,10 @@ model, the tools offered, the answer streamed as the Hub's frames, and what it s
 
 The conversation is the Hub's (the person's browser owns it): erplora.com uses it for
 the call and forgets it. ``prepare`` refuses what is too big (never cuts it), drops the client's system messages for
-the Hub's ``instructions``, drops a tool result whose call is not there and keeps the last ``MAX_MESSAGES``. ``run``
-streams the turn through its route (``assistant.routing.stream``: the model that answers, then its fallback if the
-provider fails before answering) and yields the frames the Hub reads:
+the Hub's ``instructions``, drops a tool result whose call is not there and lightens the earlier requests
+(``assistant.history``: what their tools gave as a note, as many as fit its budget). ``run`` streams the turn
+through its route (``assistant.routing.stream``: the model that answers, then its fallback if the provider fails
+before answering) and yields the frames the Hub reads:
 
     {"type": "text_delta", "text": str}
     {"type": "function_call", "name": str, "call_id": str, "arguments": str}     # a tool of the Hub, for it to run
@@ -47,7 +48,7 @@ from django.http import HttpRequest, JsonResponse
 from django_ratelimit.core import get_usage
 from live.errors import OperationError
 
-from assistant import queries, routing, services
+from assistant import history, queries, routing, services
 from assistant.continuation import caller_key, continuation_token, is_continuation, tool_budget
 from assistant.providers.base import ToolSpec, TurnRequest
 from assistant.schemas import Caller, ClaimIn, ClaimOut, MessageReleaseIn, RouteCandidate, RouteIn, UsageRecordIn
@@ -57,8 +58,6 @@ from assistant.usage_cost import Tokens
 
 logger = logging.getLogger(__name__)
 
-#: The messages of a conversation the model sees: the last ones (the system message apart).
-MAX_MESSAGES = 100
 #: The text of a conversation (its attachments apart, ``attachments``): over it the turn is refused, never cut.
 MAX_TEXT_BYTES = 1_000_000
 #: The longest answer of one call to the model, in tokens.
@@ -135,9 +134,7 @@ def prepare(messages: list[dict], instructions: str, *, answer_kept: bool = Fals
     if text_bytes(messages) > MAX_TEXT_BYTES:
         raise TurnRefused(413, "payload_too_large", f"The conversation's text exceeds {MAX_TEXT_BYTES} bytes.")
     client = [message for message in messages if message["role"] != "system"]
-    conversation = sanitized(client)[-(MAX_MESSAGES - 1) :]
-    while conversation and conversation[0]["role"] == "tool":
-        conversation = conversation[1:]
+    conversation = history.window(sanitized(client))
     system = "\n\n".join(part for part in (instructions, server_tools.rules(answer_kept=answer_kept)) if part)
     return [{"role": "system", "content": system}, *attachments.expand(conversation)]
 

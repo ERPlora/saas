@@ -349,7 +349,7 @@ Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
 1. La persona escribe al asistente del Hub; el Hub manda a erplora.com la conversación entera (es suya: vive en el navegador de la persona), sus instrucciones y las herramientas que ofrece el negocio.
-2. erplora.com prepara la conversación: sus instrucciones son las únicas del sistema, se quedan los últimos 100 mensajes, se quita la respuesta de una herramienta que nadie pidió y los adjuntos se convierten en lo que el modelo puede leer.
+2. erplora.com prepara la conversación: sus instrucciones son las únicas del sistema; la petición en curso y la anterior (cada mensaje de la persona con lo que lo contestó) van enteras; de las más antiguas, lo que devolvieron sus herramientas va como una nota corta, que el modelo sabe que puede volver a pedir, y solo van las más recientes que caben en unos 16.000 tokens; se quita la respuesta de una herramienta que nadie pidió y los adjuntos se convierten en lo que el modelo puede leer.
 3. Toma un mensaje del cupo del negocio y manda el turno al modelo que contesta (o a su reserva, si su proveedor falla antes de contestar nada).
 4. Devuelve la respuesta en directo, trozo a trozo, y cada herramienta del negocio que el modelo pide; al final, la respuesta entera con su consumo, lo que le queda al negocio del cupo y el cierre.
 5. Si el modelo pidió herramientas del negocio, el turno acaba ahí con un pase de continuación: el Hub las ejecuta y vuelve a mandar la conversación con sus resultados y ese pase, y esa vuelta no gasta otro mensaje.
