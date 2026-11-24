@@ -59,10 +59,9 @@ def module_price_problems(*, prices: dict[str, str], amounts: dict[str, int], pr
     )
 
 
-def _price_problems(fields, prices: dict[str, str], cents: dict[str, int], product: str, other_amount) -> dict[str, str]:  # noqa: C901
-    """The checks of a pasted Stripe price; ``other_amount(stripe, expected)`` words an amount that differs."""
-    pasted = [(field, prices.get(field) or "", amount, interval) for field, amount, interval in fields]
-    pasted = [row for row in pasted if row[1]]
+def _price_problems(fields, prices: dict[str, str], cents: dict[str, int], product: str, other_amount) -> dict[str, str]:
+    """The problem of each pasted Stripe price; ``other_amount(stripe, expected)`` words an amount that differs."""
+    pasted = [(field, prices[field], amount, interval) for field, amount, interval in fields if prices.get(field)]
     if not pasted:
         return {}
     if stripe_service.key_mode() is StripeKeyMode.UNKNOWN:
@@ -76,20 +75,29 @@ def _price_problems(fields, prices: dict[str, str], cents: dict[str, int], produ
             continue
         except stripe_service.StripeUnavailable as failed:
             raise PriceCheckFailed(_("Stripe did not answer: the prices were not checked. Try again.")) from failed
-        expected = cents.get(amount_field) or 0
-        recurring = price.get("recurring") or {}
-        if not price.get("active"):
-            problems[field] = _("This price is archived in Stripe.")
-        elif (price.get("currency") or "").lower() != "eur":
-            problems[field] = _("This price is not in euros.")
-        elif recurring.get("interval") != interval or recurring.get("interval_count", 1) != 1:
-            problems[field] = (
-                _("This price is not charged every month.") if interval == "month" else _("This price is not charged every year.")
-            )
-        elif price.get("unit_amount") != expected:
-            problems[field] = other_amount(from_cents(price.get("unit_amount") or 0), from_cents(expected))
-        elif price.get("tax_behavior") != "exclusive":
-            problems[field] = _("This price includes the VAT or does not say: it must be net (tax behaviour «exclusive»).")
-        elif product and price.get("product") != product:
-            problems[field] = _("This price is of another Stripe product.")
+        problem = _price_problem(price, interval, cents.get(amount_field) or 0, product, other_amount)
+        if problem:
+            problems[field] = problem
     return problems
+
+
+def _price_problem(price: dict, interval: str, expected: int, product: str, other_amount) -> str:
+    """The first reason a Stripe price does not charge ``expected`` net cents every ``interval`` for ``product``
+    (empty = it does)."""
+    recurring = price.get("recurring") or {}
+    problem = ""
+    if not price.get("active"):
+        problem = _("This price is archived in Stripe.")
+    elif (price.get("currency") or "").lower() != "eur":
+        problem = _("This price is not in euros.")
+    elif recurring.get("interval") != interval or recurring.get("interval_count", 1) != 1:
+        problem = (
+            _("This price is not charged every month.") if interval == "month" else _("This price is not charged every year.")
+        )
+    elif price.get("unit_amount") != expected:
+        problem = other_amount(from_cents(price.get("unit_amount") or 0), from_cents(expected))
+    elif price.get("tax_behavior") != "exclusive":
+        problem = _("This price includes the VAT or does not say: it must be net (tax behaviour «exclusive»).")
+    elif product and price.get("product") != product:
+        problem = _("This price is of another Stripe product.")
+    return problem

@@ -261,7 +261,7 @@ en otra solo por sus operaciones), que sube `state_version` y empuja la foto al 
 ### Webhook
 
 Eventos a suscribir en Stripe: **`billing.services.webhook_dispatch.STRIPE_WEBHOOK_EVENTS`**, la única lista (15 hoy: los de
-checkout, las facturas y sus rectificativas, las suscripciones y el cliente), junto al `match` que los trata;
+checkout, las facturas y sus rectificativas, las suscripciones y el cliente), que sale de la tabla que los reparte;
 `manage.py audit_stripe_webhooks` la compara con el destino de Stripe (cada día a las 05:40 UTC: ver «aws») y
 dice qué falta y qué sobra (BILLING-F39). Sin firma válida, 400; sin `STRIPE_WEBHOOK_SECRET`, 503;
 duplicado, 200 `duplicate`; en curso en otra entrega, 409; fallo, 500 (Stripe reintenta). Siempre se lee la

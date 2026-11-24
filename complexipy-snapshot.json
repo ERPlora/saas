@@ -206,16 +206,6 @@
     ]
   },
   {
-    "path": "billing/services/price_checks.py",
-    "file_name": "price_checks.py",
-    "functions": [
-      {
-        "name": "_price_problems",
-        "complexity": 24
-      }
-    ]
-  },
-  {
     "path": "billing/services/rectifying_invoices.py",
     "file_name": "rectifying_invoices.py",
     "functions": [
