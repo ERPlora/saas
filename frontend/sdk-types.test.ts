@@ -111,6 +111,9 @@ function toTypeScript(annotation: string): string {
       if (literal) return literal[1].split(',').map((v) => v.trim().replace(/^"(.*)"$/, "'$1'")).join(' | ');
       const list = /^list\[(.+)\]$/.exec(part);
       if (list) return `${toTypeScript(list[1])}[]`;
+      // A JSON object keyed by string (`StoreCatalogOut.sold_intervals`).
+      const record = /^dict\[str, (.+)\]$/.exec(part);
+      if (record) return `Record<string, ${toTypeScript(record[1])}>`;
       return SCALARS[part] ?? part;
     })
     .join(' | ');
