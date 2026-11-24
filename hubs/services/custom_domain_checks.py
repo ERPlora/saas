@@ -45,7 +45,7 @@ _TIMED_OUT = "VALIDATION_TIMED_OUT"
     output=CustomDomainRecordOut,
     ai=INTERNAL,  # only the hourly check runs it
 )
-def custom_domain_record(ctx: OperationContext, data: CustomDomainRecordIn) -> dict:  # noqa: C901, PLR0912
+def custom_domain_record(ctx: OperationContext, data: CustomDomainRecordIn) -> dict:
     """What the hourly check learned, unless the domain left the state it found: the owner removing it wins. A command,
     so a change has its event on the owner's channel, and one of what the Hub is told owes it a newer snapshot."""
     if ctx.actor != "system":
@@ -55,30 +55,13 @@ def custom_domain_record(ctx: OperationContext, data: CustomDomainRecordIn) -> d
         return {"recorded": False}
     before = _what_the_owner_sees(row)
     was_in_snapshot = row.in_snapshot
-    now = timezone.now()
     if data.forget:
         row.delete()
         if was_in_snapshot:
             bump_state(row.hub_id)
         record_event(ctx, events.CUSTOM_DOMAIN_CHANGED, {"business_id": str(row.hub_id)})
         return {"recorded": True}
-    for field in ("reason", "certificate_arn", "validation_name", "validation_value", "failures"):
-        value = getattr(data, field)
-        if value is not None:
-            setattr(row, field, value)
-    if data.state is not None:
-        row.state = data.state
-        if data.state == CustomDomain.State.ACTIVE:
-            row.activated_at = now
-    if data.new_token:
-        row.certificate_token = new_certificate_token()
-    if data.attached is not None:
-        row.attached_at = now if data.attached else None
-    if data.proven is False:
-        row.proven_at = None
-    elif data.proven and row.proven_at is None:
-        row.proven_at = now
-    row.checked_at = now
+    _take_in(row, data)
     try:
         with transaction.atomic():
             row.save()
@@ -92,6 +75,26 @@ def custom_domain_record(ctx: OperationContext, data: CustomDomainRecordIn) -> d
     if _what_the_owner_sees(row) != before:
         record_event(ctx, events.CUSTOM_DOMAIN_CHANGED, {"business_id": str(row.hub_id)})
     return {"recorded": True}
+
+
+def _take_in(row: CustomDomain, data: CustomDomainRecordIn) -> None:
+    """What was learned, on the row and not saved: only what is given changes."""
+    now = timezone.now()
+    for field in ("state", "reason", "certificate_arn", "validation_name", "validation_value", "failures"):
+        value = getattr(data, field)
+        if value is not None:
+            setattr(row, field, value)
+    if data.state == CustomDomain.State.ACTIVE:
+        row.activated_at = now
+    if data.new_token:
+        row.certificate_token = new_certificate_token()
+    if data.attached is not None:
+        row.attached_at = now if data.attached else None
+    if data.proven is False:
+        row.proven_at = None
+    elif data.proven and row.proven_at is None:
+        row.proven_at = now
+    row.checked_at = now
 
 
 def _what_the_owner_sees(row: CustomDomain) -> tuple:
@@ -135,24 +138,13 @@ def custom_domains_failed(counts: Counter) -> bool:
     return any(counts[key] for key in CUSTOM_DOMAIN_FAILING_COUNTS)
 
 
-def _check_custom_domain(domain_id: UUID) -> str:  # noqa: PLR0911
+def _check_custom_domain(domain_id: UUID) -> str:
     """Move one domain as far as it goes today; the outcome names what happened, for the counts of the pass."""
     row = custom_domains.custom_domain_row(domain_id)
     if row is None:
         return "gone"
     try:
-        if row.state == CustomDomain.State.REMOVING:
-            return _finish_removal(row)
-        if row.hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
-            return _lapse(row, CustomDomain.Reason.BUSINESS_GONE)
-        plan = plan_catalog.effective_plan(row.hub_id, timezone.now())
-        if plan is None or not plan.includes_custom_domain:
-            return _lapse(row, CustomDomain.Reason.NOT_IN_PLAN)
-        if row.state == CustomDomain.State.LAPSED:
-            return _check_lapsed(row)
-        if row.state == CustomDomain.State.PENDING:
-            return _check_pending(row)
-        return _check_active(row)
+        return _check_by_state(row)
     except _DomainMovedOn:
         return "moved_on"
     except edge_client.EdgeUnavailable as error:
@@ -160,54 +152,77 @@ def _check_custom_domain(domain_id: UUID) -> str:  # noqa: PLR0911
         return "aws_unavailable"
 
 
-def _check_pending(row: CustomDomain) -> str:  # noqa: C901, PLR0911, PLR0912
+def _check_by_state(row: CustomDomain) -> str:
+    """One being removed goes whatever its business is; any other needs a business that is there and a plan with it."""
+    if row.state == CustomDomain.State.REMOVING:
+        return _finish_removal(row)
+    if row.hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
+        return _lapse(row, CustomDomain.Reason.BUSINESS_GONE)
+    plan = plan_catalog.effective_plan(row.hub_id, timezone.now())
+    if plan is None or not plan.includes_custom_domain:
+        return _lapse(row, CustomDomain.Reason.NOT_IN_PLAN)
+    if row.state == CustomDomain.State.LAPSED:
+        return _check_lapsed(row)
+    if row.state == CustomDomain.State.PENDING:
+        return _check_pending(row)
+    return _check_active(row)
+
+
+def _check_pending(row: CustomDomain) -> str:
     """The way to active, step by step and as far as it goes: the certificate, on the listener, the customer's CNAME, the
     snapshot and the probe."""
-    target = domain_checks.target_of(row.hub_id)
     try:
         if not row.certificate_arn:
             if not custom_domains.listener_has_room():
-                _learned(row, reason=CustomDomain.Reason.QUOTA_FULL)
-                return "waiting"
+                return _waiting(row, CustomDomain.Reason.QUOTA_FULL)
             row = _learned(row, certificate_arn=edge_client.request_certificate(row.hostname, row.certificate_token))
         facts = edge_client.describe_certificate(row.certificate_arn)
         validation = {"validation_name": facts.validation_name, "validation_value": facts.validation_value} if facts.validation_name else {}
         if facts.status == _NOT_ISSUED_YET:
-            _learned(row, reason=CustomDomain.Reason.CERTIFICATE_PENDING, **validation)
-            return "waiting"
+            return _waiting(row, CustomDomain.Reason.CERTIFICATE_PENDING, **validation)
         if facts.status != _ISSUED:
             logger.warning("hubs.custom_domain.certificate domain=%s %s %s", row.hostname, facts.status, facts.failure_reason)
             reason = CustomDomain.Reason.VALIDATION_TIMED_OUT if facts.status == _TIMED_OUT else CustomDomain.Reason.CERTIFICATE_FAILED
             return _lapse(row, reason)
         if not row.attached_at:
-            if not custom_domains.listener_has_room():
-                _learned(row, reason=CustomDomain.Reason.QUOTA_FULL, **validation)
-                return "waiting"
-            try:
-                edge_client.attach(row.certificate_arn)
-            except edge_client.TooManyCertificates:
-                logger.error("hubs.custom_domain.listener_full domain=%s", row.hostname)
-                _learned(row, reason=CustomDomain.Reason.QUOTA_FULL, **validation)
-                return "waiting"
+            if not _attach(row):
+                return _waiting(row, CustomDomain.Reason.QUOTA_FULL, **validation)
             row = _learned(row, attached=True, **validation)
     except edge_client.EdgeUnavailable as error:
         logger.error("hubs.custom_domain.aws domain=%s: %s", row.hostname, error)
         _learned(row, reason=CustomDomain.Reason.CERTIFICATE_UNAVAILABLE)
         return "aws_unavailable"
+    return _check_attached(row)
+
+
+def _waiting(row: CustomDomain, reason: str, **facts) -> str:
+    """Say where it is stuck: the next pass tries again."""
+    _learned(row, reason=reason, **facts)
+    return "waiting"
+
+
+def _attach(row: CustomDomain) -> bool:
+    """Put its certificate on the shared listener; ``False`` when there is no place for it."""
+    if not custom_domains.listener_has_room():
+        return False
+    try:
+        edge_client.attach(row.certificate_arn)
+    except edge_client.TooManyCertificates:
+        logger.error("hubs.custom_domain.listener_full domain=%s", row.hostname)
+        return False
+    return True
+
+
+def _check_attached(row: CustomDomain) -> str:
+    """With its certificate on the listener: the customer's CNAME, the snapshot and the probe."""
+    target = domain_checks.target_of(row.hub_id)
     try:
         pointing = domain_checks.points_at(row.hostname, target)
     except domain_checks.DnsUnavailable as error:
         logger.warning("hubs.custom_domain.dns domain=%s: %s", row.hostname, error)
-        _learned(row, reason=CustomDomain.Reason.DNS_UNAVAILABLE)
-        return "waiting"
+        return _waiting(row, CustomDomain.Reason.DNS_UNAVAILABLE)
     if not pointing:
-        if timezone.now() - row.attached_at > CUSTOM_DOMAIN_PENDING_LIMIT:
-            return _lapse(row, CustomDomain.Reason.CNAME_MISSING)
-        was_in_snapshot = row.in_snapshot
-        _learned(row, reason=CustomDomain.Reason.CNAME_MISSING, proven=False)
-        if was_in_snapshot:
-            sync_hub(row.hub_id)
-        return "waiting"
+        return _cname_missing(row)
     if row.proven_at is None:
         row = _learned(row, proven=True, reason=CustomDomain.Reason.PROBE_FAILED)
         if row.proven_at is None:
@@ -215,11 +230,21 @@ def _check_pending(row: CustomDomain) -> str:  # noqa: C901, PLR0911, PLR0912
     if not sync_hub(row.hub_id):
         return "hub_away"
     if domain_checks.probe(row.hostname, target, row.hub_id) != domain_checks.Probe.SERVED:
-        _learned(row, reason=CustomDomain.Reason.PROBE_FAILED)
-        return "waiting"
+        return _waiting(row, CustomDomain.Reason.PROBE_FAILED)
     _learned(row, state=CustomDomain.State.ACTIVE, reason=CustomDomain.Reason.NONE, failures=0)
     logger.info("hubs.custom_domain.active domain=%s hub=%s", row.hostname, row.hub_id)
     return "activated"
+
+
+def _cname_missing(row: CustomDomain) -> str:
+    """Out of the snapshot while it is missing; after ``CUSTOM_DOMAIN_PENDING_LIMIT`` its place is another's."""
+    if timezone.now() - row.attached_at > CUSTOM_DOMAIN_PENDING_LIMIT:
+        return _lapse(row, CustomDomain.Reason.CNAME_MISSING)
+    was_in_snapshot = row.in_snapshot
+    outcome = _waiting(row, CustomDomain.Reason.CNAME_MISSING, proven=False)
+    if was_in_snapshot:
+        sync_hub(row.hub_id)
+    return outcome
 
 
 def _check_active(row: CustomDomain) -> str:
