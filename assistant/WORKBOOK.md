@@ -377,7 +377,7 @@ Pasos:
 2. Si el modelo pide una herramienta de erplora.com, erplora.com la ejecuta y le devuelve el resultado sin que el Hub vea nada.
 3. Si pide una del negocio, el turno se la pasa al Hub para que la ejecute (ver ASSISTANT-F12).
 4. El modelo se vuelve a llamar como mucho cinco veces en un turno; en la última ya no se le ofrecen las herramientas de erplora.com y tiene que contestar.
-5. Una respuesta con lo que dieron el tipo de cambio o la búsqueda dice de dónde sale: si el modelo no nombra la fuente, erplora.com escribe su dirección debajo de la respuesta.
+5. Una respuesta con lo que dieron el tipo de cambio o la búsqueda dice de dónde sale: si el modelo no nombra la fuente, erplora.com escribe su dirección debajo de la respuesta. El modelo solo da las direcciones web que una herramienta devolvió en el turno, y erplora.com le dice al Hub y a su panel cuáles consultaron sus herramientas, para que el chat avise de una dirección que no salga de ahí.
 Entra: las herramientas del negocio y las preguntas del modelo.
 Sale: el resultado de cada herramienta de erplora.com para el modelo; su consumo se suma al del turno y no gasta otro mensaje.
 Si falla: una herramienta de erplora.com que falla da al modelo el motivo para que conteste con él, nunca un turno fallido; un servicio caído, que tarda demasiado o que responde algo inservible, una moneda sin tipo publicado, una búsqueda sin resultados o demasiadas consultas de un negocio: el modelo recibe el motivo y ninguna cifra, para decirlo sin inventarla; una herramienta del negocio con el nombre de una de erplora.com la ejecuta erplora.com; sin la clave del buscador, la búsqueda no se ofrece y lo demás funciona igual; en una automatización tampoco, y si el modelo la pide no se hace. El tipo de cambio es una referencia para informar: no cambia el importe de ningún cobro ni factura.
@@ -654,7 +654,9 @@ propio texto por `code`.
 
 - **Frames del turno en directo** (`data: <json>`): `text_delta {text}`, `function_call {name, call_id, arguments}`
   (una herramienta del Hub), `web` (una vez, en cuanto una búsqueda trae páginas, aunque el turno falle después: el
-  llamante lo guarda con la respuesta y lo devuelve en su denuncia; el panel lo cierra en `done.web`), `response
+  llamante lo guarda con la respuesta y lo devuelve en su denuncia; el panel lo cierra en `done.web`), `sources {sources}` (las direcciones web que consultó una herramienta de
+  erplora.com, en cuanto responde; una que falla no lo manda; el Hub y el panel las juntan en `done.sources`, contra
+  las que el chat comprueba las direcciones de la respuesta), `response
   {output, usage, continuation}` (si no falló), `error {code, message, retriable}` (fallo del proveedor tras
   empezar), `usage {used, limit, resets_at, demo}` y `[DONE]`. Lo que se
   decide antes del modelo es un estado HTTP sin stream: 413/422, 503 `assistant.no_model` o
@@ -696,7 +698,8 @@ propio texto por `code`.
   `turn.prepare` añade `server_tools.rules()` a las instrucciones del llamante, que
   rechazan lo que no sea su tema: solo la pasarela sabe qué se ofrece, y así ni el Hub ni el panel cambian. `turn.run`
   escribe la fuente con `source_line` si el modelo no la nombró, en texto: el Markdown del chat quita la dirección de un
-  enlace a otro sitio, y es a propósito. Los avisos de la burbuja no ven estos resultados.
+  enlace a otro sitio, y es a propósito. Los avisos de la burbuja no ven estos resultados, solo las direcciones que consultaron (`sources`); las reglas
+  piden además no escribir una dirección web que ninguna herramienta haya devuelto en el turno.
 - **Adjuntos** (`assistant/attachments.py`): `image_url` con `data:` de imagen, `input_file` con `filename`,
   `mime_type` y `data`; `MAX_ATTACHMENT_BYTES` (12 MB de base64) por adjunto, `MAX_ATTACHMENTS` (20) por
   conversación, `MAX_EXTRACTED_CHARS` por documento, zip comprobado antes de abrirlo; nada a disco (un test lo vigila

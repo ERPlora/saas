@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:a863af2ba2b119506a6a129d8cf72b880586c00473dc6e597219602c55d2a2ab -->
+<!-- generated from WORKBOOK.md sha256:8f1695aa439a8a64df72759e6b860d5275f3c98d2b80bf743b26a0be01241aaf -->
 
 ## What it is for and who uses it
 
@@ -362,7 +362,7 @@ Steps:
 2. If the model asks for a tool of erplora.com, erplora.com runs it and gives it the result without the Hub seeing anything.
 3. If it asks for one of the business, the turn passes it to the Hub to run it (see ASSISTANT-F12).
 4. The model is asked again at most five times in a turn; in the last one erplora.com's tools are no longer offered and it has to answer.
-5. An answer with what the exchange rate or the search gave says where it comes from: if the model names no source, erplora.com writes its address below the answer.
+5. An answer with what the exchange rate or the search gave says where it comes from: if the model names no source, erplora.com writes its address below the answer. The model only gives the web addresses a tool returned in the turn, and erplora.com tells the Hub and its panel which ones its tools looked up, so that the chat flags an address that does not come from there.
 In: the business's tools and the model's questions.
 Out: the result of each tool of erplora.com for the model; its consumption adds up to the turn's and spends no other message.
 If it fails: a tool of erplora.com that fails gives the model the reason to answer with, never a failed turn; a service that is down, takes too long or answers something unusable, a currency with no published rate, a search with no results or too many requests from a business: the model gets the reason and no figure, to say so without inventing one; a tool of the business named as one of erplora.com's is run by erplora.com; without the search engine's key, the search is not offered and the rest works the same; in an automation it is not offered either, and if the model asks for it, it is not done. The exchange rate is a reference to inform: it changes the amount of no charge or invoice.

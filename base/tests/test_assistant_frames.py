@@ -214,6 +214,16 @@ class TestATurnThatDoesNotEnd:
         ]
         assert as_sent(turn()) == as_sent(expected)
 
+    def test_what_the_tools_consulted_before_a_failure_stays_with_what_was_said(self, scripted):
+        law = "https://www.boe.es/doc"
+        scripted(
+            {"type": "sources", "sources": [law]},
+            {"type": "text_delta", "text": "Half"},
+            {"type": "error", "code": "assistant.provider_unavailable", "retriable": True},
+            "[DONE]",
+        )
+        assert turn()[-1] == done([said("Half")], sources=[law])
+
     def test_a_failure_that_cannot_be_retried_says_so(self, scripted):
         scripted({"type": "error", "code": "assistant.provider_rejected"}, "[DONE]")
         expected = [{"type": "error", "code": "assistant.provider_failed", "retriable": False}, done([])]

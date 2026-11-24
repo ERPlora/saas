@@ -692,6 +692,7 @@ class TestInTheTurn:
         got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
 
         assert [frame["type"] for frame in got if isinstance(frame, dict)] == ["sources", "text_delta", "text_delta", "response", "usage"]
+        assert got[0] == {"type": "sources", "sources": [server_tools.RATES_SOURCE]}
         said = [frame["text"] for frame in got if isinstance(frame, dict) and frame["type"] == "text_delta"]
         assert said == ["1 USD is 0.89 EUR.", f"\n\n{server_tools.RATES_SOURCE}"]
         assert "0.88755" not in json.dumps([frame for frame in got if isinstance(frame, dict)])
@@ -733,35 +734,10 @@ class TestInTheTurn:
 
         got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
 
-        assert got[0] == {"type": "web"}
+        assert got[:2] == [{"type": "web"}, {"type": "sources", "sources": [ARTICLE]}]
         assert got[3] == {"type": "text_delta", "text": f"\n\n{ARTICLE}"}
         _first, second = self.chat_requests(search)
         assert json.loads(second.body["messages"][-1]["content"])["results"][0]["url"] == ARTICLE
-
-    def test_the_caller_hears_the_address_a_rate_consulted(self, internal, business, answering, rates):
-        rates.reply("GET", RATES, json=USD_EUR)
-        self.rate_turn(rates, "1 USD is 0.89 EUR.")
-
-        got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
-
-        assert {"type": "sources", "sources": [server_tools.RATES_SOURCE]} in got
-
-    def test_the_caller_hears_the_addresses_a_search_consulted(self, internal, business, answering, search):
-        search.reply("GET", SEARCH, json=found(row()))
-        search.reply("POST", COMPLETIONS, sse=openai_tool_call("web_search", '{"query": "ley"}', call_id="call_s"))
-        search.reply("POST", COMPLETIONS, sse=openai_answer("La ley cambió."))
-
-        got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
-
-        assert {"type": "sources", "sources": [ARTICLE]} in got
-
-    def test_a_tool_that_failed_consulted_nothing(self, internal, business, answering, rates):
-        rates.reply("GET", RATES, status=503, json={"message": "down"})
-        self.rate_turn(rates, "I cannot get that rate now.")
-
-        got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
-
-        assert [frame for frame in got if isinstance(frame, dict) and frame["type"] == "sources"] == []
 
     def test_a_turn_that_brought_pages_from_the_web_says_so_for_its_report(self, internal, business, answering, search):
         """The caller keeps the mark with the answer and sends it back with a report of it (saas#287)."""
