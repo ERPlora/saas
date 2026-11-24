@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:ff2d930bca6e4efc84edf1a6000b0ec2045e99b02d9726e95564168002aa1c1c -->
+<!-- generated from WORKBOOK.md sha256:639c396de6ac02cf31c4c8f693a441f2ee3a46ffc132d7460acde1ad6b252096 -->
 
 ## What it is for and who it is for
 
@@ -440,7 +440,7 @@ Steps:
 1. In **Businesses** (the row says until when it can be recovered) or on the deleted business's page, the owner presses "Recover business".
 2. "Business recovered: …" appears and the business opens again as it was, on the Free plan; to go back to a paid plan, it is changed in the Store (BILLING-F08).
 In: the business deleted less than 90 days ago; the owner's session.
-Out: the business active again (or being prepared, if it never got ready), on Free, and the business told after saving. Records `hubs.business.restored`.
+Out: the business active again (or being prepared, if it never got ready), on Free, and the business told after saving; Billing › Subscriptions stops showing it, because on Free nothing is charged for it (BILLING-F23). Records `hubs.business.restored`.
 If it fails: after the 90 days, "This business was erased for good and cannot be recovered."; a business that is not deleted, "This business is not deleted.". If the account already has its free business, it does not come back: first the other one moves to a paid plan. Only the owner recovers it.
 Involved: the business (opens it again)
 

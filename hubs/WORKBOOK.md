@@ -457,7 +457,7 @@ Pasos:
 1. En **Negocios** (la fila dice hasta cuándo se puede recuperar) o en la página del negocio eliminado, el propietario pulsa «Recuperar negocio».
 2. Sale «Negocio recuperado: …» y el negocio vuelve a abrirse como estaba, en el plan Gratis; para volver a un plan de pago, se cambia en la Tienda (BILLING-F08).
 Entra: el negocio eliminado hace menos de 90 días; la sesión del propietario.
-Sale: el negocio activo otra vez (o preparándose, si nunca llegó a estar listo), en Gratis, y el negocio avisado tras guardar. Anota `hubs.business.restored`.
+Sale: el negocio activo otra vez (o preparándose, si nunca llegó a estar listo), en Gratis, y el negocio avisado tras guardar; Facturación › Suscripciones deja de enseñarlo, porque en Gratis no se le cobra nada (BILLING-F23). Anota `hubs.business.restored`.
 Si falla: pasados los 90 días, «Este negocio se borró para siempre y no se puede recuperar.»; un negocio que no está eliminado, «Este negocio no está eliminado.». Si la cuenta ya tiene su negocio gratuito, no vuelve: primero el otro pasa a un plan de pago. Solo el propietario lo recupera.
 Implicados: el negocio (lo vuelve a abrir)
 

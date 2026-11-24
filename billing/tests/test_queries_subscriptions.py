@@ -685,3 +685,16 @@ class TestADeletedBusiness:
 
         assert rows["Bar Norte"]["status"] == "active"
         assert rows["Bar Norte"]["next_invoice"] is not None
+
+    def test_recovered_before_the_sweep_it_is_on_free_with_no_row(self, owner, shop):
+        """Recovering it does not take back the end asked of Stripe: it is on Free and bills nothing."""
+        from hubs.schemas.common import ByIdIn
+        from hubs.services import deletion
+        from hubs.tests.conftest import ctx_for as hub_ctx
+
+        business = self.deleted(owner, shop, cancel_at_period_end=True)
+        deletion.business_restore(hub_ctx(owner), ByIdIn(id=business.id))
+
+        rows = queries.subscription_list(ctx_for(owner), SubscriptionListIn()).model_dump(mode="json")
+
+        assert (rows["rows"], rows["total"]) == ([], 0)

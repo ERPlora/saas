@@ -219,6 +219,8 @@ def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
         .exclude(stripe_subscription_id="")
         .exclude(status__in=ENDED_SUBSCRIPTIONS)
         .exclude(hub__status=Hub.Status.DELETED)
+        # Recovered before the sweep ended what deleting it asked of Stripe: it is on Free and bills nothing.
+        .exclude(Q(cancel_requested_at__isnull=False) & ~Q(hub__status=Hub.Status.DELETING))
         .order_by("hub__name", "hub_id")
     )
     if data.hub_id is not None:
