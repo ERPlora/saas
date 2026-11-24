@@ -39,4 +39,4 @@ from hubs.services import custom_domain_checks
 from hubs.services import custom_domain_requests
 from hubs.services import usage_collection
 from hubs.services import suspensions
-from hubs.services import scheduled_moves
+from hubs.services import scheduled_moves as scheduled_moves
