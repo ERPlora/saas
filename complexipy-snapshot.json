@@ -54,10 +54,6 @@
       {
         "name": "AnthropicProvider::to_messages",
         "complexity": 24
-      },
-      {
-        "name": "AnthropicProvider::parse_stream",
-        "complexity": 45
       }
     ]
   },

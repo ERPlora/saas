@@ -152,6 +152,36 @@ def test_a_run_streams_the_answer_with_its_tokens_time_and_cost(as_ai_admin, tri
     assert request.body["messages"][-1] == {"role": "user", "content": PROMPT}
 
 
+def test_a_run_counts_the_input_the_cache_wrote_and_costs_it_at_its_price(as_ai_admin, fake_provider, settings):
+    settings.ANTHROPIC_API_KEY = API_KEY
+    anthropic = AIProvider.objects.create(slug="anthropic", name="Anthropic", kind="anthropic", base_url=fake_provider.url, key_variable="ANTHROPIC_API_KEY")
+    haiku = AIModel.objects.create(
+        provider=anthropic,
+        model_id="claude-haiku-5-5",
+        display_name="Claude Haiku 5.5",
+        price_input_per_1m="0.10",
+        price_output_per_1m="0.50",
+        price_cache_write_per_1m="0.125",
+    )
+    started = {"input_tokens": 40, "cache_creation_input_tokens": 2000, "cache_read_input_tokens": 0, "output_tokens": 1}
+    fake_provider.reply(
+        "POST",
+        "/v1/messages",
+        sse=[
+            {"type": "message_start", "message": {"usage": started}},
+            {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "Un café."}},
+            {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 20}},
+            {"type": "message_stop"},
+        ],
+    )
+
+    metrics = next(event for event in events(run(as_ai_admin, haiku)) if event["type"] == "metrics")
+
+    assert (metrics["input_tokens"], metrics["output_tokens"]) == (2040, 20)
+    # (40 × 0.10 + 2000 × 0.125 + 20 × 0.50) / 1 000 000 USD.
+    assert metrics["cost_usd"] == "0.000264"
+
+
 def test_a_run_never_shows_the_key(as_ai_admin, tried, fake_provider):
     fake_provider.reply("POST", "/v1/chat/completions", status=401, json={"error": {"message": f"Bad key {API_KEY}"}})
 

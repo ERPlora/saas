@@ -7,16 +7,18 @@ streams the answer over ``httpx`` and yields ``ProviderEvent``s:
 
     text_delta  {"text": str}
     tool_call   {"call_id": str, "name": str, "arguments": str}     # arguments as a JSON string
-    usage       {"input_tokens": int, "output_tokens": int}
+    usage       {"input_tokens": int, "output_tokens": int, "cache_read_tokens": int, "cache_write_tokens": int}
     error       {"message": str, "retriable": bool, "status": int | None}
     finish      {"reason": "stop" | "tool_use" | "length" | "content_filter" | "error"}
 
-A turn always ends with exactly one ``finish``; an upstream failure is an ``error`` followed by ``finish`` ``error``,
-never an exception, so the caller decides whether to try the fallback model (``retriable``). No message ever carries
-the key (``redact``). Every client takes the TLS context of ``base.tls`` (``trusted_context``, caller
-``assistant.provider``): a server whose trusted certificates cannot be loaded (``SSL_CERT_FILE`` naming a file that is
-not there, or that holds none) fails there, before it connects, even to an ``http://`` address, as a final failure
-that names the setting and its file, in the message and in ``base.tls``'s log line.
+``input_tokens`` is all the model was sent; of it, what the provider read from its cache and wrote to it (absent: an
+API that does not say it). A turn always ends with exactly one ``finish``; an upstream failure is an ``error``
+followed by ``finish`` ``error``, never an exception, so the caller decides whether to try the fallback model
+(``retriable``). No message ever carries the key (``redact``). Every client takes the TLS context of ``base.tls``
+(``trusted_context``, caller ``assistant.provider``): a server whose trusted certificates cannot be loaded
+(``SSL_CERT_FILE`` naming a file that is not there, or that holds none) fails there, before it connects, even to an
+``http://`` address, as a final failure that names the setting and its file, in the message and in ``base.tls``'s log
+line.
 """
 
 from __future__ import annotations

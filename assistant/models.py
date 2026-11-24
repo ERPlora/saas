@@ -4,11 +4,13 @@ Keys are UUIDv7.
 - ``AIProvider``: one of the four APIs of models the gateway speaks (``kind``) at its address, and the variable of the
   environment its key is read from (``key_variable``). No key is ever kept in the database.
 - ``AIModel``: a model of a provider the staff chose, with its prices (USD per million tokens, typed by hand:
-  the APIs do not give them) and what it supports.
+  the APIs do not give them), those of reading from and writing to its provider's cache among them, and what it
+  supports.
 - ``AIRoutingPolicy``: one row, the model that answers and the fallback one; a model it uses is never deleted.
 - ``AssistantUsage``: what a business (or a demo) spent through the gateway, a row per calendar month
-  (UTC; a demo, one row for its whole life): its messages, the tokens of its turns and of its embeddings, its voice
-  and what it cost. Numbers only: never a conversation, a person nor a text.
+  (UTC; a demo, one row for its whole life): its messages, the tokens of its turns (all of their input, of which
+  those read from the provider's cache and those written to it) and of its embeddings, its voice and what it cost.
+  Numbers only: never a conversation, a person nor a text.
 - ``DocChunk`` (ASSISTANT-F27): an excerpt of ERPlora's documentation with its fingerprint, what
   ``assistant.docs.search`` returns to the panel's assistant (``assistant.knowledge``; written by ``index_docs``).
 
@@ -157,6 +159,22 @@ class AIModel(models.Model):
     price_output_per_1m = models.DecimalField(
         _("output price"), max_digits=10, decimal_places=4, default=Decimal("0"), help_text=_("USD per million output tokens.")
     )
+    price_cache_read_per_1m = models.DecimalField(
+        _("cache read price"),
+        max_digits=10,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text=_("USD per million input tokens read from the provider's cache. Empty: the input price."),
+    )
+    price_cache_write_per_1m = models.DecimalField(
+        _("cache write price"),
+        max_digits=10,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text=_("USD per million input tokens written to the provider's cache. Empty: the input price."),
+    )
     supports_tools = models.BooleanField(_("tools"), default=True)
     supports_vision = models.BooleanField(_("images"), default=False)
     is_available = models.BooleanField(
@@ -274,6 +292,12 @@ class AssistantUsage(models.Model):
     messages = models.PositiveIntegerField(_("messages"), default=0)
     tokens_input = models.PositiveBigIntegerField(_("input tokens"), default=0)
     tokens_output = models.PositiveBigIntegerField(_("output tokens"), default=0)
+    tokens_cache_read = models.PositiveBigIntegerField(
+        _("cache read tokens"), default=0, help_text=_("Of the input tokens, those read from the provider's cache.")
+    )
+    tokens_cache_write = models.PositiveBigIntegerField(
+        _("cache write tokens"), default=0, help_text=_("Of the input tokens, those written to the provider's cache.")
+    )
     tokens_embedding = models.PositiveBigIntegerField(_("embedding tokens"), default=0)
     transcriptions = models.PositiveIntegerField(_("dictations"), default=0)
     speech_characters = models.PositiveBigIntegerField(_("characters read aloud"), default=0)

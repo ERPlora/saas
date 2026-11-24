@@ -289,6 +289,38 @@ msgstr "tokens de entrada"
 msgid "output tokens"
 msgstr "tokens de salida"
 
+#: models.py
+msgid "cache read price"
+msgstr "precio de lectura de la caché"
+
+#: models.py
+msgid "USD per million input tokens read from the provider's cache. Empty: the input price."
+msgstr "USD por millón de tokens de entrada leídos de la caché del proveedor. Vacío: el precio de entrada."
+
+#: models.py
+msgid "cache write price"
+msgstr "precio de escritura en la caché"
+
+#: models.py
+msgid "USD per million input tokens written to the provider's cache. Empty: the input price."
+msgstr "USD por millón de tokens de entrada escritos en la caché del proveedor. Vacío: el precio de entrada."
+
+#: models.py
+msgid "cache read tokens"
+msgstr "tokens leídos de la caché"
+
+#: models.py
+msgid "Of the input tokens, those read from the provider's cache."
+msgstr "De los tokens de entrada, los leídos de la caché del proveedor."
+
+#: models.py
+msgid "cache write tokens"
+msgstr "tokens escritos en la caché"
+
+#: models.py
+msgid "Of the input tokens, those written to the provider's cache."
+msgstr "De los tokens de entrada, los escritos en la caché del proveedor."
+
 #: models.py:289
 msgid "embedding tokens"
 msgstr "tokens de huellas"

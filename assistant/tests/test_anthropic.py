@@ -52,14 +52,14 @@ async def test_a_turn_streams_its_text_its_usage_and_its_end(fake_provider):
     assert [(e.type, e.payload) for e in events] == [
         ("text_delta", {"text": "Hola"}),
         ("text_delta", {"text": ", Ana"}),
-        ("usage", {"input_tokens": 25, "output_tokens": 9}),
+        ("usage", {"input_tokens": 25, "output_tokens": 9, "cache_read_tokens": 0, "cache_write_tokens": 0}),
         ("finish", {"reason": "stop"}),
     ]
     [sent] = fake_provider.requests
     assert sent.headers["x-api-key"] == KEY
     assert sent.headers["anthropic-version"] == "2023-06-01"
     assert sent.body["model"] == "claude-sonnet-4-6"
-    assert sent.body["system"] == "Speak Spanish.\n\nBe brief."
+    assert sent.body["system"] == [{"type": "text", "text": "Speak Spanish.\n\nBe brief.", "cache_control": {"type": "ephemeral"}}]
     assert sent.body["messages"] == [{"role": "user", "content": "Hi"}]
     assert (sent.body["max_tokens"], sent.body["stream"], sent.body["temperature"]) == (4096, True, 0.3)
 
@@ -84,12 +84,62 @@ async def test_tools_go_as_input_schema_one_per_answer_and_a_tool_call_comes_out
 
     assert [(e.type, e.payload) for e in events] == [
         ("tool_call", {"call_id": "toolu_1", "name": "find_customer", "arguments": '{"name": "Ana"}'}),
-        ("usage", {"input_tokens": 40, "output_tokens": 12}),
+        ("usage", {"input_tokens": 40, "output_tokens": 12, "cache_read_tokens": 0, "cache_write_tokens": 0}),
         ("finish", {"reason": "tool_use"}),
     ]
     sent = fake_provider.requests[0].body
-    assert sent["tools"] == [{"name": "find_customer", "description": "Find a customer", "input_schema": tool.parameters}]
+    assert sent["tools"] == [{"name": "find_customer", "description": "Find a customer", "input_schema": tool.parameters, "cache_control": {"type": "ephemeral"}}]
     assert sent["tool_choice"] == {"type": "auto", "disable_parallel_tool_use": True}
+
+
+async def test_the_cache_is_marked_after_the_last_tool_the_instructions_and_the_whole_conversation(fake_provider):
+    fake_provider.reply("POST", "/v1/messages", sse=stream({"type": "message_stop"}))
+    schema = {"type": "object", "properties": {}}
+    tools = [ToolSpec(name="find_customer", description="Find", parameters=schema), ToolSpec(name="list_orders", description="List", parameters=schema)]
+
+    await collect(client(fake_provider), TurnRequest(model_id="claude-haiku-5-5", messages=[{"role": "user", "content": "Hi"}], tools=tools, system="Be brief."))
+
+    sent = fake_provider.requests[0].body
+    assert [tool.get("cache_control") for tool in sent["tools"]] == [None, {"type": "ephemeral"}]
+    assert sent["system"] == [{"type": "text", "text": "Be brief.", "cache_control": {"type": "ephemeral"}}]
+    assert sent["cache_control"] == {"type": "ephemeral"}
+    assert sent["messages"] == [{"role": "user", "content": "Hi"}]
+
+
+async def test_without_tools_nor_instructions_only_the_conversation_is_cached(fake_provider):
+    fake_provider.reply("POST", "/v1/messages", sse=stream({"type": "message_stop"}))
+
+    await collect(client(fake_provider), TurnRequest(model_id="claude-haiku-5-5", messages=[{"role": "user", "content": "Hi"}]))
+
+    sent = fake_provider.requests[0].body
+    assert ("tools" in sent, "system" in sent, sent["cache_control"]) == (False, False, {"type": "ephemeral"})
+
+
+CACHE_COUNTS = {"input_tokens": 50, "cache_creation_input_tokens": 1200, "cache_read_input_tokens": 9000}
+
+
+@pytest.mark.parametrize(
+    "final",
+    [{"output_tokens": 30}, {**CACHE_COUNTS, "output_tokens": 30}],
+    ids=["only-the-output", "the-counts-again"],
+)
+async def test_the_usage_counts_the_whole_input_with_what_the_cache_read_and_wrote(fake_provider, final):
+    """``message_delta`` may repeat the counts of ``message_start`` (they add up as the answer goes): they are not
+    added twice."""
+    fake_provider.reply(
+        "POST",
+        "/v1/messages",
+        sse=stream(
+            {"type": "message_start", "message": {"usage": {**CACHE_COUNTS, "output_tokens": 1}}},
+            {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": final},
+            {"type": "message_stop"},
+        ),
+    )
+
+    events = await collect(client(fake_provider), TurnRequest(model_id="claude-haiku-5-5", messages=[{"role": "user", "content": "Hi"}]))
+
+    assert events[0].type == "usage"
+    assert events[0].payload == {"input_tokens": 10250, "output_tokens": 30, "cache_read_tokens": 9000, "cache_write_tokens": 1200}
 
 
 async def test_the_conversation_is_translated_to_anthropic_blocks(fake_provider):

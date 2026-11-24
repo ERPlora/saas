@@ -83,7 +83,8 @@ class RouteIn(Schema):
 
 
 class RouteCandidate(Schema):
-    """A model that can answer, with what its client needs (its key, a secret) and its prices (USD per 1M)."""
+    """A model that can answer, with what its client needs (its key, a secret) and its prices (USD per 1M): those of
+    its provider's cache, when typed (``None``: the input price)."""
 
     model: UUID
     model_id: str
@@ -94,6 +95,8 @@ class RouteCandidate(Schema):
     api_key: SecretStr
     price_input_per_1m: Decimal
     price_output_per_1m: Decimal
+    price_cache_read_per_1m: Decimal | None = None
+    price_cache_write_per_1m: Decimal | None = None
     supports_tools: bool
     supports_vision: bool
 
@@ -198,12 +201,15 @@ class MessageReleaseIn(Schema):
 
 class UsageRecordIn(Schema):
     """What a turn (or an embedding, a dictation, a reading aloud) spent with ``model``, added to this month's row of the
-    caller and that model (empty when nothing names it: reading aloud has no engine today)."""
+    caller and that model (empty when nothing names it: reading aloud has no engine today). ``tokens_input`` is all of
+    the input; ``tokens_cache_read`` and ``tokens_cache_write``, of it, what the provider's cache read and wrote."""
 
     caller: Caller
     model: str = Field(max_length=128)
     tokens_input: int = Field(default=0, ge=0)
     tokens_output: int = Field(default=0, ge=0)
+    tokens_cache_read: int = Field(default=0, ge=0)
+    tokens_cache_write: int = Field(default=0, ge=0)
     tokens_embedding: int = Field(default=0, ge=0)
     transcriptions: int = Field(default=0, ge=0)
     speech_characters: int = Field(default=0, ge=0)
