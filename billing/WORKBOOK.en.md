@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:374113f5bccf642ff923105ce4eb82564129d6d5ba668fb8488078f6d5dadb80 -->
+<!-- generated from WORKBOOK.md sha256:cc76dbb170c96eb3f8fd32921bdca4687507e98aec07b738368c7da9b376226b -->
 
 ## What it is for and who it is for
 
@@ -61,7 +61,9 @@ the businesses one owns). Plans shows each plan with its price without VAT, the 
 turned on at once", or "All the apps turned on at once" when the plan has no cap; then the messages a month, "Your own domain for your website (www.yourbusiness.com)" on the plans that include it and,
 last, the trial), "Your current plan" on the one it has and each plan's button: "Upgrade to …",
 "Change to …", "Change to annual · …" or "Downgrade to Free"; with the plan cancelled or a downgrade scheduled,
-"Keep the plan". Each card shows its first five lines, with the button right under the price; "Show all
+"Keep the plan". A plan that is not sold with the chosen period, because it lacks its Stripe price, has its button
+disabled and says why under it: "Only with monthly billing", "Only with annual billing" or "Not on sale right now".
+Each card shows its first five lines, with the button right under the price; "Show all
 features" unfolds the rest in every card at once and "Show fewer" folds them again. A business ERPlora staff marked in the admin (BILLING-F27) also sees, last, the internal plan
 "Payment Test (internal)"; no other business sees it. If the
 business has an unpaid invoice, the notice with "Pay the invoice" comes at the top and nothing is sold to that
@@ -281,7 +283,7 @@ Steps:
 4. When done, "Paying…" until the business's page arrives, which says "… is now on …" and whose Plan card changes as soon as Stripe confirms it. The business keeps working all the time.
 In: the chosen plan (only those offered to that business; the internal ones, only to one the staff marked), the period, the billing details and the promo code if there is one.
 Out: the business on the new plan, its subscription and its customer in Stripe, the new plan sent to the business (`hubs.subscription.changed`) and ERPlora's invoice for the first charge (BILLING-F25), whether the payment notice arrives before or after.
-If it fails: if the payment cannot be opened, "We could not open the secure payment" and "Nothing has been charged" with "Retry"; a plan without a price in Stripe, "is not on sale"; a plan not offered to that business (an internal one without the mark, even if asked through the API) is refused before the payment opens, "There is no plan with this identifier"; without billing details, the form; with an unpaid invoice, nothing is sold to that business. If the person closes the dialog, nothing is charged and the business stays on Free.
+If it fails: if the payment cannot be opened, "We could not open the secure payment" and "Nothing has been charged" with "Retry"; a plan without its Stripe price for the chosen period cannot be pressed: under its button it says "Only with monthly billing", "Only with annual billing" or "Not on sale right now", and asked through the API anyway it is refused, "This cannot be bought right now. Contact support." (`billing.not_on_sale`); a plan not offered to that business (an internal one without the mark, even if asked through the API) is refused before the payment opens, "There is no plan with this identifier"; without billing details, the form; with an unpaid invoice, nothing is sold to that business. If the person closes the dialog, nothing is charged and the business stays on Free.
 Involved: hubs (the business's subscription), the business (receives its plan)
 
 ### BILLING-F09 Come back from the payment: confirmed, pending or closed
@@ -321,7 +323,7 @@ Steps:
 4. Notice: "… is now on …" (or "…, paid annually"); a downgrade, which waits, says "… moves to … on …" (or "… moves to …, billed monthly, on …").
 In: the new plan and period and the business's subscription with its card; when the period changes, each module's price changes too.
 Out: the plan changed (`billing.plan.changed`) or the downgrade scheduled (`billing.plan.change_scheduled`), with the table's VAT on each line, and the new plan sent to the business.
-If it fails: "The price was out of date: here it is again, check it before confirming" if too much time went by; a declined card changes nothing; the same plan and period is no change; downgrading to Free is cancelling (BILLING-F13); with a pending cancellation, "Keep the plan first to change it"; with an unpaid invoice, "First, pay the pending invoice"; over €400 without a tax ID asks for it.
+If it fails: "The price was out of date: here it is again, check it before confirming" if too much time went by; a declined card changes nothing; the same plan and period is no change; downgrading to Free is cancelling (BILLING-F13); with a pending cancellation, "Keep the plan first to change it"; with an unpaid invoice, "First, pay the pending invoice"; a plan or a period without its Stripe price cannot be pressed, as in BILLING-F08; over €400 without a tax ID asks for it.
 Involved: the business (receives its plan), ASSISTANT-F25 (asked of the panel's assistant, which sends it here)
 
 ### BILLING-F12 Give trial days or a discount with a promo code
@@ -553,7 +555,7 @@ Steps:
 4. From that moment the plan is sold at that price; without its prices, it is not on sale.
 In: the plan and its Stripe prices.
 Out: the plan on sale with its prices checked.
-If it fails: a price that does not match is not saved and says why under its field ("This price is not in euros", "Stripe charges … and the plan says …", "This price includes VAT or does not say…", a test price in production is not found…). If Stripe does not answer, it is not saved and it asks to try again; without Stripe keys (in development) it is saved and the admin warns that it was not checked. A plan without its Stripe price is not sold and the Store says so.
+If it fails: a price that does not match is not saved and says why under its field ("This price is not in euros", "Stripe charges … and the plan says …", "This price includes VAT or does not say…", a test price in production is not found…). If Stripe does not answer, it is not saved and it asks to try again; without Stripe keys (in development) it is saved and the admin warns that it was not checked. A plan without its Stripe price for a period is not sold with that period: in the Store its button is disabled and says why (BILLING-F08).
 Involved: hubs (the plans' admin)
 
 ### BILLING-F29 Test real charging in PRE with a Stripe test clock

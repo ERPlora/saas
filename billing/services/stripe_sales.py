@@ -13,6 +13,7 @@ from live.errors import Conflict, InvalidPayload
 from apps.models import Module
 from billing import queries, stripe_service, vat, vat_breakdown
 from billing.money import to_cents
+from billing.queries.catalog import plan_price_id
 from billing.services import payment_gates, sale_tax
 from billing.stripe_tax_rates import tax_rate_specs_for
 from hubs.queries import access_control
@@ -156,9 +157,7 @@ def plan_sale(hub: Hub | None, slug: str, interval: str) -> Sale:
             ),
             code="billing.plan_is_free",
         )
-    price_id = (
-        plan.stripe_price_id_annual if interval == "year" else plan.stripe_price_id
-    )
+    price_id = plan_price_id(plan, interval)
     net = plan.price_annual if interval == "year" else plan.price_monthly
     if not price_id:
         raise _not_on_sale(f"Plan {plan.slug} ({interval})")

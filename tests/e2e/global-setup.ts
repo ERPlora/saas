@@ -3,8 +3,9 @@
 // Then it refuses a local database with unapplied migrations: the specs read what the migrations seed
 // (hubs.0013's plans), the run never migrates the database other sessions share, and one left behind
 // by another branch fails specs on correct code. Then it
-// seeds the app the store's specs open (store_docs_seed.py) and returns the teardown that removes it,
-// so the local database is left as it was even when a spec fails.
+// seeds the app the store's specs open (store_docs_seed.py) and the Stripe prices of the paid plans, as the admin
+// pastes them (plan_prices_seed.py: the Store sells a plan only with a price), and returns the teardown that removes
+// them, so the local database is left as it was even when a spec fails.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -86,14 +87,19 @@ function runManagePy(args: string[]): CommandResult {
   };
 }
 
-function seedStoreDocs(action: 'seed' | 'clear'): void {
-  execFileSync('uv', ['run', 'python', 'tests/e2e/store_docs_seed.py', action], {
-    cwd: SAAS_DIR,
-    env: djangoEnv(true),
-    stdio: 'inherit',
-  });
+/** What every run seeds before its specs, and removes after them. */
+const RUN_SEEDS = ['tests/e2e/store_docs_seed.py', 'tests/e2e/plan_prices_seed.py'];
+
+function seedTheRun(action: 'seed' | 'clear'): void {
+  for (const script of RUN_SEEDS) {
+    execFileSync('uv', ['run', 'python', script, action], {
+      cwd: SAAS_DIR,
+      env: djangoEnv(true),
+      stdio: 'inherit',
+    });
+  }
 }
 
 export default function globalSetup(): Promise<() => void> {
-  return prepareRun(() => assertViteOfThisTree(SAAS_DIR, VITE_PORT), runManagePy, seedStoreDocs);
+  return prepareRun(() => assertViteOfThisTree(SAAS_DIR, VITE_PORT), runManagePy, seedTheRun);
 }

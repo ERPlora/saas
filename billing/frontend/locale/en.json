@@ -66,6 +66,8 @@
       "scheduled": "Downgrade scheduled: {plan} until {date}, then {next}.",
       "scheduledBilling": "Downgrade scheduled: {plan} billed {from} until {date}, then {to}.",
       "scheduledFrom": "The business moves to {plan} on {date}.",
+      "annualOnly": "Only with annual billing",
+      "notOnSale": "Not on sale right now",
       "payFirst": "Pay the pending invoice first.",
       "later": "{plans}: available after moving to {plan}.",
       "trial": "Trying it until {date}",
