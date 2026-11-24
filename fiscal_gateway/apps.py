@@ -18,4 +18,4 @@ class FiscalGatewayConfig(LiveAppConfig):
 
     def ready(self):
         super().ready()
-        from fiscal_gateway import checks  # noqa: F401  (registers the check of PLATFORM_HUB_SLUG)
+        from fiscal_gateway import checks  # noqa: F401  (registers the check of PLATFORM_HUB_SLUGS)

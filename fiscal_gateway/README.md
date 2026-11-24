@@ -32,7 +32,7 @@ solo con v2, porque v1 firma el cuerpo y nunca la query). Cuerpo:
 
 `hub`: slug del hub (fase 1, el del host: `ctx.scope.key`) con el formato de slug de `live.slugs` (`HUB_SLUG_RE`),
 o su UUID en minúsculas (con guiones). Tiene que ser un negocio que el SaaS conoce (no purgado); si no,
-`404 hub_unknown`. Excepciones: el hub de plataforma (`PLATFORM_HUB_SLUG`) por `route = "erplora"` y, solo en
+`404 hub_unknown`. Excepciones: el hub de plataforma (un nombre de `PLATFORM_HUB_SLUGS`) por `route = "erplora"` y, solo en
 `environment = "testing"`, una demo (`demo-<8 hex>`, `live.slugs.is_demo_slug`), de la que el SaaS no guarda fila (saas#306). `certificate` solo con `route = "own"`; `probe` no lleva `envelope`.
 
 | Respuesta | Cuándo |
@@ -109,9 +109,13 @@ existir (`404 hub_unknown`), salvo una demo, que siempre presenta en pruebas y d
 (saas#306; en producción, `404`), el sobre solo nombra al contribuyente de `nif` y ningún negocio presenta con el NIF de
 ERPlora (`409 nif_mismatch`).
 
-Única excepción: el **hub de plataforma** (las facturas de ERPlora), que el Hub nombra con
-`hub = PLATFORM_HUB_SLUG` (entorno; por defecto `erplora`, slug reservado de `live.slugs` que ningún negocio
-puede tener; con uno no reservado, `manage.py check` falla con `fiscal_gateway.E001` y el despliegue no arranca). No es un negocio del SaaS: no se le pide fila `Hub` ni otorgamiento, pero solo
+Única excepción: el **hub de plataforma** (las facturas de ERPlora), que el Hub nombra con uno de los nombres de
+`PLATFORM_HUB_SLUGS` (`config/settings/fiscal.py`): `erp`, el suyo, y `erplora`, el que tenía. Es una lista cerrada, no una
+variable de entorno, y los dos son slugs reservados de `live.slugs` que ningún negocio puede tener; con uno no reservado,
+`manage.py check` falla con `fiscal_gateway.E001` y el despliegue no arranca. Se aceptan los dos a la vez para que
+renombrar ese negocio en el Hub (`create_platform_hub --rename --execute`) no pare el envío de ningún registro: se
+renombra con esta versión ya desplegada y, cuando ya no haga falta volver atrás, se retira `erplora` de la lista.
+No es un negocio del SaaS: no se le pide fila `Hub` ni otorgamiento, pero solo
 presenta en nombre de ERPLORA CLOUD SL: `nif` tiene que ser el titular del sello; si no, `409 nif_mismatch`.
 Cualquier otro hub que declare el NIF de ERPlora necesita su otorgamiento como los demás en producción, y en pruebas
 se rechaza con `409 nif_mismatch`. Con `route = "own"` no
