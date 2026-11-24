@@ -528,6 +528,22 @@ class TestWhatARunSaysOfTheDeletedBusinesses:
         ]
         assert "cancelled=2" in output
 
+    def test_one_suspended_too_long_is_deleted_and_ended_in_the_same_pass(self, shop, stripe_double):
+        business = pay(shop, status="past_due")
+        long_ago = timezone.now() - timedelta(days=181)
+        Hub.objects.filter(pk=business.pk).update(
+            status=Hub.Status.SUSPENDED,
+            suspended_at=long_ago,
+            suspension_final_notice_at=timezone.now() - timedelta(days=31),
+        )
+        stripe_double.answer("subscriptions.cancel", subscription(status="canceled"))
+
+        output = run()
+
+        assert "cancelled=1" in output and "expired=1" in output
+        assert status_of(business) == Hub.Status.DELETING
+        assert Subscription.objects.get(hub=business).stripe_subscription_id == ""
+
     def test_one_with_nothing_left_in_stripe_is_not_ended_again(self, shop, stripe_double):
         business = self.asked_to_end(shop)
         Subscription.objects.filter(hub=business).update(stripe_subscription_id="")

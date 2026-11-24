@@ -505,7 +505,7 @@ class TestWhatItMails:
         owed(payer_email="pagos@example.com")
         hub_double.answer("POST", PLATFORM, 503, {})
 
-        with pytest.raises(CommandError, match="mailed=0 unreachable=1"):
+        with pytest.raises(CommandError, match="mailed=0 unreachable=1 refused=0 rejected=0 stuck=0 mail_failed=0"):
             run()
 
         assert mailoutbox == []
@@ -517,6 +517,19 @@ class TestWhatItMails:
         output = run()
 
         assert "mailed=0" in output and "mail_failed=0" in output
+
+
+class TestTheOrderOfAPass:
+    def test_one_the_hub_takes_is_asked_about_and_mailed_in_the_same_pass_and_is_not_stuck(self, hub_double, mailoutbox):
+        owed(payer_email="pagos@example.com", since=timezone.now() - timedelta(hours=2))
+        hub_double.answer("POST", PLATFORM, 200, {"status": "issued", "qr": QR})
+        hub_double.answer("GET", r"^/internal/platform/invoices/[^/]+$", 200, {"status": "accepted", "qr": QR})
+        hub_double.answer("GET", r"/pdf$", 200, {"pdf": "the platform hub's"})
+
+        output = run()
+
+        assert "posted=1 accepted=1 waiting=0 mailed=1" in output and "stuck=0" in output
+        assert len(mailoutbox) == 1
 
 
 class TestAPassCutShort:
