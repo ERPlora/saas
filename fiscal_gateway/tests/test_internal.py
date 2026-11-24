@@ -12,8 +12,8 @@ The gateway presents for a business it knows only (``hub_unknown``), and through
 production only for the taxpayer of the business's approved authorisation (``fiscal.RepresentationGrant``).
 In the AEAT's testing environment nobody is represented, so no authorisation is asked for there. The one
 exception is the platform's hub
-(``PLATFORM_HUB_SLUG``, no business of the SaaS): ERPlora's own records, in its own name, for the seal's
-holder only; ERPlora's own NIF is that hub's alone in both environments.
+(``PLATFORM_HUB_SLUGS``: its name and the one it had, no business of the SaaS): ERPlora's own records, in its own
+name, for the seal's holder only; ERPlora's own NIF is that hub's alone in both environments.
 """
 
 import logging
@@ -21,7 +21,13 @@ import logging
 import pytest
 
 from fiscal.tests.conftest import make_grant
-from fiscal_gateway.tests.conftest import HUB, HUB_SLUG, PLATFORM, make_p12
+from fiscal_gateway.tests.conftest import (
+    FORMER_PLATFORM,
+    HUB,
+    HUB_SLUG,
+    PLATFORM,
+    make_p12,
+)
 from fiscal_gateway.tests.internal_calls import (
     ANSWER,
     CUSTOMER,
@@ -29,6 +35,7 @@ from fiscal_gateway.tests.internal_calls import (
     ISSUER,
     PRE_HOLDER,
     PRE_SEAL,
+    SENT,
     call,
     error_of,
     log_text,
@@ -39,6 +46,8 @@ from fiscal_gateway.tests.internal_calls import (
 from hubs.models import Hub
 
 pytestmark = pytest.mark.usefixtures("_known_business", "_secrets")
+
+PLATFORM_NAMES = [PLATFORM, FORMER_PLATFORM]
 
 
 # Representation: through ERPlora's seal, only for whom ERPlora may present
@@ -138,24 +147,57 @@ def test_an_approved_authorisation_lets_erplora_present_for_its_taxpayer(
     assert route.calls.last.request.content == CUSTOMER_SENT.encode("utf-8")
 
 
+@pytest.mark.parametrize("hub", PLATFORM_NAMES)
+@pytest.mark.parametrize("door", ["submit", "query"])
 def test_the_platform_hub_presents_erploras_own_records_without_an_authorisation(
-    client, respx_mock, erplora_seal
+    client, respx_mock, erplora_seal, door, hub
 ):
     """ERPLORA CLOUD SL files in its own name, with its own seal, from a hub that is no business of the
-    SaaS."""
-    assert not Hub.objects.filter(slug=PLATFORM).exists()
+    SaaS. The AEAT gets the same whichever of its names it goes by."""
+    assert not Hub.objects.filter(slug=hub).exists()
     route = respx_mock.post(PRE_SEAL).respond(200, text=ANSWER)
 
-    response = call(client, "submit", payload(nif=ISSUER.lower()))
+    response = call(client, door, payload(hub=hub, nif=ISSUER.lower()))
 
     assert response.status_code == 200
-    assert route.called
+    assert response.json() == {"aeat_status": 200, "aeat_body": ANSWER}
+    assert route.calls.last.request.content == SENT.encode("utf-8")
 
 
-def test_the_platform_hub_presents_for_erplora_only(client, respx_mock, erplora_seal):
-    response = call(client, "submit", customer(hub=PLATFORM))
+@pytest.mark.parametrize("hub", PLATFORM_NAMES)
+def test_probe_of_the_platform_hub_in_production_is_ready_without_an_authorisation(
+    client, respx_mock, erplora_seal, hub
+):
+    response = call(
+        client, "probe", probe_body(payload(hub=hub, environment="production"))
+    )
+
+    assert response.json() == {"ready": True, "detail": erplora_seal.describe()}
+    assert not respx_mock.calls
+
+
+@pytest.mark.parametrize("hub", PLATFORM_NAMES)
+@pytest.mark.parametrize("environment", ["testing", "production"])
+def test_the_platform_hub_presents_for_erplora_only(
+    client, respx_mock, erplora_seal, environment, hub
+):
+    response = call(client, "submit", customer(hub=hub, environment=environment))
 
     assert error_of(response) == (409, "nif_mismatch")
+    assert not respx_mock.calls
+
+
+@pytest.mark.parametrize(
+    "hub", ["hubs", "platform", "test", "erplora-cloud", "erp-2", "erplor", "bar-paco"]
+)
+@pytest.mark.parametrize("environment", ["testing", "production"])
+def test_no_other_name_is_the_platform_hub(
+    client, respx_mock, erplora_seal, environment, hub
+):
+    """Reserved or not, and however close: only the platform's hub presents without a business."""
+    response = call(client, "submit", payload(hub=hub, environment=environment))
+
+    assert error_of(response) == (404, "hub_unknown")
     assert not respx_mock.calls
 
 
@@ -193,20 +235,24 @@ def test_a_business_declaring_erploras_nif_with_an_authorisation_of_its_own_is_a
     assert not respx_mock.calls
 
 
-def test_the_platform_hub_is_the_configured_one(
+def test_a_name_off_the_list_is_no_longer_the_platform_hub(
     client, settings, respx_mock, erplora_seal
 ):
-    settings.PLATFORM_HUB_SLUG = "hubs"
+    """How its former name is retired once the hub has been renamed."""
+    settings.PLATFORM_HUB_SLUGS = (PLATFORM,)
     respx_mock.post(PRE_SEAL).respond(200, text=ANSWER)
 
-    assert error_of(call(client, "submit", payload())) == (404, "hub_unknown")
-    assert call(client, "submit", payload(hub="hubs")).status_code == 200
+    former = call(client, "submit", payload(hub=FORMER_PLATFORM))
+
+    assert error_of(former) == (404, "hub_unknown")
+    assert call(client, "submit", payload(hub=PLATFORM)).status_code == 200
 
 
+@pytest.mark.parametrize("hub", PLATFORM_NAMES)
 def test_the_platform_hub_has_no_exception_with_a_certificate_of_its_own(
-    client, respx_mock, own_p12
+    client, respx_mock, own_p12, hub
 ):
-    response = call(client, "submit", own(own_p12, hub=PLATFORM))
+    response = call(client, "submit", own(own_p12, hub=hub))
 
     assert error_of(response) == (404, "hub_unknown")
     assert not respx_mock.calls

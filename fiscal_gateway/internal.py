@@ -43,7 +43,7 @@ In the AEAT's testing environment nobody is represented and nothing is filed, so
 for there: a business tries VeriFactu before its Anexo I is approved, and going live is where the Hub asks
 for it. So a demo hub (``demo-<8 hex>``), of which the SaaS keeps no row, presents there too, by either
 route, and only there (saas#306). The one exception is the platform's hub
-(``hub`` is ``settings.PLATFORM_HUB_SLUG``, a reserved slug no business bears): ERPlora's own records, in
+(``hub`` is one of ``settings.PLATFORM_HUB_SLUGS``, reserved slugs no business bears): ERPlora's own records, in
 its own name, for the seal's holder only and without an authorisation; no business presents in ERPlora's
 name in either environment. What the authorisation says never reaches an answer nor a log. The reads are
 ``fiscal_gateway.queries``'.
@@ -335,7 +335,7 @@ def _identity(body: ProbeIn) -> tuple[seal.Identity, ssl.SSLContext]:
     """The certificate to present ``body`` with and its TLS context, or the refusal to answer."""
     now = dt.datetime.now(dt.UTC)
     # The platform's hub is no business of the SaaS: it is known through ERPlora's seal only.
-    platform = body.route == "erplora" and body.hub == settings.PLATFORM_HUB_SLUG
+    platform = body.route == "erplora" and body.hub in settings.PLATFORM_HUB_SLUGS
     hub_id = None if platform or _demo_in_testing(body) else _known(body.hub)
     if body.route == "erplora":
         identity = seal.current(now)
