@@ -19,9 +19,10 @@ from apps.models import Module
 from billing import discount_terms, stripe_payments, stripe_service, vat
 from billing.models import Invoice, PaymentFailure, PlanChangeSchedule, PromoRedemption
 from billing.money import from_cents, to_cents
+from billing.payer import Payer
 from billing.queries.invoices import CARD_CACHE_SECONDS, _billing_account, _owned_hub_ids
 from billing.queries.promo_codes import discount_out
-from billing.queries.tax import Payer, _vat_status_on_file, payer_of
+from billing.queries.tax import _vat_status_on_file, payer_of
 from billing.schemas.common import HubIn
 from billing.schemas.payment_methods import PaymentMethodIn, PaymentMethodOut
 from billing.schemas.subscription_changes import PlanCancelPreviewOut
@@ -55,18 +56,10 @@ def _with_vat_cents(parts: list[tuple[int, str]], payer: Payer) -> int | None:
     prices them; ``None`` while the payer's place is unknown or has no rule."""
     if not payer.has_location:
         return None
-    verified = _vat_status_on_file(payer.tax_id, payer.country) == "verified"
+    payer = payer.cleared(_vat_status_on_file(payer.tax_id, payer.country) == "verified")
     total = 0
     for cents, category in parts:
-        quote = vat.quote_vat(
-            from_cents(cents),
-            customer_country=payer.country,
-            customer_postal_code=payer.postal_code,
-            customer_tax_id=payer.tax_id,
-            customer_tax_id_type=payer.tax_id_type,
-            customer_tax_id_verified=verified,
-            category_key=category,
-        )
+        quote = vat.quote_vat(from_cents(cents), payer, category_key=category)
         if quote is None:
             return None
         total += to_cents(quote.base + quote.tax)

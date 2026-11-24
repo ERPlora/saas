@@ -45,6 +45,32 @@ class VatBreakdown:
         return self.treatment in TREATMENTS_WITH_RATE
 
 
+@dataclass(frozen=True)
+class _Qualification:
+    """How a sale is taxed, decided WITHOUT looking at the amount: one place for ``resolve_vat`` (what was
+    charged) and ``quote_vat`` (what will be charged), so the two cannot qualify the same sale apart."""
+
+    treatment: str
+    rate: Decimal | None
+    tax_country: str
+    tax_region: str
+    customer_country: str = ""
+
+    def breakdown(
+        self, base: Decimal, tax: Decimal, rate: Decimal, *, reconciled: bool = False
+    ) -> VatBreakdown:
+        """The breakdown of an amount of this sale."""
+        return VatBreakdown(
+            base=base,
+            tax=tax,
+            rate=rate,
+            tax_country=self.tax_country,
+            treatment=self.treatment,
+            tax_region=self.tax_region,
+            vat_included_reconciled=reconciled,
+        )
+
+
 def _q(value: Decimal) -> Decimal:
     # Explicit HALF_UP: a bare quantize() inherits HALF_EVEN from the context.
     return value.quantize(_CENT, rounding=ROUND_HALF_UP)
@@ -80,14 +106,7 @@ def _effective_rate(gross: Decimal, tax_cents: int) -> Decimal:
     return _q(tax / base * Decimal("100")) if base else Decimal("0.00")
 
 
-def _report_stripe_charged_no_tax(
-    gross: Decimal,
-    treatment: str,
-    rate: Decimal,
-    *,
-    tax_country: str,
-    customer_country: str,
-) -> None:
+def _report_stripe_charged_no_tax(gross: Decimal, sale: _Qualification) -> None:
     """A subject sale on which Stripe collected nothing: always a structured ERROR (alert on ``event``).
 
     Two misconfigurations end here —a sale that reached Stripe without our rate and a VAT id
@@ -98,44 +117,29 @@ def _report_stripe_charged_no_tax(
         "[VAT] Stripe charged no tax on a %s sale of %s EUR at %s%% to a %s customer: reconciled as "
         "VAT-inclusive, so the quota comes out of our margin. Check the tax rules, the mirrored TaxRate in "
         "Stripe, FiscalPolicy.intra_eu_reverse_charge and the customer's VIES verdict",
-        treatment,
+        sale.treatment,
         gross,
-        rate,
-        customer_country or "?",
+        sale.rate,
+        sale.customer_country or "?",
         extra={
             "event": "fiscal.vat.stripe_charged_no_tax_on_subject_sale",
-            "treatment": treatment,
+            "treatment": sale.treatment,
             "gross": str(gross),
-            "expected_rate": str(rate),
-            "tax_country": tax_country,
-            "customer_country": customer_country,
+            "expected_rate": str(sale.rate),
+            "tax_country": sale.tax_country,
+            "customer_country": sale.customer_country,
             "reconciled": True,
         },
     )
 
 
-def _breakdown(  # noqa: PLR0913
-    gross: Decimal,
-    treatment: str,
-    *,
-    rate: Decimal | None,
-    tax_country: str,
-    tax_region: str = "",
-    tax_cents: int = 0,
-    tax_included: bool = True,
-    customer_country: str = "",
+def _breakdown(
+    gross: Decimal, sale: _Qualification, *, tax_cents: int = 0, tax_included: bool = True
 ) -> VatBreakdown:
-    """Split the amount charged between base and quota by the treatment."""
-    if rate is None:
+    """Split the amount charged between base and quota by how the sale is qualified."""
+    if sale.rate is None:
         # Not subject / reverse charge: all of it is base, there is no quota.
-        return VatBreakdown(
-            base=gross,
-            tax=Decimal("0.00"),
-            rate=Decimal("0.00"),
-            tax_country=tax_country,
-            treatment=treatment,
-            tax_region=tax_region,
-        )
+        return sale.breakdown(gross, Decimal("0.00"), Decimal("0.00"))
 
     reconciled = False
     if not tax_included and not tax_cents and gross:
@@ -143,34 +147,13 @@ def _breakdown(  # noqa: PLR0913
         # A Spanish domestic sale at 0 % does not exist; what was charged becomes
         # VAT-inclusive, as the tax office does when VAT was not charged (TJUE C-249/12 and C-250/12,
         # Tulică; art. 78.Cuatro LIVA). The total does not move; the quota comes out of our margin.
-        _report_stripe_charged_no_tax(
-            gross,
-            treatment,
-            rate,
-            tax_country=tax_country,
-            customer_country=customer_country,
-        )
+        _report_stripe_charged_no_tax(gross, sale)
         reconciled = True
 
     if tax_cents:
         # Stripe already split it: its amounts rule.
         tax = _q(Decimal(tax_cents) / Decimal("100"))
-        return VatBreakdown(
-            base=gross - tax,
-            tax=tax,
-            rate=_effective_rate(gross, tax_cents),
-            tax_country=tax_country,
-            treatment=treatment,
-            tax_region=tax_region,
-        )
+        return sale.breakdown(gross - tax, tax, _effective_rate(gross, tax_cents))
 
-    base, tax = split_gross(gross, rate)
-    return VatBreakdown(
-        base=base,
-        tax=tax,
-        rate=rate,
-        tax_country=tax_country,
-        treatment=treatment,
-        tax_region=tax_region,
-        vat_included_reconciled=reconciled,
-    )
+    base, tax = split_gross(gross, sale.rate)
+    return sale.breakdown(base, tax, sale.rate, reconciled=reconciled)

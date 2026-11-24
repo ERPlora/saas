@@ -2,7 +2,6 @@
 business and the operation ``billing.tax.preview``."""
 
 import logging
-from dataclasses import dataclass
 from datetime import date
 
 from django.db import DatabaseError, transaction
@@ -14,6 +13,7 @@ from live.operations import AI, operation
 from billing import vat, vat_countries, vies
 from billing.models import GENERIC_CATEGORY, CompanyConfig, FiscalPolicy, Invoice, TaxRule, VatCheck
 from billing.money import from_cents, to_cents
+from billing.payer import Payer
 from billing.schemas.tax import TaxPreviewIn, TaxPreviewOut
 
 
@@ -194,29 +194,11 @@ def vat_verdict_as_of(vat_number: str, moment) -> VatCheck | None:
 # --- The payer of a business -----------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
-class Payer:
-    """Where the payer of a business is and its VAT number, as every door that sells reads them."""
-
-    country: str
-    postal_code: str
-    #: Empty when there is none, or when its country has no Stripe tax id type (a wrong type makes Stripe
-    #: reject the whole number, so an unknown country's id is not guessed).
-    tax_id: str
-    tax_id_type: str
-
-    @property
-    def has_location(self) -> bool:
-        """Both halves on file, the postal code of its country's shape: a country alone prices Madrid and
-        Las Palmas the same, and «3500» is not Las Palmas (``vat_countries.postal_code_is_valid``)."""
-        return vat_countries.postal_code_is_valid(self.country, self.postal_code)
-
-
 def payer_of(hub) -> Payer:
     """The payer of ``hub`` (``hubs.BillingProfile``, the fact typed in OUR form), read on every sale."""
     profile = getattr(hub, "billing_profile", None) if hub is not None else None
     if profile is None:
-        return Payer("", "", "", "")
+        return Payer()
     country = (profile.billing_country or "").strip().upper()
     postal_code = (profile.billing_postal_code or "").strip().upper()
     tax_id = vies.normalise(profile.tax_id)
@@ -286,14 +268,14 @@ def tax_preview(ctx: OperationContext, params: TaxPreviewIn) -> dict:
         params.vat_number, params.country, issuer_country=fiscal_policy().issuer_country
     )
     vat_status = _vat_status_on_file(vat_number, params.country)
+    payer = Payer(
+        params.country,
+        params.postal_code,
+        vat_number,
+        vat_countries.tax_id_type_for(params.country) if vat_number else "",
+    )
     quote = vat.quote_vat(
-        params.net,
-        customer_country=params.country,
-        customer_postal_code=params.postal_code,
-        customer_tax_id=vat_number,
-        customer_tax_id_type=vat_countries.tax_id_type_for(params.country) if vat_number else "",
-        customer_tax_id_verified=vat_status == "verified",
-        category_key=CATEGORY_KEYS[params.category],
+        params.net, payer.cleared(vat_status == "verified"), category_key=CATEGORY_KEYS[params.category]
     )
     answer = {
         "country": params.country,
