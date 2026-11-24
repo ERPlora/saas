@@ -69,6 +69,8 @@ const saving = computed(() => annualSaving(plans.value ?? []));
 const freePlan = computed(() => plans.value?.find((plan) => isFree(plan)) ?? null);
 /** What the business may move to (`billing.store.catalog`): no upgrade-only plan while Stripe does not bill it. */
 const offered = computed(() => new Set(catalog.value?.offered_plans ?? []));
+/** The billings each offered plan is sold with: a card does not sell one Stripe has no price for. */
+const sold = computed(() => catalog.value?.sold_intervals ?? {});
 /** The public plans and, after them, the internal ones only this business's catalog brings the card of. */
 const allPlans = computed(() => [...(plans.value ?? []), ...(ready.value ? (catalog.value?.internal_plans ?? []) : [])]);
 /** Free, the plan it has and the ones it is offered. */
@@ -382,6 +384,7 @@ async function keepTheModule(module: SaleModule): Promise<void> {
         <PlansGrid
           :plans="shownPlans"
           :period="period"
+          :sold="sold"
           :subscription="subscription"
           :block="block"
           :scheduled-plan-name="scheduledPlanName"

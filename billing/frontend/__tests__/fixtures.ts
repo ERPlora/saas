@@ -5,6 +5,7 @@ import type { BusinessRowOut } from '../../../frontend/sdk-types/hubs';
 import type { PlanOut } from '../../../frontend/sdk-types/hubs-catalog';
 import type {
   AppSummaryOut,
+  BillingInterval,
   StoreCatalogOut,
   StoreModuleOut,
   StoreSubscriptionOut,
@@ -154,12 +155,16 @@ export const FREE_SUBSCRIPTION = subscription({
 
 export function catalog(hubId: string, extra: Partial<StoreCatalogOut> = {}): StoreCatalogOut {
   const paying = (extra.subscription === undefined ? subscription() : extra.subscription)?.paying ?? false;
+  // As the server offers them: the upgrades only to a business Stripe bills.
+  const offered = extra.offered_plans ?? (paying ? ['starter', 'standard', 'pro', 'max'] : ['starter', 'standard']);
+  // As the admin pastes their Stripe prices: both billings, the internal plan (no annual price) by the month only.
+  const sold = (slug: string): BillingInterval[] => (slug === 'payment-test' ? ['month'] : ['month', 'year']);
   return {
     hub_id: hubId,
     subscription: subscription(),
     modules: [storeModule('booking', 900), storeModule('loyalty', 600)],
-    // As the server offers them: the upgrades only to a business Stripe bills.
-    offered_plans: paying ? ['starter', 'standard', 'pro', 'max'] : ['starter', 'standard'],
+    offered_plans: offered,
+    sold_intervals: Object.fromEntries(offered.map((slug) => [slug, sold(slug)])),
     internal_plans: [],
     ...extra,
   };

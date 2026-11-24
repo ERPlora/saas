@@ -215,10 +215,12 @@ describe('globalSetup', () => {
     expect(started.map(({ args }) => args.slice(2).join(' '))).toEqual([
       'manage.py migrate --check --plan --no-color',
       'tests/e2e/store_docs_seed.py seed',
+      'tests/e2e/plan_prices_seed.py seed',
       'tests/e2e/store_docs_seed.py clear',
+      'tests/e2e/plan_prices_seed.py clear',
     ]);
     // What each process sees: the environment it is given, or the runner's when it inherits.
-    expect(started.map(({ env }) => (env ?? process.env).DEBUG)).toEqual(['True', 'True', 'True']);
+    expect(started.map(({ env }) => (env ?? process.env).DEBUG)).toEqual(['True', 'True', 'True', 'True', 'True']);
   });
 
   it('hands them the rest of the environment (uv, the database of `.env`)', async () => {
