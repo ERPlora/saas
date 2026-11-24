@@ -354,7 +354,7 @@ Pasos:
 4. Devuelve la respuesta en directo, trozo a trozo, y cada herramienta del negocio que el modelo pide; al final, la respuesta entera con su consumo, lo que le queda al negocio del cupo y el cierre.
 5. Si el modelo pidió herramientas del negocio, el turno acaba ahí con un pase de continuación: el Hub las ejecuta y vuelve a mandar la conversación con sus resultados y ese pase, y esa vuelta no gasta otro mensaje.
 Entra: el negocio, la conversación, las instrucciones, las herramientas del negocio y, si contesta a unas herramientas, su pase de continuación.
-Sale: el texto según llega, las herramientas que el negocio tiene que ejecutar, el consumo del turno y el cupo que queda (`assistant.message.claimed`; lo gastado, `assistant.usage.recorded`).
+Sale: el texto según llega, las herramientas que el negocio tiene que ejecutar, el consumo del turno y el cupo que queda (`assistant.message.claimed`; lo gastado, `assistant.usage.recorded`). En el registro de erplora.com queda una línea por cada llamada al modelo (`assistant.turn.model_call`) con quién la pidió, el proveedor y el modelo que contestó, cuántas herramientas llevaba, los caracteres de sus especificaciones, de las instrucciones, de la conversación y de los resultados de las herramientas, y los tokens de entrada (toda la entrada), los leídos y escritos en la caché del proveedor y los de salida; sirve para medir lo que ahorra cada cambio en lo que se le manda al modelo.
 Si falla: lo que se sabe antes de llamar al modelo es un rechazo y no gasta ningún mensaje (ver ASSISTANT-F15); si el proveedor falla después de empezar, el turno acaba con un aviso de fallo que dice si vale la pena repetir; si el turno no llegó a contestar nada, su mensaje se devuelve al cupo, también si el Hub corta la conexión a medias. Un pase de continuación usado, caducado (15 minutos), de otro negocio o de otras herramientas no vale: esa vuelta gasta un mensaje.
 Implicados: ASSISTANT-F06, ASSISTANT-F13, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F17, ASSISTANT-F18, ASSISTANT-F19
 
@@ -418,7 +418,7 @@ Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. La conversación de cada turno llega con la petición, se usa para llamar al modelo y se olvida al terminar.
-2. erplora.com solo apunta lo que se gastó: los mensajes, los tokens y el coste del negocio en el mes.
+2. erplora.com solo apunta lo que se gastó: los mensajes, los tokens y el coste del negocio en el mes y, en su registro, las cifras de cada llamada al modelo (cuántas herramientas, cuántos caracteres de cada parte y cuántos tokens), sin una palabra de lo que se le mandó.
 3. Si el proveedor falla, el registro de erplora.com solo apunta el estado de la respuesta del proveedor, nunca sus palabras (pueden citar la conversación).
 Entra: la conversación del turno.
 Sale: la respuesta para el Hub y lo gastado; ni la base de datos, ni los registros, ni el registro de auditoría guardan una palabra de la conversación, de sus adjuntos, de sus dictados, de lo leído en voz alta ni de lo buscado en la web; lo que devuelve una búsqueda solo llega al modelo, en ese turno, y no se guarda ni su título ni su dirección.
@@ -727,7 +727,9 @@ propio texto por `code`.
   Un motor que entre ocupa ese sitio:
   `(texto, idioma, voz)` a un mp3, con la voz vacía para la suya del idioma, y `MediaFailed` si falla.
 - **Privacidad**: ni la conversación, ni los adjuntos, ni el audio, ni el texto leído van a la BD, a un log o al
-  auditlog; del fallo de un proveedor el log solo lleva el estado (`test_privacy.py`). Ninguna variable `key`,
+  auditlog; del fallo de un proveedor el log solo lleva el estado (`test_privacy.py`). La línea de cada llamada al modelo
+  (`assistant/call_log.py`) solo lleva cifras y nombra el modelo por su id de erplora.com, porque el formateador del log
+  tapa un nombre largo con fecha como si fuera una credencial (`test_call_log.py`). Ninguna variable `key`,
   `token` ni `api_key` en una llamada al logger (`test_guardrails.py`).
 - **Ajustes nuevos** (`config/settings/assistant.py`, con valor seguro por defecto): `ASSISTANT_*_RATELIMIT`,
   `ASSISTANT_DEMO_MESSAGES` y `ASSISTANT_SERVICE_PROVIDER`.

@@ -9,6 +9,7 @@ wrote to it and the rest. The provider is the local fake (``fake_provider``), ne
 """
 
 import json
+import logging
 from decimal import Decimal
 
 import pytest
@@ -18,6 +19,7 @@ from django.utils import timezone
 from assistant import queries
 from assistant.models import AIModel, AIProvider, AIRoutingPolicy, AssistantUsage
 from assistant.tests.doors import door, frames
+from assistant.tests.test_call_log import fields, lines_of_calls
 
 MESSAGES = "/v1/messages"
 STREAM = "/internal/assistant/chat/stream"
@@ -158,3 +160,22 @@ class TestWhatTheMonthCounts:
         # 220 fresh at 0.10, 3000 read at 0.01, 3200 written at 0.125 and 30 out at 0.50, per million.
         assert row.cost_usd == Decimal("0.000467")
         assert response_of(got)["usage"] == {"input_tokens": 6420, "output_tokens": 30}
+
+
+class TestWhatEachCallLogs:
+    def test_each_calls_line_says_what_the_cache_read_and_wrote(self, internal, business, haiku, fake_provider, caplog):
+        caplog.set_level(logging.INFO)
+        fake_provider.reply("POST", MESSAGES, sse=tool_call("current_datetime", "toolu_d", tokens=usage(fresh=40, written=2500)))
+        fake_provider.reply("POST", MESSAGES, sse=answer("Es lunes.", tokens=usage(fresh=60, read=2500, written=150)))
+
+        frames(door(Client(), STREAM, turn(business, ask("¿Qué día es hoy?"))))
+
+        lines = [fields(record) for record in lines_of_calls(caplog)]
+        tokens = ("input_tokens", "cache_read_tokens", "cache_write_tokens", "provider")
+        assert [[line[name] for name in tokens] for line in lines] == [
+            ["2540", "0", "2500", "anthropic"],
+            ["2710", "2500", "150", "anthropic"],
+        ]
+        row = AssistantUsage.objects.get(hub=business, month=queries.usage.month_of(timezone.now()), model=HAIKU)
+        summed = [sum(int(line[name]) for line in lines) for name in tokens[:3]]
+        assert summed == [row.tokens_input, row.tokens_cache_read, row.tokens_cache_write]

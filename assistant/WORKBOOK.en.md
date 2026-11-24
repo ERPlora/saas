@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:e182c4be26a56124cea1f3b44c1a51f02550f81ec094f8c70bc760049e30cf47 -->
+<!-- generated from WORKBOOK.md sha256:4f5413f18649215baba70f93d4bb2f2827df94c12baf4f3adf230a51a7e05a54 -->
 
 ## What it is for and who uses it
 
@@ -339,7 +339,7 @@ Steps:
 4. It sends the answer back live, piece by piece, and each tool of the business the model asks for; at the end, the whole answer with its consumption, what the business has left of its allowance and the close.
 5. If the model asked for tools of the business, the turn ends there with a continuation pass: the Hub runs them and sends the conversation back with their results and that pass, and that return spends no other message.
 In: the business, the conversation, the instructions, the business's tools and, when answering some tools, its continuation pass.
-Out: the text as it arrives, the tools the business has to run, the turn's consumption and the allowance left (`assistant.message.claimed`; what it spent, `assistant.usage.recorded`).
+Out: the text as it arrives, the tools the business has to run, the turn's consumption and the allowance left (`assistant.message.claimed`; what it spent, `assistant.usage.recorded`). erplora.com's log keeps one line for each call to the model (`assistant.turn.model_call`) with who asked for it, the provider and the model that answered, how many tools it carried, the characters of their specifications, of the instructions, of the conversation and of the tools' results, and the input tokens (all the input), those read from and written to the provider's cache and the output ones; it serves to measure what each change to what the model is sent saves.
 If it fails: what is known before calling the model is a refusal and spends no message (see ASSISTANT-F15); if the provider fails after starting, the turn ends with a failure notice that says whether it is worth repeating; if the turn did not answer anything, its message goes back to the allowance, also if the Hub cuts the connection halfway. A continuation pass already used, expired (15 minutes), of another business or of other tools is not valid: that return spends a message.
 Involved: ASSISTANT-F06, ASSISTANT-F13, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F17, ASSISTANT-F18, ASSISTANT-F19
 
@@ -403,7 +403,7 @@ Actor: system
 Screen: none
 Steps:
 1. Each turn's conversation arrives with the request, is used to call the model and is forgotten at the end.
-2. erplora.com only notes what was spent: the business's messages, tokens and cost in the month.
+2. erplora.com only notes what was spent: the business's messages, tokens and cost in the month and, in its log, the figures of each call to the model (how many tools, how many characters of each part and how many tokens), without a word of what it was sent.
 3. If the provider fails, erplora.com's log only notes the status of the provider's answer, never its words (they may quote the conversation).
 In: the turn's conversation.
 Out: the answer for the Hub and what was spent; neither the database, nor the logs, nor the audit log keep a word of the conversation, its attachments, its dictations nor what is read aloud or what was searched on the web; what a search returns only reaches the model, in that turn, and neither its title nor its address is kept.

@@ -48,7 +48,7 @@ from django.http import HttpRequest, JsonResponse
 from django_ratelimit.core import get_usage
 from live.errors import OperationError
 
-from assistant import history, queries, routing, services
+from assistant import call_log, history, queries, routing, services
 from assistant.continuation import caller_key, continuation_token, is_continuation, tool_budget
 from assistant.providers.base import ToolSpec, TurnRequest
 from assistant.schemas import Caller, ClaimIn, ClaimOut, MessageReleaseIn, RouteCandidate, RouteIn, UsageRecordIn
@@ -183,11 +183,14 @@ def assistant_message(text: str, calls: list[dict]) -> dict:
 
 @dataclass
 class Round:
-    """One call to the model in a turn: the candidate that answered it, its text, its tools asked for and its failure."""
+    """One call to the model in a turn: the candidate that answered it, the size of what it was sent, its text, its
+    tools asked for, what it spent and its failure."""
 
     answering: RouteCandidate
+    sizes: call_log.Sizes = call_log.Sizes()
     text: str = ""
     calls: list[dict] = field(default_factory=list)
+    tokens: Tokens | None = None
     failed: dict | None = None
 
 
@@ -207,7 +210,8 @@ async def ask(asked: Round, remaining: list, build, outcome: Outcome) -> AsyncIt
         elif event.type == "tool_call":
             asked.calls.append({"name": payload["name"], "call_id": payload["call_id"], "arguments": payload["arguments"]})
         elif event.type == "usage":
-            outcome.add_usage(asked.answering, Tokens.of(payload))
+            asked.tokens = Tokens.of(payload)
+            outcome.add_usage(asked.answering, asked.tokens)
         elif event.type == "error":
             asked.failed = payload
 
@@ -272,9 +276,10 @@ async def run(started: Turn, outcome: Outcome) -> AsyncIterator[dict]:
                 max_tokens=MAX_OUTPUT_TOKENS,
             )
 
-        asked = Round(remaining[0])
+        asked = Round(remaining[0], call_log.Sizes.of(conversation, offered))
         async for frame in ask(asked, remaining, build, outcome):
             yield frame
+        call_log.record(caller_key(started.caller), asked.answering, asked.sizes, asked.tokens)
         if asked.failed is not None:
             # The status only: the provider's words may quote what the person wrote.
             logger.warning("assistant.turn.provider_failed status=%s retriable=%s", asked.failed.get("status"), asked.failed.get("retriable"))
