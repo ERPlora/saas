@@ -19,7 +19,9 @@ suspended sweeps), which were container teardowns.
 """
 
 import json
+import logging
 import time
+from datetime import timedelta
 from io import StringIO
 from pathlib import Path
 
@@ -27,6 +29,8 @@ import pytest
 from django.core.management import CommandError, call_command
 from django.utils import timezone
 
+from billing.models import PaymentFailure
+from billing.services import unpaid_sweep
 from billing.tests.conftest import pay
 from billing.tests.stripe_double import (
     DAY,
@@ -36,7 +40,7 @@ from billing.tests.stripe_double import (
     listing,
     subscription,
 )
-from hubs.models import Hub, Subscription
+from hubs.models import BillingProfile, Hub, Subscription
 
 pytestmark = pytest.mark.django_db
 
@@ -125,8 +129,6 @@ class TestStripeStopsRetryingBeforeTheGraceEnds:
 
     def test_a_run_does_not_count_a_failure_stripe_did_not_have(self, shop, stripe_double):
         """The sweep replays to decide; it is not a failed payment."""
-        from billing.models import PaymentFailure
-
         owing(shop)
         stripe_double.answer("invoices.list", listing([open_invoice(3)]))
         stripe_double.answer("subscriptions.retrieve", subscription(status="past_due"))
@@ -409,8 +411,6 @@ class TestTheRun:
         """BILLING-F16: the run fails while a payer is still owed their mail, so the cron alarm says it."""
         from collections import Counter
 
-        from billing.services import unpaid_sweep
-
         monkeypatch.setattr(
             unpaid_sweep,
             "sweep_unpaid",
@@ -424,3 +424,257 @@ class TestTheRun:
         settings.STRIPE_SECRET_KEY = ""
 
         assert "checked=0" in run()
+
+
+def another(make_user, email="b@example.com", name="Bar B"):
+    from hubs.tests.conftest import create_business
+
+    return create_business(make_user(email), name=name)
+
+
+def said(caplog):
+    return [record.getMessage() for record in caplog.records if record.name == "billing.services"]
+
+
+class TestWhatARunSaysOfThePlansInDunning:
+    def test_every_plan_looked_at_is_counted_and_one_inside_its_grace_is_not_suspended(self, shop, stripe_double):
+        owing(shop)
+        stripe_double.answer("invoices.list", listing([open_invoice(6)]))
+        stripe_double.answer("subscriptions.retrieve", subscription(status="past_due"))
+
+        output = run()
+
+        assert "checked=1 suspended=0" in output
+
+    def test_they_are_looked_at_in_the_order_they_were_opened(self, shop, stripe_double, make_user):
+        owing(shop, sub_id="sub_first")
+        owing(another(make_user), sub_id="sub_second")
+        stripe_double.answer("invoices.list", listing([]))
+
+        run()
+
+        assert [call.params["subscription"] for call in stripe_double.calls_to("invoices.list")] == [
+            "sub_first",
+            "sub_second",
+        ]
+
+    def test_a_plan_without_a_stripe_subscription_is_not_looked_at(self, shop, stripe_double):
+        business = owing(shop)
+        Subscription.objects.filter(hub=business).update(stripe_subscription_id="")
+
+        output = run()
+
+        assert "checked=0" in output
+        assert stripe_double.calls == []
+
+    def test_an_open_invoice_without_a_date_is_the_oldest(self, shop, stripe_double):
+        owing(shop)
+        undated = {**open_invoice(2, "in_undated"), "created": None}
+        stripe_double.answer("invoices.list", listing([open_invoice(9, "in_old"), undated]))
+        stripe_double.answer("subscriptions.retrieve", subscription(status="past_due"))
+
+        run()
+
+        assert PaymentFailure.objects.get().stripe_invoice_id == "in_undated"
+
+    def test_one_that_could_not_be_read_is_an_error_and_nothing_else(self, shop, stripe_double, caplog):
+        """Suspended by the webhook while Stripe did not answer the sweep: it is not the sweep's suspension."""
+        business = owing(shop)
+
+        def suspended_meanwhile(call):
+            Hub.objects.filter(pk=business.pk).update(status=Hub.Status.SUSPENDED, suspended_at=timezone.now())
+            return connection_error()
+
+        stripe_double.answer("invoices.list", suspended_meanwhile)
+
+        with caplog.at_level(logging.ERROR, logger="billing.services"):
+            counts = unpaid_sweep.sweep_unpaid()
+
+        assert (counts["checked"], counts["suspended"], counts["errors"]) == (1, 0, 1)
+        assert said(caplog) == ["[UNPAID SWEEP] sub_1 could not be swept"]
+        assert caplog.records[0].exc_info
+
+    def test_without_stripe_each_one_is_an_error_that_names_it(self, shop, settings, stripe_double, make_user, caplog):
+        owing(shop, sub_id="sub_first")
+        owing(another(make_user), sub_id="sub_second")
+        settings.STRIPE_SECRET_KEY = ""
+
+        with caplog.at_level(logging.ERROR, logger="billing.services"):
+            counts = unpaid_sweep.sweep_unpaid()
+
+        assert (counts["checked"], counts["errors"]) == (2, 2)
+        assert said(caplog) == [
+            "[UNPAID SWEEP] Stripe is not configured: sub_first is not swept",
+            "[UNPAID SWEEP] Stripe is not configured: sub_second is not swept",
+        ]
+
+
+class TestWhatARunSaysOfTheDeletedBusinesses:
+    def asked_to_end(self, hub, sub_id="sub_1"):
+        business = pay(hub, sub_id=sub_id)
+        Subscription.objects.filter(hub=business).update(cancel_requested_at=timezone.now())
+        return business
+
+    def test_they_are_ended_in_the_order_they_were_opened(self, shop, stripe_double, make_user):
+        self.asked_to_end(shop, "sub_first")
+        self.asked_to_end(another(make_user), "sub_second")
+        stripe_double.answer("subscriptions.cancel", subscription(status="canceled"))
+
+        output = run()
+
+        assert [call.args for call in stripe_double.calls_to("subscriptions.cancel")] == [
+            ("sub_first",),
+            ("sub_second",),
+        ]
+        assert "cancelled=2" in output
+
+    def test_one_with_nothing_left_in_stripe_is_not_ended_again(self, shop, stripe_double):
+        business = self.asked_to_end(shop)
+        Subscription.objects.filter(hub=business).update(stripe_subscription_id="")
+
+        output = run()
+
+        assert "cancelled=0" in output
+        assert stripe_double.calls == []
+
+    def test_one_that_could_not_be_ended_is_an_error_and_the_next_one_is_ended(
+        self, shop, stripe_double, make_user, caplog
+    ):
+        kept = self.asked_to_end(shop, "sub_first")
+        ended = self.asked_to_end(another(make_user), "sub_second")
+        stripe_double.answer(
+            "subscriptions.cancel",
+            lambda call: connection_error() if call.args == ("sub_first",) else subscription(status="canceled"),
+        )
+
+        with caplog.at_level(logging.ERROR, logger="billing.services"):
+            counts = unpaid_sweep.sweep_unpaid()
+
+        assert (counts["cancelled"], counts["errors"]) == (1, 1)
+        assert said(caplog) == [f"[UNPAID SWEEP] The billing of deleted hub {kept.pk} could not be ended"]
+        assert caplog.records[0].exc_info
+        assert Subscription.objects.get(hub=ended).stripe_subscription_id == ""
+
+    def test_without_stripe_each_one_is_an_error_that_names_it_and_is_kept(
+        self, shop, settings, stripe_double, caplog
+    ):
+        business = self.asked_to_end(shop)
+        settings.STRIPE_SECRET_KEY = ""
+
+        with caplog.at_level(logging.ERROR, logger="billing.services"):
+            counts = unpaid_sweep.sweep_unpaid()
+
+        assert (counts["cancelled"], counts["errors"]) == (0, 1)
+        assert said(caplog) == [f"[UNPAID SWEEP] Stripe is not configured: deleted hub {business.pk} still pays"]
+        assert stripe_double.calls == []
+        assert Subscription.objects.get(hub=business).stripe_subscription_id == "sub_1"
+
+
+class TestWhatARunSaysOfThePayersOfDeletedAccounts:
+    def departed(self, hub, *, customer=""):
+        BillingProfile.objects.filter(pk=hub.billing_profile_id).update(
+            forget_after=timezone.now() + timedelta(days=1), stripe_customer_id=customer
+        )
+        return hub.billing_profile_id
+
+    def test_one_held_by_a_live_subscription_is_not_counted(self, shop, stripe_double):
+        profile_id = self.departed(shop)
+        pay(shop)
+
+        output = run()
+
+        assert "payers_forgotten=0" in output
+        assert BillingProfile.objects.filter(pk=profile_id).exists()
+
+    def test_one_that_could_not_be_forgotten_is_an_error_and_the_next_one_goes(
+        self, shop, stripe_double, make_user, caplog
+    ):
+        kept = self.departed(shop, customer="cus_first")
+        gone = self.departed(another(make_user), customer="cus_second")
+        stripe_double.answer(
+            "customers.delete",
+            lambda call: connection_error() if call.args == ("cus_first",) else {"id": "cus_second", "deleted": True},
+        )
+
+        with caplog.at_level(logging.ERROR, logger="billing.services"):
+            counts = unpaid_sweep.sweep_unpaid()
+
+        assert (counts["payers_forgotten"], counts["errors"]) == (1, 1)
+        assert said(caplog) == [f"[UNPAID SWEEP] The payer {kept} of a deleted account could not be forgotten"]
+        assert caplog.records[0].exc_info
+        assert list(BillingProfile.objects.filter(pk__in=[kept, gone]).values_list("pk", flat=True)) == [kept]
+
+
+class TestWhatARunSaysOfTheMailsStillOwed:
+    """The mails of an unpaid episode that could not leave, in the order the businesses were opened."""
+
+    def untold(self, hub, invoice_id="in_1", status=Hub.Status.PAST_DUE):
+        Hub.objects.filter(pk=hub.pk).update(
+            status=status, suspended_at=timezone.now() if status == Hub.Status.SUSPENDED else None
+        )
+        return PaymentFailure.objects.create(
+            hub=hub,
+            stripe_invoice_id=invoice_id,
+            reason=PaymentFailure.Reason.PAYMENT_FAILED,
+            invoice_created_at=timezone.now() - timedelta(days=3),
+        )
+
+    def test_a_suspension_nobody_was_told_of_is_told(self, shop, mailoutbox):
+        self.untold(shop, status=Hub.Status.SUSPENDED)
+
+        counts = unpaid_sweep.sweep_unpaid()
+
+        assert [message.extra_headers["X-ERPlora-Notice"] for message in mailoutbox] == ["billing.business_suspended"]
+        assert (counts["notified"], counts["mail_failed"]) == (1, 0)
+
+    def test_they_are_told_in_the_order_they_were_opened(self, shop, make_user, mailoutbox):
+        second = another(make_user, "second@example.com")
+        self.untold(second, "in_2")
+        self.untold(shop, "in_1")
+
+        counts = unpaid_sweep.sweep_unpaid()
+
+        assert [message.to for message in mailoutbox] == [["owner@example.com"], ["second@example.com"]]
+        assert counts["notified"] == 2
+
+    def test_one_that_crashes_still_owes_its_mail_and_the_next_one_is_told(
+        self, shop, make_user, mailoutbox, monkeypatch, caplog
+    ):
+        from billing import emails
+
+        self.untold(shop, "in_1")
+        self.untold(another(make_user, "second@example.com"), "in_2")
+        send = emails.send_payment_failed
+
+        def crash(hub, *args, **kwargs):
+            if hub.pk == shop.pk:
+                raise RuntimeError("template")
+            return send(hub, *args, **kwargs)
+
+        monkeypatch.setattr(emails, "send_payment_failed", crash)
+
+        with caplog.at_level(logging.ERROR, logger="billing.services"):
+            counts = unpaid_sweep.sweep_unpaid()
+
+        assert (counts["notified"], counts["mail_failed"], counts["errors"]) == (1, 1, 0)
+        assert [message.to for message in mailoutbox] == [["second@example.com"]]
+        assert said(caplog) == [f"[UNPAID SWEEP] The payer of hub {shop.pk} could not be told"]
+        assert caplog.records[0].exc_info
+
+    def test_one_paid_meanwhile_is_neither_told_nor_owed(self, shop, make_user, mailoutbox, monkeypatch):
+        from billing import emails
+
+        self.untold(shop, "in_1")
+        paid = self.untold(another(make_user, "second@example.com"), "in_2")
+        send = emails.send_payment_failed
+
+        def paid_meanwhile(*args, **kwargs):
+            PaymentFailure.objects.filter(pk=paid.pk).update(resolved_at=timezone.now())
+            return send(*args, **kwargs)
+
+        monkeypatch.setattr(emails, "send_payment_failed", paid_meanwhile)
+
+        counts = unpaid_sweep.sweep_unpaid()
+
+        assert (counts["notified"], counts["mail_failed"]) == (1, 0)
+        assert [message.to for message in mailoutbox] == [["owner@example.com"]]
