@@ -2,6 +2,7 @@
 an operation answers it."""
 
 import logging
+from dataclasses import dataclass
 from functools import partial
 from datetime import datetime
 
@@ -14,7 +15,7 @@ from billing.services import downgrades, stripe_sales, stripe_sync, unpaid_notic
 from billing.stripe_period import subscription_period
 from hubs.queries import plan_catalog
 from hubs.services import hub_callbacks, subscription_sync
-from hubs.models import Hub, Subscription, SubscriptionItem
+from hubs.models import Hub, Plan, Subscription, SubscriptionItem
 from hubs.models.subscriptions import grace_end
 from hubs.schemas.subscriptions import ModuleRightIn, SubscriptionApplyIn
 
@@ -80,7 +81,7 @@ def unpaid_state(hub: Hub, live_status: str, now: datetime | None = None) -> dic
     }
 
 
-def live_state(hub: Hub, live: dict, now: datetime | None = None) -> dict:  # noqa: C901
+def live_state(hub: Hub, live: dict, now: datetime | None = None) -> dict:
     """``hubs.subscription.apply``'s fields for what the live subscription ``live`` says of ``hub``."""
     now = now or timezone.now()
     status = live.get("status") or ""
@@ -89,37 +90,9 @@ def live_state(hub: Hub, live: dict, now: datetime | None = None) -> dict:  # no
     start, end = subscription_period(live)
     period_end = stripe_sync._moment(end)
     cancelling = bool(live.get("cancel_at_period_end") or live.get("cancel_at"))
-    plan, interval, rights, unknown = None, None, {}, False
-    for line in stripe_sales._live_items(live):
-        price_id = (line.get("price") or {}).get("id", "")
-        if (found := queries.plan_for_price(price_id)) is not None:
-            plan, interval = found
-        elif (found := queries.module_for_price(price_id)) is not None:
-            module, interval = found[0], interval or found[1]
-            rights[module.slug] = ModuleRightIn(
-                module_slug=module.slug,
-                stripe_item_id=line["id"],
-                valid_until=period_end if cancelling else None,
-            )
-        else:
-            unknown = True
-            logger.error(
-                "[BILLING] Stripe bills hub %s a price nobody sells: %s",
-                hub.id,
-                price_id,
-            )
-    subscription = Subscription.objects.filter(hub=hub).first()
-    for item in SubscriptionItem.objects.filter(
-        subscription=subscription, source=SubscriptionItem.Source.PURCHASE
-    ):
-        if item.module_slug in rights or not item.is_live(now):
-            continue
-        # Cancelled (it left Stripe without proration) and paid until the end of its period.
-        rights[item.module_slug] = ModuleRightIn(
-            module_slug=item.module_slug,
-            stripe_item_id="",
-            valid_until=item.valid_until or period_end or now,
-        )
+    billed = _billed(hub, live, period_end if cancelling else None)
+    plan, interval = billed.plan, billed.interval
+    modules = [*billed.rights.values(), *_paid_until_their_end(hub, billed.rights, period_end, now)]
     method = live.get("default_payment_method")
     if isinstance(method, dict):
         method = method.get("id")
@@ -136,10 +109,10 @@ def live_state(hub: Hub, live: dict, now: datetime | None = None) -> dict:  # no
         "current_period_start": stripe_sync._moment(start),
         "current_period_end": period_end,
         "cancel_at_period_end": cancelling,
-        "modules": list(rights.values()),
+        "modules": modules,
         **unpaid_state(hub, status, now),
     }
-    if plan is not None or not unknown:
+    if plan is not None or not billed.unknown:
         # Only modules: the business is on Free with them. A price nobody sells leaves the plan as it is.
         state["plan"] = plan.slug if plan else _free_slug()
     if interval:
@@ -149,6 +122,59 @@ def live_state(hub: Hub, live: dict, now: datetime | None = None) -> dict:  # no
         state["trial_start"] = stripe_sync._moment(live.get("trial_start"))
         state["trial_end"] = stripe_sync._moment(live.get("trial_end"))
     return state
+
+
+@dataclass(frozen=True)
+class _Billed:
+    """What the lines of a live subscription bill: a plan and how often, the modules by their slug, and whether
+    there is a price nobody sells."""
+
+    plan: Plan | None
+    interval: str | None
+    rights: dict[str, ModuleRightIn]
+    unknown: bool
+
+
+def _billed(hub: Hub, live: dict, modules_until: datetime | None) -> _Billed:
+    plan, interval, rights, unknown = None, None, {}, False
+    for line in stripe_sales._live_items(live):
+        price_id = (line.get("price") or {}).get("id", "")
+        if (found := queries.plan_for_price(price_id)) is not None:
+            plan, interval = found
+        elif (found := queries.module_for_price(price_id)) is not None:
+            module, interval = found[0], interval or found[1]
+            rights[module.slug] = ModuleRightIn(
+                module_slug=module.slug,
+                stripe_item_id=line["id"],
+                valid_until=modules_until,
+            )
+        else:
+            unknown = True
+            logger.error(
+                "[BILLING] Stripe bills hub %s a price nobody sells: %s",
+                hub.id,
+                price_id,
+            )
+    return _Billed(plan, interval, rights, unknown)
+
+
+def _paid_until_their_end(
+    hub: Hub, billed: dict[str, ModuleRightIn], period_end: datetime | None, now: datetime
+) -> list[ModuleRightIn]:
+    """The bought modules Stripe bills no more: cancelled (they left it without proration) and paid until the end
+    of their period."""
+    subscription = Subscription.objects.filter(hub=hub).first()
+    return [
+        ModuleRightIn(
+            module_slug=item.module_slug,
+            stripe_item_id="",
+            valid_until=item.valid_until or period_end or now,
+        )
+        for item in SubscriptionItem.objects.filter(
+            subscription=subscription, source=SubscriptionItem.Source.PURCHASE
+        )
+        if item.module_slug not in billed and item.is_live(now)
+    ]
 
 
 def _free_slug() -> str:

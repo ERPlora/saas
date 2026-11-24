@@ -3,7 +3,7 @@ the hub answers it, the payer's mail once it is issued, and the pass that posts 
 
 import logging
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Iterator
 from functools import partial
 from datetime import datetime, timedelta
 
@@ -263,9 +263,16 @@ PLATFORM_COUNTS = (
     "cut_short",
 )
 PLATFORM_FAILING = ("unreachable", "refused", "rejected", "stuck", "mail_failed", "errors")
+#: What the status of an invoice asked about counts as; any other one is accepted.
+ASKED_COUNTS = {
+    UNREACHABLE: "unreachable",
+    REFUSED: "refused",
+    Invoice.FiscalStatus.REJECTED: "rejected",
+    Invoice.FiscalStatus.ISSUED: "waiting",
+}
 
 
-def reconcile_platform_invoices(now: datetime | None = None, go_on: Callable[[], bool] | None = None) -> Counter:  # noqa: C901, PLR0912
+def reconcile_platform_invoices(now: datetime | None = None, go_on: Callable[[], bool] | None = None) -> Counter:
     """One pass of ``reconcile_platform_invoices`` (the ``saas-worker``, every 15 minutes): post again every
     «issuing» invoice whose wait passed, ask the platform hub about every issued (or rejected) one until the AEAT
     accepts it, and count the ones «issuing» for longer than ``PLATFORM_STUCK_AFTER``. One invoice never stops the
@@ -274,12 +281,6 @@ def reconcile_platform_invoices(now: datetime | None = None, go_on: Callable[[],
     the count of the stuck ones is always made."""
     now = now or timezone.now()
     counts = Counter({key: 0 for key in PLATFORM_COUNTS})
-
-    def more() -> bool:
-        if not counts["cut_short"] and go_on is not None and not go_on():
-            counts["cut_short"] = 1
-        return not counts["cut_short"]
-
     paid = Invoice.objects.filter(payment_status=Invoice.PaymentStatus.PAID).exclude(number="")
     due = (
         paid.filter(fiscal_status=Invoice.FiscalStatus.ISSUING)
@@ -287,50 +288,54 @@ def reconcile_platform_invoices(now: datetime | None = None, go_on: Callable[[],
         .order_by("series", "issued_on", "sequence")
         .values_list("id", flat=True)
     )
-    for invoice_id in () if counts["cut_short"] else list(due):
-        if not more():
-            break
-        try:
-            outcome = post_platform_invoice(invoice_id)
-        except Exception:  # noqa: BLE001 - one invoice never stops the pass; it stays owed
-            logger.exception("[INVOICE] Posting invoice %s crashed", invoice_id)
-            counts["errors"] += 1
-            continue
+    for invoice_id in _until_cut_short(due, counts, go_on):
+        outcome = _post_again(invoice_id)
         if outcome != NOTHING_TO_POST:
             counts[outcome] += 1
     asked = paid.filter(fiscal_status__in=[Invoice.FiscalStatus.ISSUED, Invoice.FiscalStatus.REJECTED]).values_list(
         "id", flat=True
     )
-    for invoice_id in () if counts["cut_short"] else list(asked):
-        if not more():
-            break
-        try:
-            status = refresh_platform_invoice(invoice_id)
-        except Exception:  # noqa: BLE001 - one invoice never stops the pass
-            logger.exception("[INVOICE] Asking about invoice %s crashed", invoice_id)
-            counts["errors"] += 1
-            continue
-        if status in (UNREACHABLE, REFUSED):
-            counts[status] += 1
-        elif status == Invoice.FiscalStatus.REJECTED:
-            counts["rejected"] += 1
-        elif status == Invoice.FiscalStatus.ISSUED:
-            counts["waiting"] += 1
-        else:
-            counts["accepted"] += 1
+    for invoice_id in _until_cut_short(asked, counts, go_on):
+        counts[_ask_again(invoice_id)] += 1
     counts["stuck"] = paid.filter(
         fiscal_status=Invoice.FiscalStatus.ISSUING, fiscal_status_at__lte=now - PLATFORM_STUCK_AFTER
     ).count()
     unmailed = paid.filter(fiscal_status__in=ISSUED_STATUSES, emailed_at__isnull=True).values_list("id", flat=True)
-    for invoice_id in () if counts["cut_short"] else list(unmailed):
-        if not more():
-            break
+    for invoice_id in _until_cut_short(unmailed, counts, go_on):
         outcome = send_invoice_mail(invoice_id)
         if outcome == MAIL_FAILED:
             counts["mail_failed"] += 1
         elif outcome == MAILED:
             counts["mailed"] += 1
     return counts
+
+
+def _until_cut_short(invoice_ids: Iterable, counts: Counter, go_on: Callable[[], bool] | None) -> Iterator:
+    """Each invoice of a step of the pass, ``go_on`` asked before it; none once the pass is cut short."""
+    if counts["cut_short"]:
+        return
+    for invoice_id in list(invoice_ids):
+        if go_on is not None and not go_on():
+            counts["cut_short"] = 1
+            return
+        yield invoice_id
+
+
+def _post_again(invoice_id) -> str:
+    try:
+        return post_platform_invoice(invoice_id)
+    except Exception:  # noqa: BLE001 - one invoice never stops the pass; it stays owed
+        logger.exception("[INVOICE] Posting invoice %s crashed", invoice_id)
+        return "errors"
+
+
+def _ask_again(invoice_id) -> str:
+    try:
+        status = refresh_platform_invoice(invoice_id)
+    except Exception:  # noqa: BLE001 - one invoice never stops the pass
+        logger.exception("[INVOICE] Asking about invoice %s crashed", invoice_id)
+        return "errors"
+    return ASKED_COUNTS.get(status, "accepted")
 
 
 def platform_run_failed(counts: Counter) -> bool:
