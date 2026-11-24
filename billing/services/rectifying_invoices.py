@@ -42,8 +42,8 @@ class _Rectification:
     expected_total: int
     rtype: str
     reason: str
+    billed_at: datetime | None
     stripe_number: str = ""
-    billed_at: datetime | None = None
 
 
 def _rectifying_lines(original: Invoice, items: list[dict]) -> list[InvoiceLine]:
