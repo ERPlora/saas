@@ -8,6 +8,7 @@ The run ends with an error (the ``task_failed`` alarm) when anything stayed owed
 or crashed; a pass with nothing to do is clean.
 """
 
+import logging
 from datetime import timedelta
 from io import StringIO
 
@@ -339,3 +340,240 @@ class TestTheMailOfAnIssuedInvoice:
         run()
 
         assert len(mail.outbox) == 1  # «issued» has its QR and PDF: the mail goes
+
+
+def said(caplog):
+    return [record.getMessage() for record in caplog.records if record.name == "billing.services"]
+
+
+def going_on(times):
+    """The worker's ``go_on``: yes to the first ``times`` questions."""
+    answers = iter([True] * times)
+    return lambda: next(answers, False)
+
+
+class TestWhatItPosts:
+    def test_they_are_posted_by_series_day_and_number(self, hub_double):
+        today = timezone.localdate()
+        for sequence, series, day in ((1, "ERPR", today), (3, "ERP", today), (2, "ERP", today), (4, "ERP", today - timedelta(days=1))):
+            Invoice.objects.filter(pk=owed(sequence).pk).update(series=series, issued_on=day)
+        hub_double.answer("POST", PLATFORM, 200, {"status": "accepted", "qr": QR})
+
+        run()
+
+        assert [call.body["number"] for call in posts(hub_double)] == [
+            "ERP-2026-00004",
+            "ERP-2026-00002",
+            "ERP-2026-00003",
+            "ERP-2026-00001",
+        ]
+
+    def test_one_is_due_at_the_very_moment_its_wait_ends(self, hub_double):
+        at = timezone.now() + timedelta(hours=3)
+        owed(1, next_post_at=at)
+        owed(2, next_post_at=at + timedelta(microseconds=1))
+        hub_double.answer("POST", PLATFORM, 200, {"status": "accepted", "qr": QR})
+
+        counts = platform_invoices.reconcile_platform_invoices(now=at)
+
+        assert counts["posted"] == 1
+        assert [call.body["number"] for call in posts(hub_double)] == ["ERP-2026-00001"]
+
+    @pytest.mark.parametrize("fiscal_status", ["issuing", "issued", "rejected", "accepted"])
+    def test_an_invoice_not_collected_is_left_alone_whatever_its_fiscal_status(self, hub_double, mailoutbox, fiscal_status):
+        Invoice.objects.create(
+            stripe_invoice_id="in_open",
+            payment_status="open",
+            net_cents=1,
+            total_cents=1,
+            fiscal_status=fiscal_status,
+            fiscal_status_at=timezone.now() - timedelta(hours=2),
+            payer_email="pagos@example.com",
+        )
+
+        output = run()
+
+        assert "stuck=0" in output
+        assert hub_double.calls == []
+        assert mailoutbox == []
+
+    def test_one_whose_post_crashes_is_an_error_and_the_next_one_is_posted(self, hub_double, monkeypatch, caplog):
+        crashing = owed(1)
+        owed(2)
+        hub_double.answer("POST", PLATFORM, 200, {"status": "accepted", "qr": QR})
+        post = platform_invoices.hub_client.post_platform_invoice
+
+        def crash(payload):
+            if payload["id"] == str(crashing.id):
+                raise RuntimeError("broken")
+            return post(payload)
+
+        monkeypatch.setattr(platform_invoices.hub_client, "post_platform_invoice", crash)
+
+        with caplog.at_level(logging.ERROR, logger="billing.services"), pytest.raises(CommandError, match="errors=1"):
+            run()
+
+        assert [call.body["number"] for call in posts(hub_double)] == ["ERP-2026-00002"]
+        assert said(caplog) == [f"[INVOICE] Posting invoice {crashing.id} crashed"]
+        assert caplog.records[0].exc_info
+
+    def test_one_whose_post_crashed_is_not_counted_as_posted(self, hub_double, monkeypatch):
+        owed()
+
+        def crash(payload):
+            raise RuntimeError("broken")
+
+        monkeypatch.setattr(platform_invoices.hub_client, "post_platform_invoice", crash)
+
+        counts = platform_invoices.reconcile_platform_invoices()
+
+        assert (counts["posted"], counts["errors"], set(counts)) == (0, 1, set(platform_invoices.PLATFORM_COUNTS))
+
+    def test_one_that_is_gone_meanwhile_is_not_counted(self, hub_double, monkeypatch):
+        owed(1)
+        gone = owed(2)
+        hub_double.answer("POST", PLATFORM, 200, {"status": "accepted", "qr": QR})
+        post = platform_invoices.hub_client.post_platform_invoice
+
+        def gone_meanwhile(payload):
+            Invoice.objects.filter(pk=gone.pk).update(payment_status="void", number="")
+            return post(payload)
+
+        monkeypatch.setattr(platform_invoices.hub_client, "post_platform_invoice", gone_meanwhile)
+
+        counts = platform_invoices.reconcile_platform_invoices()
+
+        assert (counts["posted"], set(counts)) == (1, set(platform_invoices.PLATFORM_COUNTS))
+
+
+class TestWhatItAsks:
+    def asked(self, hub_double):
+        return [call.path for call in hub_double.calls_to("GET")]
+
+    def test_those_the_aeat_has_not_answered_yet_wait(self, hub_double):
+        for sequence in (1, 2):
+            owed(sequence, fiscal_status="issued", qr=QR, emailed_at=timezone.now())
+        hub_double.answer("GET", r"^/internal/platform/invoices/", 200, {"status": "issued", "qr": QR})
+
+        output = run()
+
+        assert "accepted=0 waiting=2" in output
+
+    @pytest.mark.parametrize("status, outcome", [(503, "unreachable=1 refused=0"), (404, "unreachable=0 refused=1")])
+    def test_one_the_hub_does_not_answer_for_fails_the_run(self, hub_double, status, outcome):
+        owed(fiscal_status="issued", qr=QR, emailed_at=timezone.now())
+        hub_double.answer("GET", r"^/internal/platform/invoices/", status, {"error": {"code": "not_found", "message": "No."}})
+
+        with pytest.raises(CommandError, match=f"accepted=0 waiting=0 mailed=0 {outcome}"):
+            run()
+
+    def test_one_whose_question_crashes_is_an_error_and_the_next_one_is_asked(self, hub_double, monkeypatch, caplog):
+        crashing = owed(1, fiscal_status="issued", qr=QR, emailed_at=timezone.now())
+        owed(2, fiscal_status="issued", qr=QR, emailed_at=timezone.now())
+        hub_double.answer("GET", r"^/internal/platform/invoices/", 200, {"status": "accepted", "qr": QR})
+        ask = platform_invoices.hub_client.get_platform_invoice
+
+        def crash(invoice_id):
+            if invoice_id == str(crashing.id):
+                raise RuntimeError("broken")
+            return ask(invoice_id)
+
+        monkeypatch.setattr(platform_invoices.hub_client, "get_platform_invoice", crash)
+
+        with caplog.at_level(logging.ERROR, logger="billing.services"):
+            counts = platform_invoices.reconcile_platform_invoices()
+
+        assert (counts["accepted"], counts["waiting"], counts["errors"]) == (1, 0, 1)
+        assert said(caplog) == [f"[INVOICE] Asking about invoice {crashing.id} crashed"]
+        assert caplog.records[0].exc_info
+
+    def test_one_issued_long_ago_is_not_stuck(self, hub_double):
+        owed(fiscal_status="issued", qr=QR, emailed_at=timezone.now(), since=timezone.now() - timedelta(hours=2))
+        hub_double.answer("GET", r"^/internal/platform/invoices/", 200, {"status": "issued", "qr": QR})
+
+        assert "stuck=0" in run()
+
+    def test_one_is_stuck_at_the_very_hour(self, hub_double):
+        at = timezone.now() + timedelta(hours=3)
+        for sequence, since in ((1, at - timedelta(hours=1)), (2, at - timedelta(minutes=59))):
+            owed(sequence, since=since, next_post_at=at + timedelta(minutes=1))
+
+        assert platform_invoices.reconcile_platform_invoices(now=at)["stuck"] == 1
+
+
+class TestWhatItMails:
+    def test_one_still_issuing_has_nothing_to_mail(self, hub_double, mailoutbox):
+        owed(payer_email="pagos@example.com")
+        hub_double.answer("POST", PLATFORM, 503, {})
+
+        with pytest.raises(CommandError, match="mailed=0 unreachable=1 refused=0 rejected=0 stuck=0 mail_failed=0"):
+            run()
+
+        assert mailoutbox == []
+        assert Invoice.objects.get().emailed_at is None
+
+    def test_one_with_nobody_to_send_it_to_is_not_counted_as_mailed(self, hub_double):
+        owed(fiscal_status="accepted", qr=QR)
+
+        output = run()
+
+        assert "mailed=0" in output and "mail_failed=0" in output
+
+
+class TestTheOrderOfAPass:
+    def test_one_the_hub_takes_is_asked_about_and_mailed_in_the_same_pass_and_is_not_stuck(self, hub_double, mailoutbox):
+        owed(payer_email="pagos@example.com", since=timezone.now() - timedelta(hours=2))
+        hub_double.answer("POST", PLATFORM, 200, {"status": "issued", "qr": QR})
+        hub_double.answer("GET", r"^/internal/platform/invoices/[^/]+$", 200, {"status": "accepted", "qr": QR})
+        hub_double.answer("GET", r"/pdf$", 200, {"pdf": "the platform hub's"})
+
+        output = run()
+
+        assert "posted=1 accepted=1 waiting=0 mailed=1" in output and "stuck=0" in output
+        assert len(mailoutbox) == 1
+
+
+class TestAPassCutShort:
+    """The worker stops it between two invoices, whatever it was doing with them: the rest is for the next pass."""
+
+    def test_while_asking_it_asks_no_more_and_mails_nothing(self, hub_double, mailoutbox):
+        for sequence in (1, 2):
+            owed(sequence, fiscal_status="issued", qr=QR, payer_email="pagos@example.com")
+        hub_double.answer("GET", r"^/internal/platform/invoices/[^/]+$", 200, {"status": "issued", "qr": QR})
+
+        counts = platform_invoices.reconcile_platform_invoices(go_on=going_on(1))
+
+        assert (counts["waiting"], counts["cut_short"]) == (1, 1)
+        assert len(hub_double.calls_to("GET")) == 1
+        assert mailoutbox == []
+
+    def test_while_mailing_it_mails_no_more(self, hub_double, mailoutbox):
+        for sequence in (1, 2):
+            owed(sequence, fiscal_status="accepted", qr=QR, payer_email="pagos@example.com")
+        hub_double.answer("GET", r"/pdf$", 200, {"pdf": "the platform hub's"})
+
+        counts = platform_invoices.reconcile_platform_invoices(go_on=going_on(1))
+
+        assert (counts["mailed"], counts["cut_short"], len(mailoutbox)) == (1, 1, 1)
+
+    def test_the_stuck_ones_are_counted_all_the_same(self, hub_double):
+        owed(since=timezone.now() - timedelta(hours=2))
+
+        counts = platform_invoices.reconcile_platform_invoices(go_on=going_on(0))
+
+        assert (counts["stuck"], counts["cut_short"]) == (1, 1)
+        assert hub_double.calls == []
+
+    def test_once_told_to_stop_it_does_not_ask_again(self, hub_double):
+        owed(1)
+        owed(2, fiscal_status="issued", qr=QR)
+        owed(3, fiscal_status="accepted", qr=QR)
+        questions = []
+
+        def stop():
+            questions.append(1)
+            return False
+
+        platform_invoices.reconcile_platform_invoices(go_on=stop)
+
+        assert len(questions) == 1

@@ -37,13 +37,26 @@ SWEEP_COUNTS = (
 SWEPT_STATUSES = [Hub.Status.PREPARING, Hub.Status.ACTIVE, Hub.Status.PAST_DUE]
 
 
-def sweep_unpaid() -> Counter:  # noqa: C901, PLR0912, PLR0915
+def sweep_unpaid() -> Counter:
     """One pass of ``sweep_unpaid``: every business in dunning still running is replayed with its
     OLDEST open invoice through ``invoice_payment_failed`` (the live subscription decides; ``unpaid`` at once,
     else past the grace; one suspension), and the Stripe subscription of every deleted business is
     cancelled now. One business never stops the others; Stripe missing or failing for one is an error."""
     counts = Counter({key: 0 for key in SWEEP_COUNTS})
     configured = stripe_service.key_mode() is not StripeKeyMode.UNKNOWN
+    counts.update(_replay_those_in_dunning(configured))
+    # The businesses suspended too long: the notices of day 30 and 150 and the deletion
+    # on day 180, which the next step ends in Stripe in this same pass.
+    counts.update(suspensions.age_suspended())
+    counts.update(_end_the_deleted(configured))
+    counts.update(_forget_the_departed())
+    counts.update(_tell_the_untold())
+    return counts
+
+
+def _replay_those_in_dunning(configured: bool) -> Counter:
+    """Every business in dunning still running, decided again with its oldest open invoice."""
+    counts = Counter()
     owed = (
         Subscription.objects.filter(
             status__in=stripe_sales.DUNNING_STATUSES, hub__status__in=SWEPT_STATUSES
@@ -79,9 +92,12 @@ def sweep_unpaid() -> Counter:  # noqa: C901, PLR0912, PLR0915
             pk=subscription.hub_id, status=Hub.Status.SUSPENDED
         ).exists():
             counts["suspended"] += 1
-    # The businesses suspended too long: the notices of day 30 and 150 and the deletion
-    # on day 180, which the loop below ends in Stripe in this same pass.
-    counts.update(suspensions.age_suspended())
+    return counts
+
+
+def _end_the_deleted(configured: bool) -> Counter:
+    """The billing of every business that was deleted, ended in Stripe."""
+    counts = Counter()
     # Asked at deletion (``hubs.business.delete``), whatever the business is now: recovered on Free, too.
     deleted = (
         Subscription.objects.filter(cancel_requested_at__isnull=False)
@@ -107,7 +123,29 @@ def sweep_unpaid() -> Counter:  # noqa: C901, PLR0912, PLR0915
             counts["errors"] += 1
             continue
         counts["cancelled"] += 1
-    # The payers of deleted accounts, once nothing more can be charged to them.
+    return counts
+
+
+def _end_billing_of_deleted(subscription: Subscription) -> None:
+    """A deleted business stops paying now (``test_hub_delete_cancels_billing``): a subscription Stripe no
+    longer has counts as ended; any other failure keeps it for the next run."""
+    try:
+        stripe_service.cancel_subscription(subscription.stripe_subscription_id)
+    except stripe_service.StripeRefused as refused:
+        if refused.code != "resource_missing":
+            raise
+    logger.info(
+        "[UNPAID SWEEP] Ended %s of deleted hub %s",
+        subscription.stripe_subscription_id,
+        subscription.hub_id,
+    )
+    with transaction.atomic():
+        live_subscriptions.apply_state(subscription.hub, live_subscriptions.ended_state(subscription.hub))
+
+
+def _forget_the_departed() -> Counter:
+    """The payers of deleted accounts, once nothing more can be charged to them."""
+    counts = Counter()
     departed = BillingProfile.objects.filter(forget_after__isnull=False).order_by("pk").values_list("pk", flat=True)
     for profile_id in list(departed):
         try:
@@ -118,7 +156,12 @@ def sweep_unpaid() -> Counter:  # noqa: C901, PLR0912, PLR0915
             continue
         if outcome == departed_payers.PAYER_FORGOTTEN:
             counts["payers_forgotten"] += 1
-    # A mail of the unpaid episode that could not leave is sent again here.
+    return counts
+
+
+def _tell_the_untold() -> Counter:
+    """The mails of an unpaid episode that could not leave, sent again."""
+    counts = Counter()
     untold = (
         PaymentFailure.objects.filter(resolved_at__isnull=True)
         .filter(
@@ -139,20 +182,3 @@ def sweep_unpaid() -> Counter:  # noqa: C901, PLR0912, PLR0915
         elif outcome == unpaid_notices.MAIL_NOT_SENT:
             counts["mail_failed"] += 1
     return counts
-
-
-def _end_billing_of_deleted(subscription: Subscription) -> None:
-    """A deleted business stops paying now (``test_hub_delete_cancels_billing``): a subscription Stripe no
-    longer has counts as ended; any other failure keeps it for the next run."""
-    try:
-        stripe_service.cancel_subscription(subscription.stripe_subscription_id)
-    except stripe_service.StripeRefused as refused:
-        if refused.code != "resource_missing":
-            raise
-    logger.info(
-        "[UNPAID SWEEP] Ended %s of deleted hub %s",
-        subscription.stripe_subscription_id,
-        subscription.hub_id,
-    )
-    with transaction.atomic():
-        live_subscriptions.apply_state(subscription.hub, live_subscriptions.ended_state(subscription.hub))

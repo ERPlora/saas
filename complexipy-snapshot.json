@@ -196,32 +196,12 @@
     ]
   },
   {
-    "path": "billing/services/live_subscriptions.py",
-    "file_name": "live_subscriptions.py",
-    "functions": [
-      {
-        "name": "live_state",
-        "complexity": 29
-      }
-    ]
-  },
-  {
     "path": "billing/services/oss_notices.py",
     "file_name": "oss_notices.py",
     "functions": [
       {
         "name": "note_oss_threshold",
         "complexity": 16
-      }
-    ]
-  },
-  {
-    "path": "billing/services/platform_invoices.py",
-    "file_name": "platform_invoices.py",
-    "functions": [
-      {
-        "name": "reconcile_platform_invoices",
-        "complexity": 30
       }
     ]
   },
@@ -252,16 +232,6 @@
       {
         "name": "_recurring_net",
         "complexity": 23
-      }
-    ]
-  },
-  {
-    "path": "billing/services/unpaid_sweep.py",
-    "file_name": "unpaid_sweep.py",
-    "functions": [
-      {
-        "name": "sweep_unpaid",
-        "complexity": 26
       }
     ]
   },
