@@ -7,12 +7,12 @@ so is our route without an enabled endpoint. The events of our endpoint are comp
 named. Without a usable Stripe key there is nothing to audit: it says so and exits 0. Stripe is the double: no network.
 """
 
-import ast
-import inspect
+from typing import get_args
 
 import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from stripe.params import WebhookEndpointCreateParams
 
 from billing.services import (
     checkout_webhooks,
@@ -27,6 +27,8 @@ from billing.tests.stripe_double import connection_error, listing
 pytestmark = pytest.mark.django_db
 
 OURS = "https://erplora.com/webhooks/stripe/"
+#: Every event an endpoint can be sent, as Stripe's SDK lists them.
+STRIPE_EVENTS = get_args(get_args(WebhookEndpointCreateParams.__annotations__["enabled_events"])[0])
 
 
 @pytest.fixture(autouse=True)
@@ -67,11 +69,13 @@ class TestTheOneList:
         (subscription_webhooks, ("subscription_updated", "subscription_deleted", "customer_updated")),
     )
 
-    def test_every_event_of_the_list_reaches_a_handler(self, monkeypatch):
+    @pytest.fixture(autouse=True)
+    def _handlers(self, monkeypatch):
         for module, names in self.HANDLERS:
             for name in names:
                 monkeypatch.setattr(module, name, lambda *args, **kwargs: "handled")
 
+    def test_every_event_of_the_list_reaches_a_handler(self):
         for event_type in webhook_dispatch.STRIPE_WEBHOOK_EVENTS:
             assert webhook_dispatch.process_stripe_event({"type": event_type, "data": {"object": {}}}) == "handled", event_type
         assert webhook_dispatch.process_stripe_event({"type": "payment_intent.created", "data": {"object": {}}}) == "ignored"
@@ -80,9 +84,9 @@ class TestTheOneList:
         """The other direction: an event handled but off the list passes the audit with the endpoint not sending it.
         ``invoice.payment_succeeded`` is the one handled on purpose without being subscribed (see the list)."""
         handled = {
-            node.value.value
-            for node in ast.walk(ast.parse(inspect.getsource(webhook_dispatch.process_stripe_event)))
-            if isinstance(node, ast.MatchValue)
+            event_type
+            for event_type in STRIPE_EVENTS
+            if webhook_dispatch.process_stripe_event({"type": event_type, "data": {"object": {}}}) == "handled"
         }
 
         assert handled - {"invoice.payment_succeeded"} == set(webhook_dispatch.STRIPE_WEBHOOK_EVENTS)
