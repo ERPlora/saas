@@ -32,7 +32,9 @@ def tonight():
 
 def ready(hub, hub_double, status=Hub.Status.ACTIVE, **answer):
     """A business the Hub has ready, whose signed poll answers ``answer`` besides its status."""
-    Hub.objects.filter(pk=hub.pk).update(status=status, ready_at=timezone.now() - timedelta(days=3), pending_hub_call="")
+    Hub.objects.filter(pk=hub.pk).update(
+        status=status, ready_at=timezone.now() - timedelta(days=3), pending_hub_call=""
+    )
     hub_double.registry[str(hub.id)] = {"status": "ready", **answer}
     return hub
 

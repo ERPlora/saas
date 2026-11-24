@@ -13,8 +13,8 @@ Each wake-up runs the pass of the deliveries (``deliveries.deliver_pass``, under
 command of the same name and another worker never run one beside it), and at each quarter the two reconciliations and
 the question to the Hub about the maintenance scheduled for each business's night, each under its own lock
 (``PERIODIC``: the passes of ``reconcile_hub_states`` and ``reconcile_platform_invoices``, the same functions their
-commands run, and ``check_scheduled_moves``). Between two wake-ups it sends nothing to the database, so Aurora can go down to its
-minimum: its connections go back to the pool and the wait is on the socket of its own LISTEN connection
+commands run, and ``check_scheduled_moves``). Between two wake-ups it sends nothing to the database, so Aurora can go
+down to its minimum: its connections go back to the pool and the wait is on the socket of its own LISTEN connection
 (``base.listener``). It never looks again at once when a pass took nothing (``IDLE_FLOOR``) and, after a pass that
 failed, looks again in ``RETRY_AFTER_FAILURE`` at most.
 
