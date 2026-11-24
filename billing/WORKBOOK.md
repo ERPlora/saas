@@ -75,7 +75,9 @@ periodo («Mensual» o «Anual · −n %»), sus líneas como en /pricing/ (tras
 del plan …», «Hasta 40 apps activadas a la vez», o «Todas las apps activadas a la vez» si el plan no tiene tope;
 después los mensajes al mes, «Dominio propio para tu web (www.tunegocio.com)» en los planes que lo incluyen y, al final, la prueba), «Tu plan actual» en el que se tiene y el botón de cada uno:
 «Mejorar a …», «Cambiar a …», «Cambiar a anual · …» o «Bajar a Gratis»; con el plan cancelado o una bajada
-programada, «Mantener el plan». Cada tarjeta enseña sus cinco primeras líneas, con el botón justo debajo del
+programada, «Mantener el plan». Un plan que no se vende con el periodo elegido, porque le falta su precio de Stripe,
+tiene el botón desactivado y debajo dice por qué: «Solo con pago mensual», «Solo con pago anual» o «No está a la venta
+ahora mismo». Cada tarjeta enseña sus cinco primeras líneas, con el botón justo debajo del
 precio; «Ver todas las características» despliega las demás en todas las tarjetas a la vez y «Ver menos» las
 recoge. Un negocio que el personal de ERPlora marcó en el admin (BILLING-F27) ve también,
 al final, el plan interno «Prueba de pago (interno)»; ningún otro negocio lo ve. Si el negocio tiene una factura sin pagar, arriba sale el aviso con «Pagar la factura» y no se
@@ -298,7 +300,7 @@ Pasos:
 4. Al terminar, «Pagando…» hasta que llega la página del negocio, que avisa «… ya está en …» y cuya tarjeta Plan cambia en cuanto Stripe lo confirma. El negocio sigue funcionando todo el tiempo.
 Entra: el plan elegido (solo los que se ofrecen a ese negocio; los internos, solo a uno que el personal marcó), el periodo, los datos de facturación y el código promocional si lo hay.
 Sale: el negocio en el plan nuevo, su suscripción y su cliente en Stripe, el plan nuevo enviado al negocio (`hubs.subscription.changed`) y la factura de ERPlora del primer cobro (BILLING-F25), llegue antes o después el aviso del pago.
-Si falla: si el pago no se puede abrir, «No hemos podido abrir el pago seguro» y «No se ha cobrado nada» con «Reintentar»; un plan sin precio en Stripe, «no está a la venta»; un plan que no se ofrece a ese negocio (uno interno sin la marca, aunque se pida por la API) se rechaza antes de abrir el pago, «No hay ningún plan con este identificador»; sin datos de facturación, el formulario; con una factura sin pagar, no se vende nada a ese negocio. Si la persona cierra el diálogo, no se cobra nada y el negocio sigue en Gratis.
+Si falla: si el pago no se puede abrir, «No hemos podido abrir el pago seguro» y «No se ha cobrado nada» con «Reintentar»; un plan sin su precio de Stripe para el periodo elegido no se puede pulsar: debajo de su botón dice «Solo con pago mensual», «Solo con pago anual» o «No está a la venta ahora mismo», y pedido igualmente por la API se rechaza, «Esto no se puede comprar ahora mismo. Contacta con soporte.» (`billing.not_on_sale`); un plan que no se ofrece a ese negocio (uno interno sin la marca, aunque se pida por la API) se rechaza antes de abrir el pago, «No hay ningún plan con este identificador»; sin datos de facturación, el formulario; con una factura sin pagar, no se vende nada a ese negocio. Si la persona cierra el diálogo, no se cobra nada y el negocio sigue en Gratis.
 Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
 
 ### BILLING-F09 Volver del pago: confirmado, pendiente o cerrado
@@ -338,7 +340,7 @@ Pasos:
 4. Aviso: «… ya está en …» (o «…, con pago anual»); una bajada, que espera, avisa «… pasa a … el …» (o «… pasa a …, con pago mensual, el …»).
 Entra: el plan y el periodo nuevos y la suscripción del negocio con su tarjeta; al cambiar de periodo, también cambia el precio de cada módulo.
 Sale: el plan cambiado (`billing.plan.changed`) o la bajada programada (`billing.plan.change_scheduled`), con el IVA de la tabla en cada línea, y el plan nuevo enviado al negocio.
-Si falla: «El precio estaba desactualizado: aquí lo tienes de nuevo, revísalo antes de confirmar» si pasó demasiado tiempo; la tarjeta rechazada no cambia nada; el mismo plan y periodo no es un cambio; bajar a Gratis es cancelar (BILLING-F13); con una cancelación pendiente, «Mantén antes el plan para cambiarlo»; con una factura sin pagar, «Antes, paga la factura pendiente»; más de 400 € sin NIF pide el NIF.
+Si falla: «El precio estaba desactualizado: aquí lo tienes de nuevo, revísalo antes de confirmar» si pasó demasiado tiempo; la tarjeta rechazada no cambia nada; el mismo plan y periodo no es un cambio; bajar a Gratis es cancelar (BILLING-F13); con una cancelación pendiente, «Mantén antes el plan para cambiarlo»; con una factura sin pagar, «Antes, paga la factura pendiente»; un plan o un periodo sin su precio de Stripe no se puede pulsar, como en BILLING-F08; más de 400 € sin NIF pide el NIF.
 Implicados: el negocio (recibe su plan), ASSISTANT-F25 (pedido al asistente del panel, que manda aquí)
 
 ### BILLING-F12 Dar días de prueba o un descuento con un código promocional
@@ -570,7 +572,7 @@ Pasos:
 4. Desde ese momento el plan se vende a ese precio; sin sus precios, no está a la venta.
 Entra: el plan y sus precios de Stripe.
 Sale: el plan a la venta con sus precios comprobados.
-Si falla: un precio que no cuadra no se guarda y dice por qué debajo de su campo («Este precio no está en euros», «Stripe cobra … y el plan dice …», «Este precio incluye el IVA o no lo dice…», un precio de pruebas en producción no se encuentra…). Si Stripe no contesta, no se guarda y se pide repetir; sin claves de Stripe (en desarrollo) se guarda y el admin avisa de que no se comprobó. Un plan sin su precio de Stripe no se vende y la Tienda lo dice.
+Si falla: un precio que no cuadra no se guarda y dice por qué debajo de su campo («Este precio no está en euros», «Stripe cobra … y el plan dice …», «Este precio incluye el IVA o no lo dice…», un precio de pruebas en producción no se encuentra…). Si Stripe no contesta, no se guarda y se pide repetir; sin claves de Stripe (en desarrollo) se guarda y el admin avisa de que no se comprobó. Un plan sin su precio de Stripe para un periodo no se vende con ese periodo: en la Tienda su botón está desactivado y dice por qué (BILLING-F08).
 Implicados: hubs (el admin de los planes)
 
 ### BILLING-F29 Probar el cobro real en PRE con un reloj de prueba de Stripe
