@@ -23,6 +23,20 @@ def plan_on_sale(slug: str, hub):
     return Plan.objects.offered_to(hub).filter(slug=slug).first()
 
 
+#: The billings a plan or module is sold with, in the order the Store offers them.
+INTERVALS = ("month", "year")
+
+
+def plan_price_id(plan: Plan, interval: str) -> str:
+    """The Stripe price that bills ``plan`` with that billing, pasted in the admin; empty: not sold with it."""
+    return plan.stripe_price_id_annual if interval == "year" else plan.stripe_price_id
+
+
+def sold_intervals(plan: Plan) -> list[str]:
+    """The billings ``plan`` is sold with: the ones it has a Stripe price for."""
+    return [interval for interval in INTERVALS if plan_price_id(plan, interval)]
+
+
 def module_on_sale(slug: str):
     """The paid module with that slug, while it is on sale (``apps.Module``), or ``None``."""
     return Module.objects.filter(slug=slug, is_active=True).first()
@@ -174,5 +188,6 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
         "subscription": plan,
         "modules": modules,
         "offered_plans": [row.slug for row in offered],
+        "sold_intervals": {row.slug: sold_intervals(row) for row in offered},
         "internal_plans": [plan_catalog.plan_card(row, ctx.language or "") for row in internal],
     }

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { FREE_SUBSCRIPTION, STARTER, plan } from '../__tests__/fixtures';
 import { flush, mountBilling } from '../__tests__/mount-billing';
+import type { BillingInterval } from '../../../frontend/sdk-types/store';
 import PlansGrid from './PlansGrid.vue';
 
 const longPlan = (slug: string, name: string) =>
@@ -10,11 +11,12 @@ const longPlan = (slug: string, name: string) =>
     features: Array.from({ length: 7 }, (_, index) => `${name} feature ${index + 1}`),
   });
 
-async function grid() {
+async function grid(sold: Record<string, BillingInterval[]> = { starter: ['month', 'year'], standard: ['month', 'year'] }) {
   return mountBilling(PlansGrid, {
     props: {
       plans: [longPlan('free', 'Free'), longPlan('starter', 'Starter'), longPlan('standard', 'Standard')],
       period: 'month',
+      sold,
       subscription: FREE_SUBSCRIPTION,
       block: null,
       scheduledPlanName: '',
@@ -55,5 +57,13 @@ describe('PlansGrid', () => {
     const { wrapper } = await grid();
     await wrapper.get('[data-testid="plan-starter"]').get('[data-testid="plan-upgrade"]').trigger('click');
     expect(wrapper.emitted('upgrade')).toEqual([[{ ...STARTER, features: expect.any(Array) }, 'month']]);
+  });
+
+  it('hands each card the billings its plan is sold with: a plan the catalog lists none for is not bought', async () => {
+    const { wrapper } = await grid({ starter: ['month', 'year'] });
+    const button = (slug: string) => wrapper.get(`[data-testid="plan-${slug}"]`).get('[data-testid="plan-upgrade"]').element as unknown as { disabled: boolean };
+    expect(button('starter').disabled).toBe(false);
+    expect(button('standard').disabled).toBe(true);
+    expect(wrapper.get('[data-testid="plan-standard"]').get('[data-testid="plan-hint"]').text()).toBe('Not on sale right now');
   });
 });

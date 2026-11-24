@@ -13,13 +13,14 @@ from datetime import timedelta
 
 import pytest
 from django.utils import timezone
-from live.errors import NotFound, OperationError, PermissionDenied
+from live.errors import Conflict, NotFound, OperationError, PermissionDenied
 
 from apps.icons import FALLBACK_ICON_SVG
 from apps.tests.factories import CUBE_SVG, make_app
 from billing import queries
 from billing.models import PlanChangeSchedule
 from billing.schemas.store import StoreCatalogIn
+from billing.services import stripe_sales
 from billing.tests.conftest import ctx_for, pay
 from hubs.models import Hub, HubMember, Plan, SubscriptionItem
 from hubs.tests.conftest import add_member, create_business
@@ -169,6 +170,50 @@ class TestWhichPlansAreOffered:
         assert "standard" not in offered
         assert "payment-test" not in offered
         assert "free" not in offered
+
+
+class TestTheBillingsEachPlanIsSoldWith:
+    """A plan is sold with a billing only once the admin pasted its Stripe price for it
+    (``Plan.stripe_price_id`` / ``stripe_price_id_annual``); without one, buying it is refused with
+    ``billing.not_on_sale``, so the Store says so on the card instead of offering a button that fails."""
+
+    def test_a_plan_with_both_prices_is_sold_monthly_and_annually(self, shop, owner):
+        assert catalog(owner, shop)["sold_intervals"] == {
+            "starter": ["month", "year"],
+            "standard": ["month", "year"],
+        }
+
+    def test_a_plan_without_the_price_of_one_billing_is_not_sold_with_it(self, shop, owner):
+        Plan.objects.filter(slug="standard").update(stripe_price_id="")
+        Plan.objects.filter(slug="starter").update(stripe_price_id_annual="")
+
+        assert catalog(owner, shop)["sold_intervals"] == {
+            "starter": ["month"],
+            "standard": ["year"],
+        }
+
+    def test_a_plan_without_any_stripe_price_is_offered_but_sold_with_none(self, shop, owner):
+        out = catalog(owner, pay(shop))
+
+        assert "enterprise" in out["offered_plans"]
+        assert out["sold_intervals"]["enterprise"] == []
+
+    def test_the_internal_plan_is_sold_by_the_month_only(self, marked, owner):
+        assert catalog(owner, marked)["sold_intervals"]["payment-test"] == ["month"]
+
+    def test_what_the_store_says_is_sold_is_what_the_checkout_sells(self, shop, owner):
+        Plan.objects.filter(slug="standard").update(stripe_price_id="")
+        paid = pay(shop)
+        sold = catalog(owner, paid)["sold_intervals"]
+
+        for slug, intervals in sold.items():
+            for interval in ("month", "year"):
+                if interval in intervals:
+                    assert stripe_sales.plan_sale(paid, slug, interval).price_id
+                    continue
+                with pytest.raises(Conflict) as refused:
+                    stripe_sales.plan_sale(paid, slug, interval)
+                assert refused.value.code == "billing.not_on_sale"
 
 
 class TestTheInternalPlans:

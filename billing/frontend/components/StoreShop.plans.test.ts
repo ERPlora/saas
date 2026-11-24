@@ -105,6 +105,19 @@ describe('StoreShop', () => {
     expect(s.wrapper.findComponent(ProrationDialog).props('item')).toEqual({ kind: 'plan', slug: 'pro', name: 'Pro', from: 'Starter', recurringCents: 5999, interval: 'month' });
   });
 
+  it('a plan Stripe has no price for is shown, but its card does not sell it and says why', async () => {
+    const unsold = catalog('bakery', { offered_plans: ['starter', 'pro'], sold_intervals: { starter: ['month', 'year'], pro: [] } });
+    const plans = { ...PLANS, plans: [...PLANS.plans, PRO] };
+    const s = await setup({
+      answer: ({ path }) => (path === '/api/plans' ? Response.json(plans) : path === '/api/billing/store' ? Response.json(unsold) : undefined),
+    });
+    const change = s.el('plan-pro').find('[data-testid="plan-change"]');
+    expect((change.element as unknown as { disabled: boolean }).disabled).toBe(true);
+    expect(s.el('plan-pro').find('[data-testid="plan-hint"]').text()).toBe('Not on sale right now');
+    await change.trigger('click');
+    expect(s.wrapper.findComponent(ProrationDialog).props('item')).toBeNull();
+  });
+
   it('its own plan switches to annual in its dialog, for that business', async () => {
     const s = await setup();
     s.el('store-period').element.dispatchEvent(new CustomEvent('ionChange', { detail: { value: 'year' } }));

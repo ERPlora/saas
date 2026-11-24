@@ -138,6 +138,9 @@ export interface StoreCatalogOut {
   /** The paid plans the business may move to: no upgrade-only plan while Stripe does not bill it; the internal ones
    *  only to a business ERPlora's staff marked. */
   offered_plans: string[];
+  /** The billings each offered plan is sold with: the ones it has a Stripe price for. A billing without one is
+   *  refused at checkout (`billing.not_on_sale`), so the Store says so instead of selling it. */
+  sold_intervals: Record<string, BillingInterval[]>;
   /** The internal plans the business is offered, and the one it has: `hubs.plan.list` lists only the public ones. */
   internal_plans: PlanOut[];
 }

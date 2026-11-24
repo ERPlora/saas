@@ -69,5 +69,8 @@ class StoreCatalogOut(Schema):
     #: The paid plans the business may move to (slugs, in display order): the ones sold at sign-up while Stripe
     #: does not bill it; the ``upgrade_only`` ones too once it pays (``billing.queries.offered_plans``).
     offered_plans: list[str]
+    #: The billings each offered plan is sold with: the ones it has a Stripe price for. A billing without one
+    #: is refused at checkout (``billing.not_on_sale``), so the Store says so instead of selling it.
+    sold_intervals: dict[str, list[Interval]]
     #: The internal plans the business is offered, and the one it has: ``hubs.plan.list`` lists only the public ones.
     internal_plans: list[PlanOut]

@@ -156,9 +156,7 @@ def plan_sale(hub: Hub | None, slug: str, interval: str) -> Sale:
             ),
             code="billing.plan_is_free",
         )
-    price_id = (
-        plan.stripe_price_id_annual if interval == "year" else plan.stripe_price_id
-    )
+    price_id = queries.plan_price_id(plan, interval)
     net = plan.price_annual if interval == "year" else plan.price_monthly
     if not price_id:
         raise _not_on_sale(f"Plan {plan.slug} ({interval})")
