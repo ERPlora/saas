@@ -5,6 +5,7 @@
 // owner's card says so and leads with «Keep it with my card»: the secure payment of that plan (CheckoutModal),
 // billed from the end of the paid period.
 import {
+  businessStatusPill,
   DataTable,
   type DataTableAction,
   type DataTableActionEvent,
@@ -109,6 +110,8 @@ function moduleLines(row: Row) {
 }
 
 function statusPill(row: Row): { tone: StatusPillTone; label: string } {
+  // A deleted business: the same pill as its own page.
+  if (row.status === 'deleting') return businessStatusPill('deleting', locale.value);
   if (row.cancelling) return { tone: 'warning', label: t('billing.subscriptions.statusUntil', { date: day(row.ends_at) }) };
   return { tone: TONES[row.status] ?? 'neutral', label: row.status_label };
 }

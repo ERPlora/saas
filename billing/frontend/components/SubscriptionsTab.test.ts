@@ -58,6 +58,16 @@ const CANCELLING = subscriptionRow('bakery', 'Panadería López', {
   actions: ['keep_plan', 'view_invoices'],
   can: { take_over: false, change_plan: true, cancel_plan: false, keep_plan: true, view_invoice: false, view_invoices: true },
 });
+/** A business deleted with its plan: the server says the business's status, as its own page does, and no next invoice. */
+const DELETED = subscriptionRow('bakery', 'Panadería López', {
+  plan: { slug: 'free', name: 'Free', interval: 'month', price_cents: 0 },
+  status: 'deleting',
+  status_label: 'Deleted',
+  cancel_requested: true,
+  next_invoice: null,
+  actions: ['view_invoices'],
+  can: { take_over: false, change_plan: false, cancel_plan: false, keep_plan: false, view_invoice: false, view_invoices: true },
+});
 /** A business handed over with its plan still on the previous owner's card: it ends with its period. */
 const HANDED_OVER = subscriptionRow('bakery', 'Panadería López', {
   cancelling: true,
@@ -143,6 +153,20 @@ describe('SubscriptionsTab: the list', () => {
     const s = await setup();
     await s.show([CANCELLING]);
     expect(s.cells(0).slice(3, 5)).toEqual(['Free from Nov 1, 2026', 'Until Nov 1, 2026']);
+  });
+
+  it('a deleted business is being deleted, with the pill of its own page, no next invoice and nothing to change', async () => {
+    const s = await setup();
+    await s.show([DELETED]);
+    expect(s.cells(0).slice(3, 5)).toEqual(['—', 'Being deleted']);
+    expect(s.wrapper.get('[data-testid="subscriptions-row"] .status-pill').attributes('data-tone')).toBe('danger');
+    expect(s.actionsOf('bakery')).toEqual(['view_invoices']);
+  });
+
+  it('a deleted business is «En eliminación» in Spanish', async () => {
+    const s = await setup('es');
+    await s.show([{ ...DELETED, status_label: 'Eliminado' }]);
+    expect(s.cells(0)[4]).toBe('En eliminación');
   });
 
   it('a downgrade waiting for the end of the period says what it changes to and when', async () => {

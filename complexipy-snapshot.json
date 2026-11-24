@@ -175,7 +175,7 @@
     "functions": [
       {
         "name": "_subscription_row",
-        "complexity": 20
+        "complexity": 17
       }
     ]
   },

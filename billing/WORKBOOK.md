@@ -498,12 +498,12 @@ Estado: hecho
 Actor: propietario, cuenta que paga
 Pantalla: Facturación › Suscripciones
 Pasos:
-1. En **Facturación › Suscripciones** hay una fila por negocio que paga: el plan y sus aplicaciones de pago a precio sin IVA (una cancelada dice «(hasta el …)» y deja de salir cuando termina), la próxima factura con IVA (con una bajada programada, la del plan y el periodo nuevos, con sus aplicaciones al precio de ese periodo; al mantener el plan, vuelve a la del actual) y el estado.
+1. En **Facturación › Suscripciones** hay una fila por negocio que paga: el plan y sus aplicaciones de pago a precio sin IVA (una cancelada dice «(hasta el …)» y deja de salir cuando termina), la próxima factura con IVA (con una bajada programada, la del plan y el periodo nuevos, con sus aplicaciones al precio de ese periodo; al mantener el plan, vuelve a la del actual) y el estado. Un negocio eliminado sale «En eliminación», como su página, sin próxima factura ni nada que cambiar, hasta que la pasada siguiente termina su suscripción en Stripe; después deja de salir.
 2. Cada fila lleva sus acciones: la principal a la vista («Ver la factura» si hay una sin cobrar; si no, «Mantenerlo con mi tarjeta», «Cambiar plan» o «Mantener el plan») y en «⋮» «Ver facturas» y «Cancelar plan».
 Entra: las suscripciones de los negocios que paga la cuenta o de los que es propietaria.
 Sale: nada.
 Si falla: sin negocios de pago, «Todos tus negocios están en Gratis» con «Ver planes»; sin los datos de quien paga, la próxima factura no puede calcular su IVA y se dice. Un propietario cuyo plan cobra la tarjeta de otra cuenta (la del propietario anterior tras un traspaso) ve «Se paga con la tarjeta de otra cuenta»: no lo cambia ni lo cancela, lo mantiene con su tarjeta (HUBS-F28).
-Implicados: hubs (HUBS-F28: el plan de un negocio traspasado)
+Implicados: hubs (HUBS-F28: el plan de un negocio traspasado; HUBS-F18: un negocio eliminado)
 
 ### BILLING-F24 Abrir el portal de pagos de Stripe para cambiar la tarjeta
 Estado: hecho

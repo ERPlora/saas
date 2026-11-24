@@ -60,8 +60,9 @@ export interface SubscriptionRowOut {
   business: InvoiceBusinessOut;
   plan: SubscriptionPlanOut;
   modules: SubscriptionModuleRowOut[];
-  /** `null` while the plan ends at the end of the period. */
+  /** `null` while the plan ends at the end of the period, or once the business was deleted. */
   next_invoice: NextInvoiceOut | null;
+  /** Stripe's status of the subscription; `deleting` once the business was deleted, as its own page says. */
   status: string;
   status_label: string;
   cancelling: boolean;

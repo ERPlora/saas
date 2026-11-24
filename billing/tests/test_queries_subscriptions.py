@@ -637,3 +637,51 @@ class TestTheNextInvoiceOfADowngradeThatWaits:
 
         assert response.status_code == 200
         assert response.json()["rows"][0]["next_invoice"]["total_cents"] == 3629
+
+
+class TestADeletedBusiness:
+    """Deleting a business cancels its plan at once: until billing's next sweep ends its Stripe
+    subscription, its row says the business is deleted, as the business's own page does, with no next
+    invoice and nothing to change."""
+
+    def deleted(self, owner, hub, **paid):
+        from hubs.schemas.businesses import BusinessDeleteIn
+        from hubs.services import deletion
+        from hubs.tests.conftest import ctx_for as hub_ctx
+
+        business = pay(hub, **paid)
+        deletion.business_delete(hub_ctx(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
+        return business
+
+    @pytest.mark.parametrize("cancelled_first", [True, False], ids=["plan-cancelled-first", "plan-running"])
+    def test_its_row_says_it_is_deleted_and_bills_nothing_more(self, owner, shop, cancelled_first):
+        self.deleted(owner, shop, cancel_at_period_end=cancelled_first)
+
+        [row] = subscriptions(owner)
+
+        assert (row["status"], row["status_label"]) == ("deleting", "Deleted")
+        assert row["next_invoice"] is None
+        assert row["actions"] == ["view_invoices"]
+
+    def test_it_says_so_in_spanish(self, owner, shop):
+        self.deleted(owner, shop, cancel_at_period_end=True)
+
+        [row] = subscriptions(owner, "es")
+
+        assert row["status_label"] == "Eliminado"
+
+    def test_it_is_no_row_of_a_stripe_status(self, owner, shop):
+        self.deleted(owner, shop)
+
+        rows = queries.subscription_list(ctx_for(owner), SubscriptionListIn(status="active")).model_dump(mode="json")
+
+        assert (rows["rows"], rows["total"]) == ([], 0)
+
+    def test_another_business_of_the_account_still_renews(self, owner, shop):
+        self.deleted(owner, shop)
+        pay(create_business(owner, name="Bar Norte"), sub_id="sub_2")
+
+        rows = {row["business"]["name"]: row for row in subscriptions(owner)}
+
+        assert rows["Bar Norte"]["status"] == "active"
+        assert rows["Bar Norte"]["next_invoice"] is not None
