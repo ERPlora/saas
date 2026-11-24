@@ -114,7 +114,8 @@ ERPlora (`409 nif_mismatch`).
 variable de entorno, y los dos son slugs reservados de `live.slugs` que ningún negocio puede tener; con uno no reservado,
 `manage.py check` falla con `fiscal_gateway.E001` y el despliegue no arranca. Se aceptan los dos a la vez para que
 renombrar ese negocio en el Hub (`create_platform_hub --rename --execute`) no pare el envío de ningún registro: se
-renombra con esta versión ya desplegada y, cuando ya no haga falta volver atrás, se retira `erplora` de la lista.
+renombra con esta versión ya desplegada y, cuando ya no haga falta volver atrás, se retira `erplora` de la lista. Con el
+negocio renombrado, erplora.com no vuelve a una versión que solo conoce `erplora` sin deshacer antes el renombrado.
 No es un negocio del SaaS: no se le pide fila `Hub` ni otorgamiento, pero solo
 presenta en nombre de ERPLORA CLOUD SL: `nif` tiene que ser el titular del sello; si no, `409 nif_mismatch`.
 Cualquier otro hub que declare el NIF de ERPlora necesita su otorgamiento como los demás en producción, y en pruebas
