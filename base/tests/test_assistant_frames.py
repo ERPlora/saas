@@ -96,8 +96,11 @@ def as_sent(frames: list[dict]) -> list[str]:
     return [json.dumps(frame) for frame in frames]
 
 
-def done(append, pending=(), continuation=None, web=False) -> dict:
-    return {"type": "done", "append": append, "pending": list(pending), "continuation": continuation, "web": web}
+def done(append, pending=(), continuation=None, web=False, sources=()) -> dict:
+    return {
+        "type": "done", "append": append, "pending": list(pending), "continuation": continuation, "web": web,
+        "sources": list(sources),
+    }
 
 
 def said(text: str, calls=()) -> dict:
@@ -178,6 +181,15 @@ class TestWhatTheDoneCarries:
     def test_an_empty_continuation_is_none(self, scripted):
         scripted(CALL, {"type": "response", "continuation": ""}, "[DONE]")
         assert as_sent(turn()) == as_sent([done([said("", [KEPT_CALL])], [KEPT_CALL], None)])
+
+    def test_the_addresses_the_tools_consulted_are_told_to_the_browser(self, scripted):
+        law, rate = "https://www.boe.es/doc", "https://frankfurter.dev"
+        scripted(
+            {"type": "sources", "sources": [law]}, {"type": "sources", "sources": [rate]},
+            {"type": "text_delta", "text": "Hoy"}, "[DONE]",
+        )
+        expected = [{"type": "text", "text": "Hoy"}, done([said("Hoy")], sources=[law, rate])]
+        assert as_sent(turn()) == as_sent(expected)
 
     def test_pages_from_the_web_are_told_to_the_browser(self, scripted):
         scripted({"type": "text_delta", "text": "1 € = 1.08 $"}, {"type": "web"}, "[DONE]")
