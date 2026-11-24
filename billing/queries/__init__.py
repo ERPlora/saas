@@ -81,8 +81,6 @@ from billing.queries.catalog import (
     offered_plans,
     plan_for_price,
     plan_on_sale,
-    plan_price_id,
-    sold_intervals,
     store_catalog,
 )
 from billing.queries.paying_customers import (
