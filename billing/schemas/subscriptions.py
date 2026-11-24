@@ -60,8 +60,10 @@ class SubscriptionRowOut(Schema):
     business: InvoiceBusinessOut
     plan: SubscriptionPlanOut
     modules: list[SubscriptionModuleRowOut]
-    #: ``None`` when the plan ends at the end of the period (``cancelling``): no invoice follows.
+    #: ``None`` when the plan ends at the end of the period (``cancelling``) or the business was deleted: no invoice
+    #: follows.
     next_invoice: NextInvoiceOut | None
+    #: Stripe's status of the subscription; ``deleting`` once the business was deleted, as its own page says.
     status: str
     status_label: str
     cancelling: bool

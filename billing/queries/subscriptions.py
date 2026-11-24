@@ -94,6 +94,34 @@ def scheduled_change_of(hub_id) -> dict | None:
     return {"plan": pending.plan_slug, "interval": pending.interval, "starts_at": pending.starts_at}
 
 
+def _next_invoice(
+    subscription: Subscription, scheduled_change: dict | None, next_plans: dict, renewing: list
+) -> dict | None:
+    """The row's next invoice: none while its plan ends at the end of the period, nor once the business was deleted
+    (deleting it cancelled its plan at once, and billing's next sweep ends it in Stripe, which bills nothing more)."""
+    if subscription.cancel_at_period_end or subscription.hub.status == Hub.Status.DELETING:
+        return None
+    # A downgrade that waits starts on that very date: Stripe's next phase bills the new items.
+    next_plan, next_interval = (
+        (next_plans.get(scheduled_change["plan"]), scheduled_change["interval"])
+        if scheduled_change
+        else (subscription.plan, subscription.billing_interval)
+    )
+    return {
+        "date": subscription.current_period_end,
+        "total_cents": _next_invoice_cents(next_plan, next_interval, renewing, payer_of(subscription.hub)),
+        "currency": "EUR",
+    }
+
+
+def _status_of(subscription: Subscription) -> tuple[str, str]:
+    """The row's status and its label: Stripe's, or the business's once it was deleted, as its own page says it."""
+    hub = subscription.hub
+    if hub.status == Hub.Status.DELETING:
+        return hub.status, access_control.status_label(hub.status)
+    return subscription.status, str(Subscription.Status(subscription.status).label)
+
+
 def _subscription_row(  # noqa: PLR0913, PLR0917
     subscription: Subscription, user, owned: set, unpaid: dict, modules: dict, scheduled: dict, next_plans: dict
 ) -> dict:
@@ -122,19 +150,8 @@ def _subscription_row(  # noqa: PLR0913, PLR0917
             renewing.append(module)
     cancelling = subscription.cancel_at_period_end
     scheduled_change = scheduled.get(hub.id)
-    next_invoice = None
-    if not cancelling:
-        # A downgrade that waits starts on that very date: Stripe's next phase bills the new items.
-        next_plan, next_interval = (
-            (next_plans.get(scheduled_change["plan"]), scheduled_change["interval"])
-            if scheduled_change
-            else (plan, interval)
-        )
-        next_invoice = {
-            "date": subscription.current_period_end,
-            "total_cents": _next_invoice_cents(next_plan, next_interval, renewing, payer_of(hub)),
-            "currency": "EUR",
-        }
+    next_invoice = _next_invoice(subscription, scheduled_change, next_plans, renewing)
+    status, status_label = _status_of(subscription)
     profile = hub.billing_profile
     # Charged to the card of another account: the payer before a hand-over.
     elsewhere = profile is None or profile.owner_id != user.pk or subscription.stripe_customer_id != profile.stripe_customer_id
@@ -160,8 +177,8 @@ def _subscription_row(  # noqa: PLR0913, PLR0917
         "plan": {"slug": plan.slug, "name": plan.translated("name"), "interval": interval, "price_cents": plan_cents},
         "modules": items,
         "next_invoice": next_invoice,
-        "status": subscription.status,
-        "status_label": str(Subscription.Status(subscription.status).label),
+        "status": status,
+        "status_label": status_label,
         "cancelling": cancelling,
         "ends_at": subscription.current_period_end if cancelling else None,
         "cancel_requested": subscription.cancel_requested_at is not None,
@@ -202,12 +219,15 @@ def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
         .exclude(stripe_subscription_id="")
         .exclude(status__in=ENDED_SUBSCRIPTIONS)
         .exclude(hub__status=Hub.Status.DELETED)
+        # Recovered before the sweep ended what deleting it asked of Stripe: it is on Free and bills nothing.
+        .exclude(Q(cancel_requested_at__isnull=False) & ~Q(hub__status=Hub.Status.DELETING))
         .order_by("hub__name", "hub_id")
     )
     if data.hub_id is not None:
         subscriptions = subscriptions.filter(hub_id=data.hub_id)
     if data.status is not None:
-        subscriptions = subscriptions.filter(status=data.status)
+        # A deleted business's row carries the business's status, none of Stripe's.
+        subscriptions = subscriptions.filter(status=data.status).exclude(hub__status=Hub.Status.DELETING)
     total = subscriptions.count()
     page = list(subscriptions[data.offset : data.offset + data.limit])
     unpaid = {}

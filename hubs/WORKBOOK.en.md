@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:d7defb2d02eb59c629279e185ef4010b5339d1c25add838659d7cc0c5596bfba -->
+<!-- generated from WORKBOOK.md sha256:639c396de6ac02cf31c4c8f693a441f2ee3a46ffc132d7460acde1ad6b252096 -->
 
 ## What it is for and who it is for
 
@@ -428,9 +428,9 @@ Steps:
 3. The page says "It will be erased for good on …", that once erased only its fiscal documents are kept, for 6 years, and "Recover business"; below, "Download the data": each full copy of its data with its date, "When it was deleted" and its size, and "Download". The owner gets the email with that date, which says the same of its fiscal documents, and "Download a full copy of its data: …", which leads to that page; when the copy is ready, another email: "The copy of the data of … is ready".
 4. An integration with the account's session does the same, with the name typed; an API key does not delete.
 In: the name typed again; the owner's session.
-Out: the business deleted, which stops opening at once for everyone and after 90 days is erased for good, except its fiscal documents, which the business keeps for 6 years in its fiscal archive (BASE-F109); its plan goes back to Free and what Stripe was charging is cancelled in the next pass; the business receives the deletion after saving. Records `hubs.business.deleted`.
+Out: the business deleted, which stops opening at once for everyone and after 90 days is erased for good, except its fiscal documents, which the business keeps for 6 years in its fiscal archive (BASE-F109); its plan goes back to Free and what Stripe was charging is cancelled in the next pass, with no final invoice; until then, Billing › Subscriptions shows it "Being deleted", with no next invoice (BILLING-F23); the business receives the deletion after saving. Records `hubs.business.deleted`.
 If it fails: a name that does not match deletes nothing (case and spaces around do not matter); deleting it twice, "This business was deleted.". Only the owner deletes it and downloads its data. With no copy yet, "The copy is not ready yet. We will let you know by email when it is."; a business that never had its own database, "This business has no copy of its data.", with no notice, and its deletion email does not lead to the copy; a copy no longer kept, "This copy of the data is no longer kept."; if it cannot be downloaded now, "The copy cannot be downloaded right now. Try again in a moment.". To stop paying without deleting it, the plan is cancelled from Billing (BILLING-F13).
-Involved: billing (cancels what was being charged), the business (stops opening, keeps it 90 days and then erases it, except its fiscal documents: BASE-F109)
+Involved: billing (cancels what was being charged; BILLING-F23 shows it being deleted), the business (stops opening, keeps it 90 days and then erases it, except its fiscal documents: BASE-F109)
 
 ### HUBS-F19 Recover a deleted business
 Status: done
@@ -440,7 +440,7 @@ Steps:
 1. In **Businesses** (the row says until when it can be recovered) or on the deleted business's page, the owner presses "Recover business".
 2. "Business recovered: …" appears and the business opens again as it was, on the Free plan; to go back to a paid plan, it is changed in the Store (BILLING-F08).
 In: the business deleted less than 90 days ago; the owner's session.
-Out: the business active again (or being prepared, if it never got ready), on Free, and the business told after saving. Records `hubs.business.restored`.
+Out: the business active again (or being prepared, if it never got ready), on Free, and the business told after saving; Billing › Subscriptions stops showing it, because on Free nothing is charged for it (BILLING-F23). Records `hubs.business.restored`.
 If it fails: after the 90 days, "This business was erased for good and cannot be recovered."; a business that is not deleted, "This business is not deleted.". If the account already has its free business, it does not come back: first the other one moves to a paid plan. Only the owner recovers it.
 Involved: the business (opens it again)
 

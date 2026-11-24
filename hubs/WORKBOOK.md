@@ -445,9 +445,9 @@ Pasos:
 3. La página dice «Se eliminará para siempre el …», que una vez borrado solo se guardan sus documentos fiscales, durante 6 años, y «Recuperar negocio»; debajo, «Descargar los datos»: cada copia completa de sus datos con su fecha, «Al eliminarlo» y su tamaño, y «Descargar». Al propietario le llega el correo con esa fecha, que dice lo mismo de sus documentos fiscales, y «Descarga una copia completa de sus datos: …», que lleva a esa página; cuando la copia está lista, otro correo: «La copia de los datos de … está lista».
 4. Una integración con la sesión de la cuenta hace lo mismo, con el nombre escrito; una clave de API no elimina.
 Entra: el nombre escrito otra vez; la sesión del propietario.
-Sale: el negocio eliminado, que deja de abrirse al momento para todos y a los 90 días se borra para siempre, salvo sus documentos fiscales, que el negocio guarda 6 años en su archivo fiscal (BASE-F109); su plan vuelve a Gratis y lo que se cobraba en Stripe se cancela en la pasada siguiente; el negocio recibe la baja tras guardar. Anota `hubs.business.deleted`.
+Sale: el negocio eliminado, que deja de abrirse al momento para todos y a los 90 días se borra para siempre, salvo sus documentos fiscales, que el negocio guarda 6 años en su archivo fiscal (BASE-F109); su plan vuelve a Gratis y lo que se cobraba en Stripe se cancela en la pasada siguiente, sin factura final; hasta entonces, Facturación › Suscripciones lo enseña «En eliminación», sin próxima factura (BILLING-F23); el negocio recibe la baja tras guardar. Anota `hubs.business.deleted`.
 Si falla: un nombre que no coincide no elimina nada (da igual en mayúsculas o con espacios alrededor); eliminarlo dos veces, «Este negocio se ha eliminado.». Solo el propietario lo elimina y descarga sus datos. Sin copia todavía, «La copia todavía no está lista. Te avisaremos por correo cuando lo esté.»; un negocio que nunca tuvo base de datos propia, «Este negocio no tiene copia de datos.», sin aviso, y su correo de la baja no lleva a la copia; una copia que ya no se guarda, «Esta copia de los datos ya no se conserva.»; si ahora no se puede bajar, «La copia no se puede descargar ahora mismo. Vuelve a intentarlo en un momento.». Para dejar de pagar sin eliminarlo, se cancela el plan desde Facturación (BILLING-F13).
-Implicados: billing (cancela lo que se cobraba), el negocio (deja de abrirse, lo guarda 90 días y después lo borra, salvo sus documentos fiscales: BASE-F109)
+Implicados: billing (cancela lo que se cobraba; BILLING-F23 lo enseña en eliminación), el negocio (deja de abrirse, lo guarda 90 días y después lo borra, salvo sus documentos fiscales: BASE-F109)
 
 ### HUBS-F19 Recuperar un negocio eliminado
 Estado: hecho
@@ -457,7 +457,7 @@ Pasos:
 1. En **Negocios** (la fila dice hasta cuándo se puede recuperar) o en la página del negocio eliminado, el propietario pulsa «Recuperar negocio».
 2. Sale «Negocio recuperado: …» y el negocio vuelve a abrirse como estaba, en el plan Gratis; para volver a un plan de pago, se cambia en la Tienda (BILLING-F08).
 Entra: el negocio eliminado hace menos de 90 días; la sesión del propietario.
-Sale: el negocio activo otra vez (o preparándose, si nunca llegó a estar listo), en Gratis, y el negocio avisado tras guardar. Anota `hubs.business.restored`.
+Sale: el negocio activo otra vez (o preparándose, si nunca llegó a estar listo), en Gratis, y el negocio avisado tras guardar; Facturación › Suscripciones deja de enseñarlo, porque en Gratis no se le cobra nada (BILLING-F23). Anota `hubs.business.restored`.
 Si falla: pasados los 90 días, «Este negocio se borró para siempre y no se puede recuperar.»; un negocio que no está eliminado, «Este negocio no está eliminado.». Si la cuenta ya tiene su negocio gratuito, no vuelve: primero el otro pasa a un plan de pago. Solo el propietario lo recupera.
 Implicados: el negocio (lo vuelve a abrir)
 

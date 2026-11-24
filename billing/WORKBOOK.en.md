@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:4515fd0f7902cce54de2b913b0e388c121ec019b64dc1ff9e98afe542591dc6c -->
+<!-- generated from WORKBOOK.md sha256:374113f5bccf642ff923105ce4eb82564129d6d5ba668fb8488078f6d5dadb80 -->
 
 ## What it is for and who it is for
 
@@ -481,12 +481,12 @@ Status: done
 Actor: owner, paying account
 Screen: Billing › Subscriptions
 Steps:
-1. In **Billing › Subscriptions** there is one row per paying business: the plan and its paid apps at their price without VAT (a cancelled one says "(until …)" and stops showing once it ends), the next invoice with VAT (with a scheduled downgrade, that of the new plan and billing, with its apps at the price of that billing; keeping the plan brings back the current one's) and the status.
+1. In **Billing › Subscriptions** there is one row per paying business: the plan and its paid apps at their price without VAT (a cancelled one says "(until …)" and stops showing once it ends), the next invoice with VAT (with a scheduled downgrade, that of the new plan and billing, with its apps at the price of that billing; keeping the plan brings back the current one's) and the status. A deleted business shows "Being deleted", as its page does, with no next invoice and nothing to change, until the next pass ends its subscription in Stripe; then it stops showing.
 2. Each row has its actions: the main one in view ("View the invoice" if there is an uncollected one; otherwise "Keep it with my card", "Change plan" or "Keep the plan") and in "⋮" "View invoices" and "Cancel plan".
 In: the subscriptions of the businesses the account pays or owns.
 Out: nothing.
 If it fails: without paid businesses, "All your businesses are on Free" with "See plans"; without the payer's details, the next invoice cannot work out its VAT and it is said. An owner whose plan is charged to another account's card (the previous owner's after a transfer) sees "Paid with another account’s card": they neither change nor cancel it, they keep it with their card (HUBS-F28).
-Involved: hubs (HUBS-F28: the plan of a business handed over)
+Involved: hubs (HUBS-F28: the plan of a business handed over; HUBS-F18: a deleted business)
 
 ### BILLING-F24 Open Stripe's payment portal to change the card
 Status: done

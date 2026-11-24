@@ -316,6 +316,22 @@ class TestADeletedBusinessStopsPaying:
 
         assert stripe_double.calls_to("subscriptions.cancel")
 
+    def test_nothing_is_invoiced_for_a_plan_cancelled_and_then_deleted(self, shop, owner, stripe_double):
+        """The only thing Stripe is asked for a deleted business is to end its subscription now, with no final
+        invoice; Billing then has no row of it left, so no invoice of 0 € comes at the end of its period."""
+        from billing import queries
+        from billing.schemas.subscriptions import SubscriptionListIn
+        from billing.tests.conftest import ctx_for
+
+        self.deleted(shop, cancel_at_period_end=True)
+        stripe_double.answer("subscriptions.cancel", subscription(status="canceled"))
+
+        run()
+
+        writes = [call for call in stripe_double.calls if not call.path.endswith((".list", ".retrieve"))]
+        assert [(call.path, call.args, call.params) for call in writes] == [("subscriptions.cancel", ("sub_1",), {})]
+        assert queries.subscription_list(ctx_for(owner), SubscriptionListIn()).rows == []
+
     def test_a_subscription_stripe_no_longer_has_counts_as_ended(
         self, shop, stripe_double
     ):
