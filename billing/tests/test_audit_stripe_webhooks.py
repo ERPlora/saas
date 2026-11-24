@@ -14,15 +14,9 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from stripe.params import WebhookEndpointCreateParams
 
-from billing.services import (
-    checkout_webhooks,
-    invoice_recording,
-    invoice_webhooks,
-    rectifying_invoices,
-    subscription_webhooks,
-    webhook_dispatch,
-)
+from billing.services import webhook_dispatch
 from billing.tests.stripe_double import connection_error, listing
+from billing.tests.test_webhook_dispatch import HANDLERS
 
 pytestmark = pytest.mark.django_db
 
@@ -61,17 +55,9 @@ def refused(*args) -> str:
 
 
 class TestTheOneList:
-    HANDLERS = (
-        (checkout_webhooks, ("checkout_completed", "checkout_closed")),
-        (invoice_webhooks, ("invoice_paid", "invoice_payment_failed")),
-        (invoice_recording, ("invoice_voided",)),
-        (rectifying_invoices, ("credit_note_created", "credit_note_voided", "charge_refunded")),
-        (subscription_webhooks, ("subscription_updated", "subscription_deleted", "customer_updated")),
-    )
-
     @pytest.fixture(autouse=True)
     def _handlers(self, monkeypatch):
-        for module, names in self.HANDLERS:
+        for module, names in HANDLERS:
             for name in names:
                 monkeypatch.setattr(module, name, lambda *args, **kwargs: "handled")
 

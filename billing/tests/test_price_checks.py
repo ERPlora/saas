@@ -29,6 +29,17 @@ def other_amount(stripe: str, expected: str) -> str:
     return f"Stripe charges {stripe} and the plan says {expected}."
 
 
+#: A price wrong in each way and what is said of it, in the order the problems are looked for.
+WRONG_FROM_FIRST_TO_LAST = (
+    ({"active": False}, ARCHIVED),
+    ({"currency": "usd"}, NOT_EUROS),
+    ({"recurring": YEARLY}, NOT_MONTHLY),
+    ({"unit_amount": 2900}, other_amount("29.00", "29.99")),
+    ({"tax_behavior": "inclusive"}, NOT_NET),
+    ({"product": "prod_other"}, OTHER_PRODUCT),
+)
+
+
 def yearly(price_id="price_year", **fields):
     return stripe_price(price_id, **{"unit_amount": 29990, "recurring": YEARLY, **fields})
 
@@ -53,16 +64,7 @@ def of_the_year(stripe_double, **fields):
 
 class TestWhatTheStaffRead:
     @pytest.mark.parametrize(
-        ("fields", "problem"),
-        [
-            ({"active": False}, ARCHIVED),
-            ({"currency": "usd"}, NOT_EUROS),
-            ({"recurring": YEARLY}, NOT_MONTHLY),
-            ({"unit_amount": 2900}, other_amount("29.00", "29.99")),
-            ({"tax_behavior": "inclusive"}, NOT_NET),
-            ({"tax_behavior": "unspecified"}, NOT_NET),
-            ({"product": "prod_other"}, OTHER_PRODUCT),
-        ],
+        ("fields", "problem"), [*WRONG_FROM_FIRST_TO_LAST, ({"tax_behavior": "unspecified"}, NOT_NET)]
     )
     def test_of_a_monthly_price(self, stripe_double, fields, problem):
         assert of_the_month(stripe_double, **fields) == problem
@@ -81,22 +83,13 @@ class TestWhatTheStaffRead:
 
         assert check("price_test_x") == {"stripe_price_id": "Stripe has no price price_test_x with these keys."}
 
-    WRONG_FROM_FIRST_TO_LAST = (
-        ({"active": False}, ARCHIVED),
-        ({"currency": "usd"}, NOT_EUROS),
-        ({"recurring": YEARLY}, NOT_MONTHLY),
-        ({"unit_amount": 2900}, other_amount("29.00", "29.99")),
-        ({"tax_behavior": "inclusive"}, NOT_NET),
-        ({"product": "prod_other"}, OTHER_PRODUCT),
-    )
-
     @pytest.mark.parametrize("first", range(len(WRONG_FROM_FIRST_TO_LAST)))
     def test_only_the_first_problem_of_a_price_is_said(self, stripe_double, first):
         wrong = {}
-        for fields, _problem in self.WRONG_FROM_FIRST_TO_LAST[first:]:
+        for fields, _problem in WRONG_FROM_FIRST_TO_LAST[first:]:
             wrong.update(fields)
 
-        assert of_the_month(stripe_double, **wrong) == self.WRONG_FROM_FIRST_TO_LAST[first][1]
+        assert of_the_month(stripe_double, **wrong) == WRONG_FROM_FIRST_TO_LAST[first][1]
 
 
 class TestWhatStripeLeavesOut:

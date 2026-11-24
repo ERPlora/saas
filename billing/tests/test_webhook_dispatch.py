@@ -12,6 +12,14 @@ from billing.services import (
     webhook_dispatch,
 )
 
+#: The handlers of the events, by the module they live in.
+HANDLERS = (
+    (checkout_webhooks, ("checkout_completed", "checkout_closed")),
+    (invoice_webhooks, ("invoice_paid", "invoice_payment_failed")),
+    (invoice_recording, ("invoice_voided",)),
+    (rectifying_invoices, ("credit_note_created", "credit_note_voided", "charge_refunded")),
+    (subscription_webhooks, ("subscription_updated", "subscription_deleted", "customer_updated")),
+)
 OBJECT = {"id": "obj_1"}
 
 #: What each event calls and what it hands over.
@@ -38,16 +46,9 @@ CALLS = {
 @pytest.fixture
 def called(monkeypatch):
     calls = []
-
-    def replace(module, *names):
+    for module, names in HANDLERS:
         for name in names:
             monkeypatch.setattr(module, name, lambda *args, name=name: calls.append((name, *args)) or f"{name} did it")
-
-    replace(checkout_webhooks, "checkout_completed", "checkout_closed")
-    replace(invoice_webhooks, "invoice_paid", "invoice_payment_failed")
-    replace(invoice_recording, "invoice_voided")
-    replace(rectifying_invoices, "credit_note_created", "credit_note_voided", "charge_refunded")
-    replace(subscription_webhooks, "subscription_updated", "subscription_deleted", "customer_updated")
     return calls
 
 
