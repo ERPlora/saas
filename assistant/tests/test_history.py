@@ -138,6 +138,16 @@ class TestTheBudget:
         assert history.window(later_round)[: len(first_round)] == history.window(first_round)
         assert history.window(later_round)[0] == user("question 1")
 
+    def test_the_older_requests_the_model_reads_are_about_16_000_tokens(self):
+        """With the budget as it ships: requests of about 1,000 tokens each, and only the newest that fit stay."""
+        older = [[user(f"{n} " + "w" * 4_000), reply(f"answer {n}")] for n in range(40)]
+        last = [*request(98), user("now")]
+
+        kept = history.window([*sum(older, []), *last])[: -len(last)]
+
+        assert kept == sum(older[-len(kept) // 2 :], [])
+        assert 15_000 <= tokens_of(kept) <= 16_000
+
     def test_a_long_conversation_of_short_messages_is_not_cut_by_their_number(self):
         conversation = [user(f"message {n}") if n % 2 == 0 else reply(f"answer {n}") for n in range(150)]
 
