@@ -263,6 +263,12 @@ class TestTheStaff:
         assert Hub.objects.get(pk=other.pk).can_buy_internal_plans is True
         assert "1 business(es): its owner now sees the internal plans" in page
 
+    def test_choosing_only_others_says_nothing_of_it(self, staff_client, platform_business, business):
+        page = _act(staff_client, "hub", "allow_internal_plans", [business]).content.decode()
+
+        assert Hub.objects.get(pk=business.pk).can_buy_internal_plans is True
+        assert "own business has no plan" not in page
+
     @pytest.mark.parametrize("action", ["attach_test_clock", "advance_test_clock"])
     def test_it_takes_no_test_clock(self, staff_client, platform_business, settings, action):
         settings.STRIPE_SECRET_KEY = "rk_test_double"
