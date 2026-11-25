@@ -50,7 +50,7 @@ def sync_hub(hub_id: UUID) -> bool:
     return sync_outcome(hub_id) == DELIVERED
 
 
-def sync_outcome(hub_id: UUID) -> str:  # noqa: C901, PLR0911
+def sync_outcome(hub_id: UUID) -> str:
     """Push ``hub_id`` to the Hub: the deletion it owes (and nothing else), the restoration, the
     registry, then the snapshot if the Hub's version is behind.
 
@@ -86,17 +86,25 @@ def sync_outcome(hub_id: UUID) -> str:  # noqa: C901, PLR0911
             snapshot = hub_sync.hub_snapshot(hub.id)
             hub_client.put_state(str(hub.id), snapshot)
             record_state_pushed(hub.id, snapshot["version"])
-    except HubUnavailable as failed:
-        logger.warning("hubs.sync.owed hub=%s call=%s: %s", hub_id, call or "state", failed)
+    except (HubUnavailable, HubRefused) as failure:
+        return _failed_call(hub_id, call or "state", failure)
+    _clear_last_refusal(hub_id)
+    return DELIVERED
+
+
+def _failed_call(hub_id: UUID, call: str, failure: HubUnavailable | HubRefused) -> str:
+    if isinstance(failure, HubUnavailable):
+        logger.warning("hubs.sync.owed hub=%s call=%s: %s", hub_id, call, failure)
         return UNREACHABLE
-    except HubRefused as refused:
-        logger.error("hubs.sync.refused hub=%s call=%s: %s", hub_id, call or "state", refused)
-        _record_hub_error(hub_id, refused.code[:64])
-        return REFUSED
+    logger.error("hubs.sync.refused hub=%s call=%s: %s", hub_id, call, failure)
+    _record_hub_error(hub_id, failure.code[:64])
+    return REFUSED
+
+
+def _clear_last_refusal(hub_id: UUID) -> None:
     if Hub.objects.filter(pk=hub_id).exclude(last_hub_error__in=["", PROVISION_FAILED]).exists():
         # A delivered call clears the Hub's last refusal, not a preparation it still owes (``ready`` clears that one).
         _record_hub_error(hub_id, None)
-    return DELIVERED
 
 
 def _record_hub_error(hub_id: UUID, code: str | None) -> None:
