@@ -6,12 +6,17 @@ The result is the body of the Hub's door 1 (``POST /internal/whatsapp/inbound``)
 and door 2 (``/status``) without ``hub`` and the attachment's address, and the verdicts of Meta on templates.
 """
 
+import pytest
+
 from whatsapp import parse
 
 PHONE_NUMBER_ID = "106540352242922"
 BUSINESS = "34910000000"
 CUSTOMER = "34600111222"
 WABA = "102290129340398"
+NULLS = dict.fromkeys(
+    ["id", "title", "type", "body", "caption", "mime_type", "filename", "payload", "text", "emoji", "message_id"]
+)
 
 
 def webhook(field: str, value: dict, *, waba: str = WABA) -> dict:
@@ -59,7 +64,19 @@ class TestACustomersMessage:
             "sent_at": "2025-10-15T10:00:00Z",
             "payload": text(),
         }
-        assert message.media_id == ""
+        assert (message.media_id, message.placeholder, message.follow_up) == ("", False, False)
+
+    def test_each_message_carries_the_name_of_whoever_wrote_it(self):
+        payload = messages(
+            text("wamid.1", "1"), text("wamid.2", "2"), text("wamid.3", "3"),
+            contacts=[{"profile": {"name": "Ana"}, "wa_id": "1"}, {"profile": {"name": "Luis"}, "wa_id": "2"}],
+        )
+
+        assert [message.body["contact_name"] for message in parse.parse(payload).messages] == ["Ana", "Luis", ""]
+
+    @pytest.mark.parametrize("contact", ["x", {}, {"wa_id": CUSTOMER}, {"wa_id": CUSTOMER, "profile": "x"}])
+    def test_a_contact_without_a_name_is_an_empty_one(self, contact):
+        assert only_message(messages(text(), contacts=[contact])).body["contact_name"] == ""
 
     def test_a_photo_carries_its_attachment_and_caption(self):
         photo = {
@@ -123,7 +140,7 @@ class TestACustomersMessage:
         message = only_message(messages(tapped))
 
         assert message.body["reply"] == {"id": "slot_10", "title": "10:00"}
-        assert message.body["reply_to"] == "wamid.M"
+        assert (message.body["reply_to"], message.body["text"]) == ("wamid.M", "10:00")
 
     def test_a_tapped_reply_button_is_its_id_and_title(self):
         tapped = {
@@ -149,11 +166,62 @@ class TestACustomersMessage:
 
         assert (message.body["type"], message.body["text"], message.body["reply_to"]) == ("reaction", "👍", "wamid.T")
 
-    def test_a_message_without_id_or_sender_is_skipped(self):
-        parsed = parse.parse(messages({"id": "wamid.N", "type": "text"}, {"from": CUSTOMER, "type": "text"}))
+    def test_a_reaction_that_names_no_message_is_on_the_one_it_answers(self):
+        reaction = {"from": CUSTOMER, "id": "wamid.X", "type": "reaction", "context": {"id": "wamid.T"},
+                    "reaction": {"emoji": "👍"}}
+
+        assert only_message(messages(reaction)).body["reply_to"] == "wamid.T"
+
+    @pytest.mark.parametrize("kind", ["image", "video", "audio", "document", "sticker"])
+    def test_every_kind_of_attachment_carries_its_id(self, kind):
+        message = only_message(messages({"from": CUSTOMER, "id": "wamid.P", "type": kind, kind: {"id": "77"}}))
+
+        assert (message.media_id, message.body["type"]) == ("77", kind)
+        assert message.body["media"] == {"mime_type": "", "filename": "", "caption": ""}
+
+    @pytest.mark.parametrize("kind", ["location", "contacts", "unsupported", "media_placeholder"])
+    def test_a_kind_without_words_keeps_only_metas_own_message(self, kind):
+        content = {"id": "1", "body": "x", "caption": "x", "payload": "x", "text": "x", "emoji": "x", "message_id": "x"}
+        raw = {"from": CUSTOMER, "id": "wamid.K", "type": kind, kind: content}
+
+        message = only_message(messages(raw))
+
+        assert [message.body[key] for key in ("type", "text", "media", "reply", "reply_to")] == [kind, "", None, None, ""]
+        assert (message.media_id, message.body["payload"]) == ("", raw)
+
+    def test_a_message_without_its_kind_is_a_text(self):
+        message = only_message(messages({"from": CUSTOMER, "id": "wamid.A", "text": {"body": "Hola"}}))
+
+        assert (message.body["type"], message.body["text"], message.body["sent_at"]) == ("text", "Hola", None)
+
+    @pytest.mark.parametrize(
+        "content",
+        [None, "x", {}, {"type": "list_reply", "list_reply": "x"}, NULLS, {"type": "list_reply", "list_reply": NULLS}],
+        ids=["null", "text", "empty", "reply_not_an_object", "nulls", "reply_of_nulls"],
+    )
+    @pytest.mark.parametrize(
+        ("kind", "reply"),
+        [
+            ("text", None),
+            ("image", None),
+            ("button", {"id": "", "title": ""}),
+            ("interactive", {"id": "", "title": ""}),
+            ("reaction", None),
+        ],
+    )
+    def test_what_meta_left_out_reads_empty(self, kind, reply, content):
+        message = only_message(messages({"from": CUSTOMER, "id": "wamid.A", "type": kind, kind: content, "context": "x"}))
+
+        assert (message.body["text"], message.body["reply_to"], message.media_id) == ("", "", "")
+        assert message.body["reply"] == reply
+        assert message.body["media"] in (None, {"mime_type": "", "filename": "", "caption": ""})
+
+    @pytest.mark.parametrize("raw", ["x", {"id": "wamid.N", "type": "text"}, {"from": CUSTOMER, "type": "text"}])
+    def test_a_message_without_id_or_sender_is_skipped(self, raw):
+        parsed = parse.parse(messages(raw))
 
         assert parsed.messages == []
-        assert parsed.skipped == 2
+        assert parsed.skipped == 1
 
 
 class TestTheOwnersReplyFromThePhone:
@@ -172,15 +240,18 @@ class TestTheOwnersReplyFromThePhone:
         message = only_message(payload)
 
         assert (message.contact, message.body["from"], message.body["direction"]) == (CUSTOMER, CUSTOMER, "outbound")
+        assert (message.body["source"], message.body["contact_name"]) == ("live", "")
 
-    def test_an_echo_without_recipient_is_skipped(self):
-        echo = {"from": BUSINESS, "id": "wamid.E", "timestamp": "1760522400", "type": "text", "text": {"body": "Sí"}}
+    @pytest.mark.parametrize("echo", ["x", {"from": BUSINESS, "id": "wamid.E", "type": "text", "text": {"body": "Sí"}}])
+    def test_an_echo_without_recipient_is_skipped(self, echo):
         payload = webhook(
             "smb_message_echoes",
             {"metadata": {"phone_number_id": PHONE_NUMBER_ID}, "message_echoes": [echo]},
         )
 
-        assert parse.parse(payload).messages == []
+        parsed = parse.parse(payload)
+
+        assert (parsed.messages, parsed.skipped) == ([], 1)
 
 
 def history(*threads, **extra) -> dict:
@@ -203,6 +274,30 @@ class TestTheHistoryOfTheConnection:
 
         assert (first.body["direction"], first.body["source"], first.contact) == ("inbound", "history", CUSTOMER)
         assert (second.body["direction"], second.body["from"], second.contact) == ("outbound", CUSTOMER, CUSTOMER)
+
+    def test_a_thread_files_its_messages_under_the_customer_it_names(self):
+        """Meta's ids read as text whatever they come as; a thread that names nobody files nothing."""
+        named = {"id": int(CUSTOMER), "messages": [text("wamid.1")]}
+        unnamed = {"messages": [text("wamid.2")]}
+
+        parsed = parse.parse(history(named, unnamed))
+
+        assert [(message.contact, message.body["direction"]) for message in parsed.messages] == [(CUSTOMER, "inbound")]
+        assert parsed.skipped == 1
+
+    def test_what_is_not_a_chunk_a_thread_or_a_message_is_not_read(self):
+        payload = webhook(
+            "history",
+            {
+                "metadata": {"phone_number_id": PHONE_NUMBER_ID},
+                "history": ["x", {"threads": ["x", {"id": CUSTOMER, "messages": ["x", text("wamid.1")]}]}],
+                "messages": ["x"],
+            },
+        )
+
+        parsed = parse.parse(payload)
+
+        assert ([message.wa_message_id for message in parsed.messages], parsed.skipped) == (["wamid.1"], 2)
 
     def test_a_media_placeholder_is_marked(self):
         placeholder = {"from": CUSTOMER, "id": "wamid.M", "timestamp": "1739230970", "type": "media_placeholder"}
@@ -231,16 +326,37 @@ class TestTheHistoryOfTheConnection:
         assert (message.follow_up, message.media_id, message.body["source"]) == (True, "555", "history")
         assert message.body["direction"] == "inbound"
 
-    def test_a_follow_up_of_the_business_itself_is_skipped(self):
+    @pytest.mark.parametrize(
+        ("display", "sender"), [(BUSINESS, BUSINESS), ("+34 910 00 00 00", BUSINESS), (BUSINESS, f"+{BUSINESS}")]
+    )
+    def test_a_follow_up_of_the_business_itself_is_skipped(self, display, sender):
         payload = webhook(
             "history",
             {
-                "metadata": {"display_phone_number": BUSINESS, "phone_number_id": PHONE_NUMBER_ID},
-                "messages": [text("wamid.O", BUSINESS, "x")],
+                "metadata": {"display_phone_number": display, "phone_number_id": PHONE_NUMBER_ID},
+                "messages": [text("wamid.O", sender, "x"), text("wamid.C")],
             },
         )
 
-        assert parse.parse(payload).messages == []
+        parsed = parse.parse(payload)
+
+        assert ([message.wa_message_id for message in parsed.messages], parsed.skipped) == (["wamid.C"], 1)
+
+    def test_without_the_business_own_number_no_follow_up_is_taken_for_its_own(self):
+        payload = webhook(
+            "history", {"metadata": {"phone_number_id": PHONE_NUMBER_ID}, "messages": [text("wamid.C", "ana.user")]}
+        )
+
+        assert only_message(payload).contact == "ana.user"
+
+    def test_a_follow_up_without_its_sender_is_skipped(self):
+        payload = webhook(
+            "history", {"metadata": {"phone_number_id": PHONE_NUMBER_ID}, "messages": [{"id": "wamid.M", "type": "image"}]}
+        )
+
+        parsed = parse.parse(payload)
+
+        assert (parsed.messages, parsed.skipped) == ([], 1)
 
     def test_a_declined_history_is_noted_not_stored(self):
         payload = history(errors=[{"code": 2593109, "title": "History sharing declined"}])
@@ -248,6 +364,14 @@ class TestTheHistoryOfTheConnection:
         parsed = parse.parse(payload)
 
         assert parsed.messages == [] and parsed.history_declined == [PHONE_NUMBER_ID]
+
+    def test_a_chunk_that_says_it_was_declined_is_noted_too(self):
+        payload = webhook(
+            "history",
+            {"metadata": {"phone_number_id": PHONE_NUMBER_ID}, "history": [{"errors": [{"code": 2593109}]}, {"threads": []}]},
+        )
+
+        assert parse.parse(payload).history_declined == [PHONE_NUMBER_ID]
 
 
 class TestDeliveryStatuses:
@@ -272,9 +396,9 @@ class TestDeliveryStatuses:
         assert status.error == {"code": "131047", "message": "Re-engagement message: More than 24 hours have passed."}
 
     def test_a_status_meta_does_not_name_is_skipped(self):
-        parsed = parse.parse(messages(statuses=[self.status("deleted"), {"status": "sent"}]))
+        parsed = parse.parse(messages(statuses=[self.status("deleted"), {"status": "sent"}, "x"]))
 
-        assert parsed.statuses == []
+        assert (parsed.statuses, parsed.skipped) == ([], 3)
 
 
 class TestTemplateVerdicts:
@@ -315,12 +439,31 @@ class TestTemplateVerdicts:
         assert (verdict.category, verdict.status) == ("MARKETING", "")
 
 
+    def test_a_verdict_that_names_no_template_is_not_one(self):
+        payload = webhook("message_template_status_update", {"event": "APPROVED"})
+
+        assert parse.parse(payload) == parse.Parsed()
+
+
 def test_the_contacts_of_the_business_app_are_not_kept():
     payload = webhook("smb_app_state_sync", {"metadata": {"phone_number_id": PHONE_NUMBER_ID}, "state_sync": [{"type": "contact"}]})
 
     parsed = parse.parse(payload)
 
     assert (parsed.messages, parsed.statuses, parsed.verdicts) == ([], [], [])
+
+
+def test_a_change_of_another_kind_says_nothing_whatever_it_carries():
+    value = {
+        "metadata": {"phone_number_id": PHONE_NUMBER_ID},
+        "messages": [text()],
+        "statuses": [{"id": "wamid.S", "status": "sent"}],
+        "message_echoes": [{**text("wamid.E"), "to": CUSTOMER}],
+        "history": [{"threads": [{"id": CUSTOMER, "messages": [text("wamid.1")]}]}],
+        "errors": [{"code": 1}],
+    }
+
+    assert parse.parse(webhook("account_update", value)) == parse.Parsed()
 
 
 def test_a_change_without_a_number_or_of_another_kind_says_nothing():

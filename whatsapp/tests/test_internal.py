@@ -171,6 +171,7 @@ class TestSending:
             "type": "text",
             "text": {"preview_url": False, "body": "Sí, mañana a las 10"},
         }
+        assert request.extensions["timeout"]["read"] == 30, "the time Meta itself gives a message"
         assert used(business) == 1
         assert Send.objects.get().wa_message_id == "wamid.HBgLMzQ2MDAxMTEyMjIVAgARGBI"
 
@@ -266,11 +267,16 @@ class TestTheSameKeyNeverSendsTwice:
 
         assert response.json() == {"wa_message_id": "wamid.2"} and other.called
 
+    @pytest.mark.parametrize(
+        "answer",
+        [{}, {"messages": {"id": "wamid.1"}}, {"messages": []}, {"messages": ["x"]}, {"messages": [{"id": None}]}],
+        ids=["no_messages", "not_a_list", "empty_list", "not_a_message", "null_id"],
+    )
     @respx.mock
-    def test_meta_accepting_without_an_id_is_never_sent_again(self, client, number, business):
+    def test_meta_accepting_without_an_id_is_never_sent_again(self, client, number, business, answer):
         """Meta took it (2xx) but gave no id: the Hub reads «unknown» and retries; erplora.com never sends it
         again, and it counts."""
-        meta = respx.post(SEND).mock(return_value=httpx.Response(200, json={"messaging_product": "whatsapp"}))
+        meta = respx.post(SEND).mock(return_value=httpx.Response(200, json={"messaging_product": "whatsapp", **answer}))
 
         first = send(client)
         second = send(client)
@@ -280,7 +286,19 @@ class TestTheSameKeyNeverSendsTwice:
         assert meta.call_count == 1 and used(business) == 1
 
     @respx.mock
-    def test_an_answer_meta_never_gave_keeps_the_place_and_resends_after_two_minutes(self, client, number, business):
+    def test_an_id_longer_than_what_is_kept_is_cut_and_never_sent_again(self, client, number, business):
+        meta = respx.post(SEND).mock(return_value=httpx.Response(200, json={"messages": [{"id": "w" * 300}]}))
+
+        first = send(client)
+        second = send(client)
+
+        assert first.json() == second.json() == {"wa_message_id": "w" * 255}
+        assert meta.call_count == 1 and Send.objects.get().wa_message_id == "w" * 255
+
+    @respx.mock
+    def test_an_answer_meta_never_gave_keeps_the_place_and_resends_after_two_minutes(
+        self, client, number, business, caplog
+    ):
         meta = respx.post(SEND).mock(side_effect=httpx.ReadTimeout("slow"))
 
         first = send(client)
@@ -290,6 +308,7 @@ class TestTheSameKeyNeverSendsTwice:
         later = send(client)
 
         assert (first.status_code, error_code(first)) == (502, "whatsapp.meta_unknown")
+        assert "whatsapp.send.unknown hub=bar-manolo" in caplog.text
         assert (soon.status_code, error_code(soon)) == (503, "whatsapp.send_in_progress")
         assert later.status_code == 200
         assert meta.call_count == 2 and used(business) == 1
@@ -310,7 +329,9 @@ class TestMetasRefusals:
         ],
     )
     @respx.mock
-    def test_a_refusal_is_409_with_its_code_and_frees_the_place(self, client, number, business, meta_code, code):
+    def test_a_refusal_is_409_with_its_code_and_frees_the_place(
+        self, client, number, business, caplog, meta_code, code
+    ):
         meta = respx.post(SEND).mock(
             return_value=httpx.Response(400, json={"error": {"message": f"(#{meta_code}) Meta says no", "code": meta_code}})
         )
@@ -320,6 +341,7 @@ class TestMetasRefusals:
 
         assert (response.status_code, error_code(response)) == (409, code)
         assert "Meta says no" in response.json()["error"]["message"]
+        assert f"whatsapp.send.refused hub=bar-manolo meta_status=400 meta_code={meta_code}" in caplog.text
         # Nothing left, nothing counts, and the same key can go out again (the Hub's «Retry»).
         assert used(business) == 0 and meta.call_count == 2 and again.status_code == 409
 

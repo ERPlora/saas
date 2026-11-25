@@ -127,7 +127,9 @@ class TestMetaAndTheUpload:
         ("meta_code", "code"), [(100, "whatsapp.meta_rejected"), (190, "whatsapp.reconnect_needed")]
     )
     @respx.mock
-    def test_metas_refusal_of_the_upload_is_its_409_and_nothing_left(self, client, number, business, meta_code, code):
+    def test_metas_refusal_of_the_upload_is_its_409_and_nothing_left(
+        self, client, number, business, caplog, meta_code, code
+    ):
         respx.post(MEDIA).mock(
             return_value=httpx.Response(400, json={"error": {"code": meta_code, "message": "(#100) Invalid parameter"}})
         )
@@ -138,6 +140,7 @@ class TestMetaAndTheUpload:
         assert (response.status_code, error_code(response)) == (409, code)
         assert "Invalid parameter" in response.json()["error"]["message"], "Meta's own reason, never ERPlora's"
         assert not meta.called and used(business) == 0 and not Send.objects.exists()
+        assert f"whatsapp.send.upload_refused hub=bar-manolo meta_code={meta_code}" in caplog.text
         # Meta's 190 (the permission expired or withdrawn) marks the number, as a refused send does.
         assert PhoneNumber.objects.get(pk=number.pk).needs_reconnect is (meta_code == 190)
 
@@ -148,7 +151,7 @@ class TestMetaAndTheUpload:
     )
     @respx.mock
     def test_meta_not_answering_the_upload_left_nothing_and_the_same_key_sends_once(
-        self, client, number, business, failure
+        self, client, number, business, caplog, failure
     ):
         """Even an upload that may have reached Meta sent no message: the key is free, and the retry sends once."""
         upload = respx.post(MEDIA)
@@ -163,6 +166,7 @@ class TestMetaAndTheUpload:
         assert (response.status_code, error_code(response)) == (503, "whatsapp.meta_unreachable")
         assert "Meta" in response.json()["error"]["message"] and "ERPlora" not in response.json()["error"]["message"]
         assert not meta.called and used(business) == 0
+        assert "whatsapp.send.upload_unreachable hub=bar-manolo" in caplog.text
         upload.mock(side_effect=None, return_value=httpx.Response(200, json={"id": "media-9"}))
         assert send(client, with_file()).status_code == 200
         assert (meta.call_count, used(business)) == (1, 1)

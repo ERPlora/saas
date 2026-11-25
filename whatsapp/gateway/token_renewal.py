@@ -4,9 +4,10 @@ import logging
 from datetime import timedelta
 
 from django.utils import timezone
+from live.context import OperationContext
 
 from whatsapp import emails, meta, queries
-from whatsapp.schemas import AlertedIn, RenewalDueIn, RenewalIn
+from whatsapp.schemas import AlertedIn, DueNumber, RenewalDueIn, RenewalIn, RenewalOut
 from whatsapp.services import phone_numbers, platform_actor
 
 logger = logging.getLogger("whatsapp.gateway")
@@ -25,25 +26,28 @@ def renew_tokens() -> dict[str, int]:
         meta.app_credentials()
     running_out = 0
     for number in due:
-        try:
-            outcome, token, expires_at = _renew(number.token.get_secret_value())
-            out = phone_numbers.number_renewal(
-                ctx, RenewalIn(number_id=number.id, outcome=outcome, token=token, expires_at=expires_at)
-            )
-        except Exception:  # noqa: BLE001 - one number's surprise never stops the others; tomorrow tries again
-            logger.exception("whatsapp.token.renewal_crashed number_id=%s", number.id)
-            counts["failed"] += 1
-            outcome, out = "failed", None
-        else:
-            counts["needs_reconnect" if out.needs_reconnect else outcome] += 1
-            if out.alert is not None and emails.send_reconnect(**out.alert.model_dump()):
-                phone_numbers.number_alerted(ctx, AlertedIn(number_id=number.id))
-                counts["alerted"] += 1
+        outcome, out = _renew_number(ctx, number)
+        counts["needs_reconnect" if out.needs_reconnect else outcome] += 1
+        if out.alert is not None and emails.send_reconnect(**out.alert.model_dump()):
+            phone_numbers.number_alerted(ctx, AlertedIn(number_id=number.id))
+            counts["alerted"] += 1
         if outcome != "renewed" and number.expires_at <= timezone.now() + ALARM:
             running_out += 1
     if running_out:
         logger.error("whatsapp.token.running_out numbers=%s days_left_under=%s", running_out, ALARM.days)
     return counts
+
+
+def _renew_number(ctx: OperationContext, number: DueNumber) -> tuple[str, RenewalOut]:
+    """How the renewal of ``number`` ended, as ``_renew`` says it, and what was written; ``"failed"`` when it crashed."""
+    try:
+        outcome, token, expires_at = _renew(number.token.get_secret_value())
+        return outcome, phone_numbers.number_renewal(
+            ctx, RenewalIn(number_id=number.id, outcome=outcome, token=token, expires_at=expires_at)
+        )
+    except Exception:  # noqa: BLE001 - one number's surprise never stops the others; tomorrow tries again
+        logger.exception("whatsapp.token.renewal_crashed number_id=%s", number.id)
+        return "failed", RenewalOut(needs_reconnect=False)
 
 
 def _renew(token: str) -> tuple[str, str | None, object]:
