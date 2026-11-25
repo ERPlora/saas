@@ -21,7 +21,7 @@ from django.test import Client
 from django.utils import timezone
 from live.models import OutboxEvent
 
-from billing.models import Invoice, InvoiceCounter
+from billing.models import Invoice, InvoiceCounter, InvoiceLine
 from billing.schemas.invoice_records import CreditNoteRecordIn, RefundRecordIn
 from billing.services import invoice_events, invoice_numbering, invoice_sealing, platform_invoices, rectifying_invoices
 from billing.tests.stripe_double import (
@@ -85,6 +85,11 @@ def record_refund(original, **fields):
     return rectifying_invoices.refund_record(
         invoice_events._invoice_ctx(original), RefundRecordIn(invoice_id=original.id, refund=refund)
     )
+
+
+def taxed(cents: int) -> dict:
+    """The tax of a Stripe line, as a field of it."""
+    return {"taxes": credit_note_line(tax=cents)["taxes"]}
 
 
 class TestANegativeStripeInvoice:
@@ -391,6 +396,154 @@ class TestWhatItSays:
         record_note(invoiced, {**note, "lines": listing([])})
 
         assert rectifying().get().total_cents == 0
+
+
+class TestItsLines:
+    """Each line keeps what the line it corrects was sealed with: what it sells, its rate, its period."""
+
+    @pytest.fixture
+    def two_lines(self, running, inventory):
+        """An invoice of a plan and a module, the module at its own rate."""
+        module = invoice_line(
+            "il_module", price_id="price_inventory_month", amount=1000, tax=210, description="1 × Inventory"
+        )
+        deliver(event("invoice.paid", invoice("in_1", status="paid", lines=[invoice_line(), module])))
+        InvoiceLine.objects.filter(stripe_line_id="il_module").update(tax_rate=Decimal("10.00"))
+        return Invoice.objects.get(stripe_invoice_id="in_1", kind="invoice")
+
+    def note_line(self, **fields):
+        """A line of a credit note that names nothing of the invoice unless ``fields`` says so."""
+        price = fields.pop("price", "")
+        line = {**credit_note_line(invoice_line_item="", description=""), **fields}
+        return {**line, "pricing": {"type": "price_details", "price_details": {"price": price}}} if price else line
+
+    def recorded(self, original, *lines) -> list[dict]:
+        record_note(original, credit_note(lines=list(lines)))
+        return list(rectifying().get().lines.order_by("position").values())
+
+    def test_every_field_of_the_line_it_names(self, two_lines):
+        [line] = self.recorded(
+            two_lines, self.note_line(invoice_line_item="il_module", amount=1000, **taxed(100), quantity=3)
+        )
+
+        corrected = two_lines.lines.get(stripe_line_id="il_module")
+        assert line == {
+            "id": line["id"],
+            "invoice_id": rectifying().get().id,
+            "position": 1,
+            "description": "1 × Inventory",
+            "item_kind": "module",
+            "item_slug": "inventory",
+            "quantity": 3,
+            "proration": False,
+            "period_start": corrected.period_start,
+            "period_end": corrected.period_end,
+            "tax_category_id": "service.software_license",
+            "tax_treatment": "domestic",
+            "tax_rate": Decimal("10.00"),
+            "net_cents": -1000,
+            "tax_cents": -100,
+            "total_cents": -1100,
+            "discount_cents": 0,
+            "stripe_line_id": "cnli_1",
+        }
+        assert None not in (corrected.period_start, corrected.period_end)
+
+    def test_one_that_names_no_line_corrects_the_one_that_sells_the_same(self, two_lines):
+        [line] = self.recorded(two_lines, self.note_line(price="price_inventory_month", amount=1000, **taxed(100)))
+
+        assert (line["description"], line["tax_rate"]) == ("1 × Inventory", Decimal("10.00"))
+        assert line["period_start"] == two_lines.lines.get(stripe_line_id="il_module").period_start
+
+    def test_the_line_it_names_goes_before_the_one_that_sells_the_same(self, two_lines):
+        [line] = self.recorded(
+            two_lines, self.note_line(invoice_line_item="il_module", price="price_starter_month", amount=1000, **taxed(100))
+        )
+
+        assert (line["item_kind"], line["item_slug"], line["description"]) == ("module", "inventory", "1 × Inventory")
+
+    def test_of_two_lines_that_sell_the_same_it_corrects_the_first(self, running):
+        both = [invoice_line("il_a", description="First"), invoice_line("il_b", description="Second")]
+        deliver(event("invoice.paid", invoice("in_1", status="paid", lines=both)))
+
+        [line] = self.recorded(Invoice.objects.get(kind="invoice"), self.note_line(price="price_starter_month"))
+
+        assert line["description"] == "First"
+
+    def test_what_was_not_invoiced_is_what_stripe_says_at_the_invoices_rate(self, invoiced, inventory):
+        [line] = self.recorded(invoiced, self.note_line(price="price_inventory_month", amount=1000, **taxed(210)))
+
+        assert (line["item_kind"], line["item_slug"]) == ("module", "inventory")
+        assert (line["tax_category_id"], line["tax_rate"]) == ("service.software_license", Decimal("21.00"))
+        assert (line["description"], line["period_start"], line["period_end"]) == ("Credit", None, None)
+
+    @pytest.mark.parametrize("unnamed", [{"stripe_line_id": ""}, {"item_kind": "other", "item_slug": ""}])
+    def test_one_that_names_nothing_corrects_no_line(self, invoiced, unnamed):
+        invoiced.lines.update(**unnamed)
+
+        [line] = self.recorded(invoiced, self.note_line())
+
+        assert (line["description"], line["item_kind"], line["item_slug"]) == ("Credit", "other", "")
+        assert (line["tax_category_id"], line["period_start"]) == ("service.saas_subscription", None)
+
+    def test_each_of_several_lines_has_its_place(self, two_lines):
+        lines = self.recorded(
+            two_lines,
+            self.note_line(id="cnli_1", invoice_line_item="il_plan", amount=2999, **taxed(630)),
+            self.note_line(id="cnli_2", invoice_line_item="il_module", amount=1000, **taxed(100)),
+        )
+
+        assert [(line["position"], line["item_slug"], line["stripe_line_id"]) for line in lines] == [
+            (1, "starter", "cnli_1"),
+            (2, "inventory", "cnli_2"),
+        ]
+
+    def test_a_proration_keeps_the_period_stripe_says(self, invoiced):
+        lines = [invoice_line("il_unused", amount=-1500, tax=-315, proration=True, period=(NOW, MONTH_END - 60))]
+
+        deliver(event("invoice.paid", invoice("in_neg", status="paid", lines=lines)))
+
+        [line] = rectifying().get().lines.values()
+        assert (line["proration"], line["period_start"], line["period_end"]) == (
+            True,
+            datetime.fromtimestamp(NOW, UTC),
+            datetime.fromtimestamp(MONTH_END - 60, UTC),
+        )
+
+    def test_a_long_description_is_cut_to_what_fits(self, invoiced):
+        [line] = self.recorded(invoiced, self.note_line(description="d" * 300))
+
+        assert line["description"] == "d" * 255
+
+    def test_a_quantity_below_one_is_one(self, invoiced):
+        [line] = self.recorded(invoiced, self.note_line(quantity=-2))
+
+        assert line["quantity"] == 1
+
+    def test_without_tax_of_a_sale_stripe_charged_it_on_all_of_it_is_base(self, invoiced):
+        [line] = self.recorded(invoiced, self.note_line(amount=1210, **taxed(0)))
+
+        assert (line["net_cents"], line["tax_cents"]) == (-1210, 0)
+
+
+class TestWhatStripeChargedWithoutItsTax:
+    """A sale Stripe charged no tax on carries the VAT inside what it collected, and so does what is given back."""
+
+    @pytest.fixture
+    def inside(self, invoiced):
+        Invoice.objects.filter(pk=invoiced.pk).update(vat_included_reconciled=True)
+        return invoiced
+
+    def given_back(self, original, *, amount: int, tax: int) -> tuple[int, int]:
+        record_note(original, credit_note(lines=[credit_note_line(amount=amount, tax=tax)]))
+        return rectifying().get().lines.values_list("net_cents", "tax_cents").get()
+
+    def test_the_vat_inside_is_taken_out(self, inside):
+        # 12.10 € with 21 % inside.
+        assert self.given_back(inside, amount=1210, tax=0) == (-1000, -210)
+
+    def test_the_tax_stripe_says_rules(self, inside):
+        assert self.given_back(inside, amount=1000, tax=200) == (-1000, -200)
 
 
 class TestItAddsUpOrNothingIsInvoiced:

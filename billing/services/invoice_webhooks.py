@@ -168,6 +168,35 @@ def invoice_payment_failed(invoice: dict, *, replay: bool = False) -> str:
         return _record_failure(hub, subscription_id, invoice, replay=replay)
 
 
+def _refusal(why: dict | None) -> dict:
+    """Why an attempt was refused, as its failure keeps it."""
+    said = why or {}
+    return {
+        "reason": _failure_reason(why),
+        "failure_code": said.get("code", "")[:64],
+        "decline_code": said.get("decline_code", "")[:64],
+        "payment_method_id": said.get("payment_method", ""),
+    }
+
+
+def _refused_again(failure: PaymentFailure, invoice: dict, why: dict | None) -> dict:
+    """What another attempt of ``failure``'s invoice changes of it. «Pay» waits again once the new card is the one
+    that failed."""
+    known = {"hosted_invoice_url": invoice.get("hosted_invoice_url") or failure.hosted_invoice_url}
+    if why is None:
+        # A lookup that failed never erases what was known.
+        return known
+    refusal = _refusal(why)
+    card = refusal["payment_method_id"] or failure.payment_method_id
+    same_card = card == failure.payment_method_id
+    return {
+        **known,
+        **refusal,
+        "payment_method_id": card,
+        "card_changed_at": failure.card_changed_at if same_card else None,
+    }
+
+
 def _record_failure(
     hub: Hub, subscription_id: str, invoice: dict, *, replay: bool
 ) -> str:
@@ -189,45 +218,21 @@ def _record_failure(
     except stripe_service.StripeUnavailable, stripe_service.StripeRefused:
         why = None
     now = timezone.now()
-    reason = _failure_reason(why)
-    issued = stripe_sync._moment(invoice.get("created")) or now
     failure, created = PaymentFailure.objects.select_for_update().get_or_create(
         stripe_invoice_id=invoice["id"],
         defaults={
             "hub": hub,
             "stripe_subscription_id": subscription_id,
             "stripe_customer_id": invoice.get("customer") or live.get("customer") or "",
-            "reason": reason,
-            "failure_code": (why or {}).get("code", "")[:64],
-            "decline_code": (why or {}).get("decline_code", "")[:64],
-            "payment_method_id": (why or {}).get("payment_method", ""),
+            **_refusal(why),
             "hosted_invoice_url": invoice.get("hosted_invoice_url") or "",
-            "invoice_created_at": issued,
+            "invoice_created_at": stripe_sync._moment(invoice.get("created")) or now,
             "failed_at": now,
         },
     )
-    if not created and failure.resolved_at is not None:
-        # Paid already: a redelivered failure of it never reopens it.
-        pass
-    elif not created:
-        known = {
-            "hosted_invoice_url": invoice.get("hosted_invoice_url")
-            or failure.hosted_invoice_url
-        }
-        if why is not None:
-            # What Stripe says now; a lookup that failed never erases what was known.
-            changed_card = (
-                why.get("payment_method")
-                and why["payment_method"] != failure.payment_method_id
-            )
-            known.update(
-                reason=reason,
-                failure_code=why.get("code", "")[:64],
-                decline_code=why.get("decline_code", "")[:64],
-                payment_method_id=why.get("payment_method", "")
-                or failure.payment_method_id,
-                card_changed_at=None if changed_card else failure.card_changed_at,
-            )
+    # One paid already is left alone: a redelivered failure of it never reopens it.
+    if not created and failure.resolved_at is None:
+        known = _refused_again(failure, invoice, why)
         if not replay:
             # Another failed attempt of Stripe's; the sweep only replays to decide, it is not one.
             known.update(failed_at=now, attempts=F("attempts") + 1)

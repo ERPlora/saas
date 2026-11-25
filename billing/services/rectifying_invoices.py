@@ -46,6 +46,18 @@ class _Rectification:
     stripe_number: str = ""
 
 
+def _corrected_line(original: Invoice, sources: list[InvoiceLine], item: dict) -> InvoiceLine:
+    """The line of ``original`` (``sources``: all of them) an item gives back: the one Stripe names, else the first
+    that sells the same; without either, a line of what Stripe says it sells, at the invoice's rate."""
+    kind, slug, category = invoice_sealing._item_of(item.get("price") or "")
+    named = item.get("source_line")
+    return (
+        next((line for line in sources if named and line.stripe_line_id == named), None)
+        or next((line for line in sources if slug and line.item_slug == slug), None)
+        or InvoiceLine(item_kind=kind, item_slug=slug, tax_category_id=category, tax_rate=original.tax_rate)
+    )
+
+
 def _rectifying_lines(original: Invoice, items: list[dict]) -> list[InvoiceLine]:
     """The lines of a rectifying invoice, negative where they give money back, sealed with the qualification of
     the invoice they rectify (a rectifying invoice keeps it) and the rate of the line they correct. ``items``:
@@ -54,27 +66,25 @@ def _rectifying_lines(original: Invoice, items: list[dict]) -> list[InvoiceLine]
     sources = list(original.lines.all())
     lines = []
     for position, item in enumerate(items, start=1):
-        kind, slug, category = invoice_sealing._item_of(item.get("price") or "")
-        source = next((line for line in sources if line.stripe_line_id and line.stripe_line_id == item.get("source_line")), None)
-        source = source or next((line for line in sources if slug and line.item_slug == slug), None)
+        source = _corrected_line(original, sources, item)
         rate, net, tax = invoice_sealing._sealed_amounts(
             item["amount"],
             item["tax"],
             treatment=original.tax_treatment,
-            rate=source.tax_rate if source is not None else original.tax_rate,
+            rate=source.tax_rate,
             reconciled=item.get("split", False) or (original.vat_included_reconciled and not item["tax"]),
         )
         lines.append(
             InvoiceLine(
                 position=position,
-                description=(item.get("description") or (source.description if source else "") or _("Credit"))[:255],
-                item_kind=source.item_kind if source else kind,
-                item_slug=source.item_slug if source else slug,
+                description=(item.get("description") or source.description or _("Credit"))[:255],
+                item_kind=source.item_kind,
+                item_slug=source.item_slug,
                 quantity=max(int(item.get("quantity") or 1), 1),
                 proration=bool(item.get("proration")),
-                period_start=item.get("period_start") or (source.period_start if source else None),
-                period_end=item.get("period_end") or (source.period_end if source else None),
-                tax_category_id=source.tax_category_id if source else category,
+                period_start=item.get("period_start") or source.period_start,
+                period_end=item.get("period_end") or source.period_end,
+                tax_category_id=source.tax_category_id,
                 tax_treatment=original.tax_treatment,
                 tax_rate=rate,
                 net_cents=net,

@@ -22,7 +22,7 @@ from billing.models import PlanChangeSchedule
 from billing.schemas.store import StoreCatalogIn
 from billing.services import stripe_sales
 from billing.tests.conftest import ctx_for, pay
-from hubs.models import Hub, HubMember, Plan, SubscriptionItem
+from hubs.models import Hub, HubMember, Plan, Subscription, SubscriptionItem
 from hubs.tests.conftest import add_member, create_business
 
 pytestmark = pytest.mark.django_db
@@ -245,6 +245,19 @@ class TestTheInternalPlans:
         assert "payment-test" not in answer["offered_plans"]
         assert answer["internal_plans"] == []
 
+    def test_the_one_it_has_and_is_still_offered_comes_once(self, marked, owner):
+        paid = pay(marked, plan="payment-test")
+
+        answer = catalog(owner, paid)
+
+        assert "payment-test" in answer["offered_plans"]
+        assert [card["slug"] for card in answer["internal_plans"]] == ["payment-test"]
+
+    def test_their_card_is_in_the_persons_language(self, marked, owner):
+        answer = queries.store_catalog(ctx_for(owner, language="es"), StoreCatalogIn(hub_id=marked.id))
+
+        assert [card.name for card in answer.internal_plans] == ["Prueba de pago (interno)"]
+
     def test_a_business_on_an_internal_plan_keeps_its_card_once_unmarked(self, marked, owner):
         paid = pay(marked, plan="payment-test")
         Hub.objects.filter(pk=paid.pk).update(can_buy_internal_plans=False)
@@ -267,7 +280,41 @@ class TestWhatTheBusinessHas:
         assert subscription["billing_interval"] == "year"
         assert subscription["paying"] is True
         assert subscription["status"] == "active"
-        assert subscription["current_period_end"] is not None
+        renews = Subscription.objects.get(hub=paid).current_period_end
+        assert subscription["current_period_end"] == renews.isoformat().replace("+00:00", "Z")
+
+    def test_an_unpaid_plan_says_so(self, shop, owner, inventory):
+        unpaid = pay(shop, status="past_due")
+
+        assert catalog(owner, unpaid)["subscription"]["status"] == "past_due"
+
+    def test_a_plan_on_trial_says_which_and_until_when(self, shop, owner, inventory):
+        ends = timezone.now() + timedelta(days=15)
+        Subscription.objects.filter(hub=shop).update(trial_plan=Plan.objects.get(slug="standard"), trial_end=ends)
+
+        subscription = catalog(owner, shop)["subscription"]
+
+        assert (subscription["plan"], subscription["trial_plan"]) == ("free", "standard")
+        assert subscription["trial_end"] == ends.isoformat().replace("+00:00", "Z")
+
+    def test_what_another_business_of_the_account_has_is_its_own(self, shop, owner, inventory):
+        pay(shop, plan="standard", modules=["inventory"])
+        other = create_business(owner, name="Bar Norte")
+
+        answer = catalog(owner, other)
+
+        assert answer["subscription"]["plan"] == "free"
+        assert [module["owned"] for module in answer["modules"]] == [False]
+
+    def test_a_business_without_a_subscription_has_nothing_and_is_sold_everything(self, shop, owner, inventory):
+        Subscription.objects.filter(hub=shop).delete()
+
+        answer = catalog(owner, shop)
+
+        assert answer["subscription"] is None
+        assert [(module["slug"], module["owned"]) for module in answer["modules"]] == [("inventory", False)]
+        assert answer["offered_plans"] == ["starter", "standard"]
+        assert answer["internal_plans"] == []
 
     def test_a_bought_module_is_owned(self, shop, owner, inventory):
         paid = pay(shop, modules=["inventory"])

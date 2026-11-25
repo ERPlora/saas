@@ -20,10 +20,13 @@ import pytest
 from django.core.mail import EmailMessage
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from billing import emails
 from billing.models import FiscalPolicy, Invoice, OssNotice
+from billing.services import oss_notices
 from billing.tests.test_invoice_recording import deliver, paid, payer
 from billing.tests.stripe_double import invoice_line, subscription
 
@@ -196,7 +199,8 @@ class TestTheCrossing:
             OssNotice.Reason.PREVIOUS_YEAR,
             first.pk,
         )
-        assert (notice.accumulated_cents, notice.effective_from) == (12_000, date(YEAR, 1, 1))
+        assert (notice.accumulated_cents, notice.threshold_cents) == (12_000, 10_000)
+        assert notice.effective_from == date(YEAR, 1, 1)
         assert str(YEAR - 1) in oss_mails(mailoutbox)[0].body
 
     def test_later_sales_above_the_threshold_tell_nothing_more(
@@ -214,8 +218,6 @@ class TestTheCrossing:
     ):
         """Two charges at once: the other wrote the year's row first (the unique constraint), so this one
         neither writes nor mails."""
-        from billing.services import oss_notices
-
         carried(this_year=7100)
         winner = charge("in_winner", commit=django_capture_on_commit_callbacks)
         mailoutbox.clear()
@@ -236,6 +238,54 @@ class TestTheCrossing:
         assert [r for r in caplog.records if getattr(r, "event", "").startswith("billing.oss_")] == []
 
 
+class TestWhatIsWritten:
+    def test_a_notice_already_told_is_not_written_again(self, berlin, django_capture_on_commit_callbacks):
+        carried(this_year=7100)
+        charge("in_1", commit=django_capture_on_commit_callbacks)
+
+        with CaptureQueriesContext(connection) as captured:
+            charge("in_2", commit=django_capture_on_commit_callbacks)
+
+        assert not [q for q in captured.captured_queries if q["sql"].startswith('INSERT INTO "billing_ossnotice"')]
+
+    def test_the_year_is_the_one_the_sale_was_issued_in(self, berlin):
+        sale = charge("in_1")
+        Invoice.objects.filter(pk=sale.pk).update(issued_on=date(YEAR - 1, 12, 31))
+        FiscalPolicy.objects.update(oss_carried_year=YEAR - 1, oss_carried_current_cents=7100)
+
+        [notice] = oss_notices.note_oss_threshold(Invoice.objects.get(pk=sale.pk))
+
+        assert [notice] == notices()
+        assert (notice.year, notice.reason) == (YEAR - 1, OssNotice.Reason.CURRENT_YEAR)
+        assert (notice.accumulated_cents, notice.effective_from) == (7100 + SALE, date(YEAR - 1, 12, 31))
+
+    @pytest.mark.parametrize("this_year,kind,reason", [(5100, "near", ""), (7100, "crossed", "current_year")])
+    def test_support_reads_what_the_mail_says(self, berlin, caplog, this_year, kind, reason):
+        carried(this_year=this_year)
+
+        with caplog.at_level(logging.WARNING, logger="billing.services"):
+            sale = charge("in_1")
+
+        [told] = [record for record in caplog.records if getattr(record, "event", "") == f"billing.oss_{kind}"]
+        assert (told.year, told.reason) == (YEAR, reason)
+        assert told.getMessage() == (
+            f"[FISCAL] OSS {kind} {YEAR}: {this_year + SALE} of 10000 cents (invoice {sale.number})"
+        )
+
+    def test_a_mail_that_breaks_does_not_stop_the_charge(
+        self, berlin, django_capture_on_commit_callbacks, monkeypatch
+    ):
+        def broken(notice_id):
+            raise OSError("no route to the mail server")
+
+        monkeypatch.setattr(oss_notices, "send_oss_notice", broken)
+        carried(this_year=5100)
+
+        sale = charge("in_1", commit=django_capture_on_commit_callbacks)
+
+        assert [notice.invoice_id for notice in notices()] == [sale.pk]
+
+
 class TestNothingToTell:
     def test_a_voluntary_oss_registration_has_nothing_to_prepare(
         self, berlin, mailoutbox, django_capture_on_commit_callbacks
@@ -248,9 +298,13 @@ class TestNothingToTell:
         assert notices() == []
         assert oss_mails(mailoutbox) == []
 
-    def test_a_domestic_sale_never_counts(self, running, mailoutbox, django_capture_on_commit_callbacks):
+    @pytest.mark.parametrize("issuer", ["ES", "es", ""])
+    def test_a_domestic_sale_never_counts(self, running, mailoutbox, django_capture_on_commit_callbacks, issuer):
         FiscalPolicy.objects.update(
-            oss_threshold=Decimal("100.00"), oss_carried_year=YEAR, oss_carried_current_cents=9_000
+            oss_threshold=Decimal("100.00"),
+            oss_carried_year=YEAR,
+            oss_carried_current_cents=9_000,
+            issuer_country=issuer,
         )
 
         charge("in_madrid", commit=django_capture_on_commit_callbacks)
