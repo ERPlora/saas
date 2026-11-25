@@ -8,7 +8,8 @@ write and its word, the tool run as the person); this module gives them the pane
   ``ai=`` is an ``AI(...)`` that this account may run; never the assistant's own. Where nothing is sold (the app's
   account surface, ``base.surface``) neither are the store's (``WEB_ONLY``). A turn offers only the few of what was
   asked (``relevant``, in the panel's words: ``SYNONYMS``, ``HOWTO``), the account's businesses and the documentation
-  search first (``ALWAYS``). The same tools of a role (``role_catalog``) are what the assistant's QA reads
+  search first (``ALWAYS``) and, last, the Hub's same search of the rest (``FIND_TOOLS``), whose finds the next round
+  offers. The same tools of a role (``role_catalog``) are what the assistant's QA reads
   (``export_assistant_catalog``), each with what people type to ask for it (its ``asks``,
   ``base/tests/test_assistant_asks.py``).
 - **A write never runs without the person's yes**: its card (``card``) names where it happens by the panel's screen
@@ -72,6 +73,11 @@ SYNONYMS = (
 #: The tool a how-to question («how do I…?», «¿cómo invito…?») is for (``relevant``'s ``howto``): the search in
 #: ERPlora's documentation, which then reaches it on being such a question, not only on being always offered.
 HOWTO = ("assistant.docs.search",)
+#: The assistant's own search of the account's whole catalogue, last in every turn (``live.assistant.offered``): a turn
+#: offers only the tools its words name best, so the model looks for the one it lacks and the next round offers it.
+FIND_TOOLS = "base.assistant.find_tools"
+#: The places a turn gives the account's tools before the search: with it, a turn offers ``MAX_TOOLS`` at most.
+PLACES = MAX_TOOLS - 1
 #: The panel's screen where each app's actions are done; what is of the store is the store's (``screen``).
 SCREEN_OF_APP = {"hubs": "businesses", "accounts": "account", "billing": "billing", "apps": "store"}
 #: What is the store's, of billing and of the businesses: the catalogue, its promo codes, changing a plan and the plans
@@ -156,10 +162,29 @@ def app_words(label: str, language: str) -> frozenset[str]:
     return frozenset(words)
 
 
-def relevant(tools: dict[str, Operation], texts: Iterable[str], language: str) -> list[Operation]:
-    """The tools of what ``texts`` ask, best first, at most ``MAX_TOOLS``: ``ALWAYS`` first, in the panel's words
-    (``SYNONYMS``) and with how-to questions sent to the documentation search (``HOWTO``)."""
-    return shared.relevant(tools, texts, language, always=ALWAYS, app_words=app_words, synonyms=SYNONYMS, howto=HOWTO)
+def ranking() -> dict[str, Any]:
+    """How the panel ranks the account's tools, for a turn and for its search alike: ``ALWAYS`` first, in the panel's
+    words (``SYNONYMS``) and with how-to questions sent to the documentation search (``HOWTO``)."""
+    return {"always": ALWAYS, "app_words": app_words, "synonyms": SYNONYMS, "howto": HOWTO}
+
+
+def relevant(
+    tools: dict[str, Operation], texts: Iterable[str], language: str, *, searched: Iterable[str] = ()
+) -> list[Operation]:
+    """The tools of what ``texts`` ask, best first, in ``PLACES`` (``ranking``), and the search of the rest last
+    (``FIND_TOOLS``); what the model ``searched`` for goes right after ``ALWAYS`` (``live.assistant.offered``)."""
+    search = shared.ToolSearch(get_operation(FIND_TOOLS), PLACES)
+    return shared.offered(tools, texts, language, search=search, searched=searched, **ranking())
+
+
+def found(tools: dict[str, Operation], query: str, language: str) -> list[Operation]:
+    """The tools of ``tools`` that do the task ``query`` describes, as a turn ranks them, without ``ALWAYS``."""
+    return shared.found(tools, query, language, **ranking())
+
+
+def searched(messages: Iterable[dict]) -> list[str]:
+    """The tasks the model searched the account's tools for (``FIND_TOOLS``) in ``messages``, in order."""
+    return shared.searched(messages, get_operation(FIND_TOOLS))
 
 
 # ── The card of a write in the panel's words ─────────────────────────────────────────────────────────────────────
@@ -262,7 +287,9 @@ ERPlora and its account. Answer in {language_name}, short and plain. Use Markdow
   in that currency with two decimals. Plan prices are net, VAT excluded.
 - When the person should go to a screen, link it with its path, only one of these:
 {links}
-- If something {"" if sells else "else "}cannot be done from here (you have no tool for it), say on which screen it is done."""
+- The tools you are given are only the ones nearest the person's words: the rest of this account's you find with
+  `{shared.tool_name(FIND_TOOLS)}`. Never say that something {"" if sells else "else "}cannot be done here, nor that you have no tool
+  for it, before you search for it; if your searches find none, say on which screen it is done."""
 
 
 # ── What the tools wait on the network for, before the turn's transaction ───────────────────────────────────────

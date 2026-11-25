@@ -226,7 +226,7 @@ class TestTheInstructions:
         text = assistant.instructions(language=language, account="Lena", screens={})
 
         assert "erplora.com desde el navegador" not in text and "erplora.com in your browser" not in text
-        assert "FIRST RULE" not in text and "- If something cannot be done from here" in text
+        assert "FIRST RULE" not in text and "Never say that something cannot be done here" in text
 
     def test_the_store_is_not_offered_where_nothing_is_sold(self, account, rf):
         request = rf.get("/")
