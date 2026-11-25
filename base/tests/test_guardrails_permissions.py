@@ -129,6 +129,7 @@ SYSTEM_ONLY = frozenset(
         "hubs.business.record_maintenance",
         "hubs.business.record_scheduled_move",
         "hubs.custom_domain.record",
+        "hubs.platform_business.create",
         "hubs.subscription.apply",
         "hubs.usage.prune",
         "hubs.usage.record",

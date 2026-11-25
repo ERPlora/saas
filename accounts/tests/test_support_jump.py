@@ -10,15 +10,18 @@ import logging
 import re
 import secrets
 import time
+from datetime import timedelta
 from html import escape, unescape
 
 import pytest
+from django.utils import timezone
 
 from accounts.admin import hub_admin_jump
 from accounts.models import AuthExchangeCode
 from accounts.services import hub_jump, platform_staff
 from accounts.signing import sign
 from accounts.tests.conftest import enter
+from hubs.tests.conftest import add_member, platform_row
 
 pytestmark = pytest.mark.django_db
 
@@ -154,6 +157,90 @@ class TestTheSecondFactorOfSupport:
         hub_jump.issue_code(platform_admin, "a")
 
         assert AuthExchangeCode.objects.count() == 1
+
+
+class TestErplorasOwnBusiness:
+    """Only its accepted people enter it: ERPlora's support gets no code for it, whatever its support access says."""
+
+    OWN = "erp"
+    ENTRY = "http://erp.localhost:8000/auth/login?next=/"
+
+    @pytest.fixture
+    def own(self, ana):
+        business = platform_row()
+        add_member(business, ana, "hub_owner")
+        return business
+
+    @pytest.fixture(params=["support", "platform_admin"])
+    def staff(self, request):
+        return request.getfixturevalue(request.param)
+
+    @pytest.mark.parametrize("second_factor", [False, True])
+    @pytest.mark.parametrize("mfa", [False, True])
+    def test_the_staff_get_no_code_for_it(self, own, staff, settings, mfa, second_factor, caplog):
+        settings.ACCOUNTS_MFA_ENABLED = mfa
+
+        with caplog.at_level(logging.INFO), pytest.raises(hub_jump.HubAccessDenied) as caught:
+            hub_jump.issue_code(staff, self.OWN, second_factor=second_factor)
+
+        # Refused as a stranger, never asked for a second factor to go on.
+        assert type(caught.value) is hub_jump.HubAccessDenied
+        assert not AuthExchangeCode.objects.exists()
+        assert "hub_login.hub_support" not in caplog.text
+
+    def test_a_code_of_theirs_that_names_it_is_not_redeemed(self, own, staff):
+        now = timezone.now()
+        AuthExchangeCode.objects.create(
+            code_hash=AuthExchangeCode.hash_code("a-code"),
+            user=staff,
+            hub_slug=self.OWN,
+            created_at=now,
+            expires_at=now + timedelta(seconds=60),
+        )
+
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code("a-code", self.OWN)
+
+    def test_the_jump_says_they_are_no_member(self, client, own, staff):
+        client.force_login(staff)
+
+        response = client.get("/hub-login/", {"hub": self.OWN, "next": "/", "state": STATE})
+
+        assert (response.status_code, response.url) == (302, "/login/error?code=not_a_member&hub=erp")
+        assert not AuthExchangeCode.objects.exists()
+
+    def test_the_hub_is_refused_when_it_redeems(self, client, own, staff, settings):
+        settings.INTERNAL_SHARED_SECRET = SECRET
+        body = json.dumps({"code": "a-code", "hub": self.OWN}).encode()
+        timestamp = int(time.time())
+        headers = {"X-Erplora-Timestamp": str(timestamp), "X-Erplora-Signature": sign(body, timestamp, SECRET)}
+
+        response = client.post("/internal/auth/redeem", body, content_type="application/json", headers=headers)
+
+        assert (response.status_code, response.json()["error"]["code"]) == (400, "invalid_code")
+
+    def test_they_still_enter_any_other_business_as_support(self, own, staff):
+        assert hub_jump.redeem_code(hub_jump.issue_code(staff, "a"), "a").role == HUB_SUPPORT
+
+    def test_they_still_open_it_in_the_hub_admin(self, own, staff):
+        code = hub_jump.issue_code(staff, self.OWN, audience="hub-admin")
+
+        assert hub_jump.redeem_code(code, self.OWN, audience="hub-admin").role.startswith("platform_")
+
+    def test_its_people_still_enter_with_their_role(self, own, ana):
+        assert hub_jump.redeem_code(hub_jump.issue_code(ana, self.OWN), self.OWN).role == "hub_owner"
+
+    def test_neither_its_record_nor_its_row_offers_to_enter_as_support(self, client, own, support):
+        client.force_login(support)
+
+        record = client.get(f"/admin/hubs/hub/{own.pk}/change/").content.decode()
+        page = client.get(HUBS_PAGE).content.decode()
+
+        assert hub_admin_jump.enter_as_support_url(self.OWN) is None
+        for html in (record, page):
+            assert "Enter as support" not in html
+            assert escape(self.ENTRY) not in html
+        assert page.count("Open in the Hub admin") == 1
 
 
 class TestTheJumpOfSupport:
