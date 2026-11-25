@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:12768b8f612782b7d48227c4bdae920ca9ea5ae8d7edadce60cc5e8d6f877c67 -->
+<!-- generated from WORKBOOK.md sha256:cad2153f6c7911c351373e770d967b4296b4f8750296e93b38e0785163c91c31 -->
 
 ## What it is for and who it is for
 
@@ -650,8 +650,8 @@ Steps:
 4. The business redeems the pass with erplora.com, opens its own session and the person appears inside, on the page they were going to.
 In: the business they are going to, the page they were going to in it and the mark of the browser that started the jump.
 Out: a pass valid for one minute, usable once and only for that business; it travels hidden in a form, never in the address, and the page that carries it is neither stored nor told to other websites. The business receives who is entering (ACCOUNTS-F12) and opens its own session, which shares nothing with erplora.com's.
-If it fails: if they are not a member of that business, "You don't have access to this hub", naming only the business's address, never its name, with "Back to the hub" and "Contact Support"; a link that leads to no business, "This sign-in link doesn't lead to a hub". More than 20 jumps in 5 minutes, "Too many attempts" with "You have opened your businesses too many times in a few minutes. Wait a few minutes and open your business again.", without a pass. A pass that expired, was used, is for another business or is not redeemed by the business itself opens nothing, and the business does not let in a browser that did not start the jump. With two-step verification on and the authenticator app active, it first asks for the app's code.
-Involved: hubs (the person's businesses and "Open")
+If it fails: if they are neither a member of that business nor ERPlora's staff (who come in as support, HUBS-F38), "You don't have access to this hub", naming only the business's address, never its name, with "Back to the hub" and "Contact Support"; a link that leads to no business, "This sign-in link doesn't lead to a hub". More than 20 jumps in 5 minutes, "Too many attempts" with "You have opened your businesses too many times in a few minutes. Wait a few minutes and open your business again.", without a pass. A pass that expired, was used, is for another business or is not redeemed by the business itself opens nothing, and the business does not let in a browser that did not start the jump. With two-step verification on and the authenticator app active, it first asks for the app's code.
+Involved: hubs (the person's businesses and "Open"; the support entry, HUBS-F38)
 
 ### ACCOUNTS-F29 Go back to erplora.com from my business
 Status: done

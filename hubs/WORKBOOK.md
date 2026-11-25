@@ -208,6 +208,7 @@ con buscador por negocio o por correo y filtro por rol; solo se consulta.
 | HUBS-F35 | Reconocer al servicio de los negocios cuando llama a erplora.com | hecho |
 | HUBS-F36 | Mantener los sectores y los tipos de negocio en el admin | hecho |
 | HUBS-F37 | Leer los sectores y los tipos de negocio | hecho |
+| HUBS-F38 | Entrar como soporte en la app de un negocio que lo permite | hecho |
 
 ### HUBS-F01 Crear el negocio gratuito con una sola pregunta
 Estado: hecho
@@ -703,6 +704,20 @@ Entra: el idioma de quien pide y, si quiere, un sector.
 Sale: las dos listas; nada se guarda.
 Si falla: un sector que no existe da una lista vacía; un sector o un tipo desactivado no sale en su lista. Una clave de API de la cuenta también las lee.
 Implicados: public (las páginas de cada sector), accounts (el alta del negocio en la Entrada)
+
+### HUBS-F38 Entrar como soporte en la app de un negocio que lo permite
+Estado: hecho
+Actor: personal de ERPlora
+Pantalla: admin › Negocios (la ficha del negocio), admin › Negocios › Hubs, el negocio
+Pasos:
+1. Un negocio pide ayuda a soporte de ERPlora para configurarlo y, en su app, enciende el acceso de soporte (BASE-F126 del Hub).
+2. La persona de soporte entra en el admin de erplora.com con su propia cuenta y pulsa «Entrar como soporte» en la ficha del negocio o en su fila de «Hubs».
+3. El negocio la manda a erplora.com con la marca de ese navegador, como en cualquier entrada (ACCOUNTS-F28), y erplora.com, que comprueba que es del personal de ERPlora, la devuelve al negocio con un pase de un solo uso que dice que entra como soporte, con su nombre y su correo.
+4. Con el acceso encendido, aparece dentro de la app del negocio como un administrador, sin salir en su equipo, y el negocio apunta la entrada (BASE-F126).
+Entra: la cuenta del personal (un superusuario o una del grupo de soporte) y el negocio de la ficha.
+Sale: un pase que vale un minuto, sirve una sola vez y solo para ese negocio, y una línea en el registro de erplora.com con la cuenta y el negocio. En erplora.com no se añade nadie al negocio ni se ocupa una plaza de su plan.
+Si falla: con el acceso apagado, el negocio no abre sesión y enseña «Este negocio no deja entrar a soporte» con «Volver a intentarlo». Una cuenta sin rol de plataforma (un cliente que no es miembro, el personal sin rol o una cuenta desactivada) no recibe pase: «No tienes acceso a este hub». Quien es miembro del negocio entra con su rol de miembro. Con la verificación en dos pasos encendida en la plataforma, antes pide el código de la app autenticadora. El pase de soporte no abre el admin del Hub, ni el del admin del Hub la app del negocio.
+Implicados: accounts (el pase de la entrada, ACCOUNTS-F28), el negocio (BASE-F126 del Hub: el acceso de soporte y su página de rechazo), HUBS-F23
 
 ## Para quien lo mantiene
 
