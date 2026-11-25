@@ -11,10 +11,11 @@ import { useI18n } from 'vue-i18n';
 
 import type { MemberRowOut } from '../../../frontend/sdk-types/hubs-members';
 import { useErrorText } from '../error-text';
+import { memberTexts } from '../member-texts';
 
 const props = defineProps<{
   member: MemberRowOut | null;
-  business: { id: string; name: string };
+  business: { id: string; name: string; is_platform: boolean };
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -23,10 +24,13 @@ const { t } = useI18n();
 const { forDialog } = useErrorText();
 const transfer = useCommand('hubs.ownership.transfer');
 
-const consequences = computed(() => [
-  { text: t('hubs.members.transfer.consequenceWindow'), icon: 'ion:time-outline' },
-  { text: t('hubs.members.transfer.consequenceBilling'), icon: 'ion:receipt-outline' },
-]);
+const consequences = computed(() => {
+  const { transferBilling } = memberTexts(props.business);
+  return [
+    { text: t('hubs.members.transfer.consequenceWindow'), icon: 'ion:time-outline' },
+    ...(transferBilling ? [{ text: t(transferBilling), icon: 'ion:receipt-outline' }] : []),
+  ];
+});
 
 async function confirm(): Promise<void> {
   const member = props.member;

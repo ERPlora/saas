@@ -19,8 +19,8 @@ logger = logging.getLogger("accounts.services")
 
 
 class HoldsBusinesses(Conflict):
-    """409 that names the businesses holding the account (``businesses: [{id, name}]``), so the panel links each
-    one: ``accounts.owns_businesses`` (it owns them) or ``accounts.pays_businesses`` (it pays for them
+    """409 that names the businesses holding the account (``businesses: [{id, name, is_platform}]``), so the panel links
+    each one: ``accounts.owns_businesses`` (it owns them) or ``accounts.pays_businesses`` (it pays for them
     after a hand-over: deleting it would leave Stripe charging a card nobody can stop)."""
 
     def __init__(self, message: str, *, code: str, businesses: list[dict]) -> None:
@@ -31,6 +31,16 @@ class HoldsBusinesses(Conflict):
         envelope = super().envelope()
         envelope["error"]["businesses"] = self.businesses
         return envelope
+
+
+def _owned_refusal(businesses: list[dict]) -> str:
+    """What the owner of ``businesses`` is told: transfer or delete them, but ERPlora's own, which nobody deletes."""
+    told = []
+    if not all(business["is_platform"] for business in businesses):
+        told.append(gettext("You own businesses: transfer or delete them before deleting your account."))
+    if any(business["is_platform"] for business in businesses):
+        told.append(gettext("You own ERPlora's business: transfer it before deleting your account."))
+    return " ".join(told)
 
 
 def forget_in_outbox(user) -> int:
@@ -90,7 +100,7 @@ def profile_delete(ctx: OperationContext, data: ProfileDeleteIn) -> dict:
     owned, paid = businesses_holding(ctx)
     if owned:
         raise HoldsBusinesses(
-            gettext("You own businesses: transfer or delete them before deleting your account."),
+            _owned_refusal(owned),
             code="accounts.owns_businesses",
             businesses=owned,
         )

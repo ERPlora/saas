@@ -31,6 +31,7 @@ import { useLiveState } from '../../../frontend/live-state';
 import type { BusinessDetailOut } from '../../../frontend/sdk-types/hubs';
 import type { MemberAction, MemberRowOut } from '../../../frontend/sdk-types/hubs-members';
 import { useErrorText } from '../error-text';
+import { memberTexts } from '../member-texts';
 import InviteModal from './InviteModal.vue';
 import RemoveDialog from './RemoveDialog.vue';
 import RoleModal from './RoleModal.vue';
@@ -40,7 +41,7 @@ const props = defineProps<{
   /** The business (`Hub.id`), from the address: all the list needs. */
   id: string;
   /** The business once `hubs.business.get` answers; nothing is shown until then. */
-  business?: Pick<BusinessDetailOut, 'id' | 'name' | 'pending_transfer'>;
+  business?: Pick<BusinessDetailOut, 'id' | 'name' | 'is_platform' | 'pending_transfer'>;
 }>();
 
 const PAGE_SIZES = [10, 25, 50, 100];
@@ -84,6 +85,7 @@ const rows = computed<MemberRowOut[]>(() => live.data.value?.rows ?? []);
 const seats = computed(() => live.data.value?.seats ?? { used: 0, limit: null });
 const invitableRoles = computed(() => live.data.value?.invitable_roles ?? []);
 const freeRoles = computed(() => live.data.value?.free_roles ?? []);
+const texts = computed(() => memberTexts(props.business));
 
 watch(live.data, (now) => {
   if (now && now.rows.length === 0 && now.total > 0 && now.offset >= now.total) {
@@ -278,10 +280,11 @@ async function withdrawOffer(id: string): Promise<void> {
       data-testid="members-roles"
       :heading="$t('hubs.members.rolesHeading')"
     >
-      <span class="roles-line">{{ $t('hubs.members.rolesOwner') }}</span>
-      <span class="roles-line">{{ $t('hubs.members.rolesAdmin') }}</span>
-      <span class="roles-line">{{ $t('hubs.members.rolesStaff') }}</span>
-      <span class="roles-line">{{ $t('hubs.members.rolesAccountant') }}</span>
+      <span
+        v-for="key in texts.roles"
+        :key="key"
+        class="roles-line"
+      >{{ $t(key) }}</span>
     </InlineFeedback>
 
     <InviteModal

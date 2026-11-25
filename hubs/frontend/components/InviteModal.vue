@@ -17,9 +17,10 @@ import { useI18n } from 'vue-i18n';
 import { looksLikeEmail } from '../../../frontend/email';
 import type { InvitableRole, SeatsOut } from '../../../frontend/sdk-types/hubs';
 import { useErrorText } from '../error-text';
+import { memberTexts } from '../member-texts';
 
 const props = defineProps<{
-  business: { id: string; name: string };
+  business: { id: string; name: string; is_platform: boolean };
   /** The roles the account may invite with (`hubs.member.list`'s `invitable_roles`). */
   invitableRoles: InvitableRole[];
   /** The roles that take no place of the plan (`hubs.member.list`'s `free_roles`). */
@@ -38,6 +39,7 @@ const role = shallowRef<InvitableRole>('hub_employee');
 const message = shallowRef('');
 
 const freeRole = computed(() => props.freeRoles.includes(role.value));
+const freeRoleHint = computed(() => (freeRole.value ? memberTexts(props.business).freeRole : null));
 const full = computed(
   () =>
     !freeRole.value &&
@@ -142,9 +144,9 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
             data-testid="invite-seats"
           >{{ $t('hubs.members.seats', { used: seats.used, limit: seats.limit }) }}</span>
           <span
-            v-if="freeRole"
+            v-if="freeRoleHint"
             data-testid="invite-free-role"
-          >{{ $t('hubs.members.inviteModal.freeRole') }}</span>
+          >{{ $t(freeRoleHint) }}</span>
         </p>
       </div>
     </template>

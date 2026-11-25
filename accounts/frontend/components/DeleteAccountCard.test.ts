@@ -118,7 +118,7 @@ describe('DeleteAccountCard', () => {
   it('says it in Spanish', async () => {
     const s = await mountPanel(DeleteAccountCard, { props: { profile: profile() }, locale: 'es' });
     await s.result(await s.live(), 'hubs.business.list', page([platform()]));
-    expect(texts(s)).toEqual(['Eres propietario del negocio de ERPlora: transfiérelo antes de borrar la cuenta.']);
+    expect(texts(s)).toEqual(['Eres propietario del negocio de ERPlora: transfiérelo antes de eliminar tu cuenta.']);
   });
 
   it('tells the owner of other businesses too what to do with each, counting only those that can be deleted', async () => {
