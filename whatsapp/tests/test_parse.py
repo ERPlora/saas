@@ -318,13 +318,15 @@ class TestTheHistoryOfTheConnection:
         assert (message.follow_up, message.media_id, message.body["source"]) == (True, "555", "history")
         assert message.body["direction"] == "inbound"
 
-    @pytest.mark.parametrize("display", [BUSINESS, "+34 910 00 00 00"])
-    def test_a_follow_up_of_the_business_itself_is_skipped(self, display):
+    @pytest.mark.parametrize(
+        ("display", "sender"), [(BUSINESS, BUSINESS), ("+34 910 00 00 00", BUSINESS), (BUSINESS, f"+{BUSINESS}")]
+    )
+    def test_a_follow_up_of_the_business_itself_is_skipped(self, display, sender):
         payload = webhook(
             "history",
             {
                 "metadata": {"display_phone_number": display, "phone_number_id": PHONE_NUMBER_ID},
-                "messages": [text("wamid.O", BUSINESS, "x"), text("wamid.C")],
+                "messages": [text("wamid.O", sender, "x"), text("wamid.C")],
             },
         )
 
