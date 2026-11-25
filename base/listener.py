@@ -79,37 +79,50 @@ class Listener:
         """Take, without waiting, what was notified until now; whether anything was (or the connection changed)."""
         return self._wait(0.0)
 
-    def _wait(self, timeout: float) -> bool:  # noqa: PLR0911
-        deadline = time.monotonic() + max(timeout, 0.0)
+    def _wait(self, timeout: float) -> bool:
+        timeout = max(timeout, 0.0)
+        deadline = time.monotonic() + timeout
         if self._conn is None:
-            if self._listen():
-                return True
-            self._sleep(min(max(timeout, 0.0), self._pause))
-            self._pause = min(self._pause * 2, self._longest_pause)
-            return False
+            return self._listen_again(timeout)
         socket = self._conn.fileno()
         while True:
             remaining = max(deadline - time.monotonic(), 0.0)
-            ready, _, _ = select.select([socket, self._read], [], [], remaining)
-            if self._read in ready:
-                self._drain_pipe()
+            if not self._reached(socket, remaining):
                 return False
-            if socket not in ready:
-                return False
-            try:
-                heard = self._take_notifications()
-            except psycopg.Error as error:
-                logger.error("saas.worker.listen_lost channel=%s: %s", self.channel, error)
-                self._drop()
-                return True
-            if heard:
-                return True
-            if self._conn.closed:
-                logger.error("saas.worker.listen_lost channel=%s: the server closed the connection", self.channel)
-                self._drop()
+            if self._heard():
                 return True
             if remaining <= 0:
                 return False
+
+    def _listen_again(self, timeout: float) -> bool:
+        """Connect; when it cannot, pause (``timeout`` at most), the next time twice as long."""
+        if self._listen():
+            return True
+        self._sleep(min(timeout, self._pause))
+        self._pause = min(self._pause * 2, self._longest_pause)
+        return False
+
+    def _reached(self, socket: int, timeout: float) -> bool:
+        """Whether something reached the connection's socket in time; an interrupt goes before it."""
+        ready, _, _ = select.select([socket, self._read], [], [], timeout)
+        if self._read in ready:
+            self._drain_pipe()
+            return False
+        return socket in ready
+
+    def _heard(self) -> bool:
+        """Read what reached the socket; whether it was a notification, or the end of the connection."""
+        try:
+            heard = self._take_notifications()
+        except psycopg.Error as error:
+            logger.error("saas.worker.listen_lost channel=%s: %s", self.channel, error)
+            self._drop()
+            return True
+        if not heard and self._conn.closed:
+            logger.error("saas.worker.listen_lost channel=%s: the server closed the connection", self.channel)
+            self._drop()
+            return True
+        return heard
 
     def close(self) -> None:
         self._drop()

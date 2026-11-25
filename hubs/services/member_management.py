@@ -91,6 +91,37 @@ def _mail_invitation(ctx: OperationContext, member: HubMember) -> None:
     )
 
 
+def _invite_again(actor: HubMember, member: HubMember, data: MemberInviteIn, now) -> None:
+    """Renew the invitation of ``member``, once expired, as ``data`` asks for it now."""
+    if not member.is_pending:
+        raise Conflict(_("%(email)s is already on this business.") % {"email": data.email}, code="hubs.already_member")
+    if not member.is_expired(now):
+        raise Conflict(
+            _("%(email)s already has an invitation waiting. Resend it instead.") % {"email": data.email},
+            code="hubs.already_invited",
+        )
+    if not membership.manages(actor, member):
+        raise PermissionDenied(_("You cannot manage a member whose role is equal to or above yours."))
+    signup.refuse_staff(member.user)
+    _check_seat(actor.hub, now, data.role)
+    member.role = data.role
+    member.invitation_message = data.message
+    member.save(update_fields=["role", "invitation_message"])
+    _renew(member, actor.user, now)
+
+
+def _account_to_invite(email: str, language: str):
+    """The account of ``email``: made to be claimed when there is none, released when nobody proved its address."""
+    user = get_user_model().objects.filter(email__iexact=email).first()
+    if user is None:
+        return get_user_model().objects.create_user(email=email, password=None, language=language)
+    signup.refuse_staff(user)
+    if not ways_in.email_is_proven(user, email):
+        mailbox_proof.release_unproven_account(user, reason="invited_while_unverified")
+        revoke_after_commit(user.pk)
+    return user
+
+
 @operation(
     "hubs.member.invite",
     kind="command",
@@ -133,34 +164,12 @@ def member_invite(ctx: OperationContext, data: MemberInviteIn) -> dict:
     member = HubMember.objects.select_for_update().select_related("user").filter(hub=hub, user__email__iexact=data.email).first()
     if member is not None:
         member.hub = hub
-        if not member.is_pending:
-            raise Conflict(_("%(email)s is already on this business.") % {"email": data.email}, code="hubs.already_member")
-        if not member.is_expired(now):
-            raise Conflict(
-                _("%(email)s already has an invitation waiting. Resend it instead.") % {"email": data.email},
-                code="hubs.already_invited",
-            )
-        if not membership.manages(actor, member):
-            raise PermissionDenied(_("You cannot manage a member whose role is equal to or above yours."))
-        signup.refuse_staff(member.user)
-        _check_seat(hub, now, data.role)
-        member.role = data.role
-        member.invitation_message = data.message
-        member.save(update_fields=["role", "invitation_message"])
-        _renew(member, actor.user, now)
+        _invite_again(actor, member, data, now)
     else:
         _check_seat(hub, now, data.role)
-        user = get_user_model().objects.filter(email__iexact=data.email).first()
-        if user is None:
-            user = get_user_model().objects.create_user(email=data.email, password=None, language=hub.language)
-        else:
-            signup.refuse_staff(user)
-            if not ways_in.email_is_proven(user, data.email):
-                mailbox_proof.release_unproven_account(user, reason="invited_while_unverified")
-                revoke_after_commit(user.pk)
         member = HubMember.objects.create(
             hub=hub,
-            user=user,
+            user=_account_to_invite(data.email, hub.language),
             role=data.role,
             invited_by=actor.user,
             invitation_message=data.message,

@@ -151,6 +151,29 @@ def add_member(hub, user, role, *, accepted=True, invited_by=None, invited_days_
     return member
 
 
+def invite(actor, hub, email, role="hub_employee", message=""):
+    """``actor`` invites ``email`` to ``hub``, as the members page does."""
+    from hubs.schemas.membership import MemberInviteIn
+    from hubs.services import member_management
+
+    return member_management.member_invite(
+        ctx_for(actor), MemberInviteIn(hub_id=hub.id, email=email, role=role, message=message)
+    )
+
+
+def fill_the_free_plan(hub, owner):
+    """Free without its trial: the owner and two live invitations take its three seats."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from hubs.models import Subscription
+
+    Subscription.objects.filter(hub=hub).update(trial_end=timezone.now() - timedelta(seconds=1))
+    invite(owner, hub, "one@example.com")
+    invite(owner, hub, "two@example.com")
+
+
 def role_on(user, slug: str) -> str | None:
     """What ``user`` is on the business at ``slug`` for the jump to a hub; ``None``: it does not enter."""
     from hubs.queries import membership
