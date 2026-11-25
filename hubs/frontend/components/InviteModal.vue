@@ -17,15 +17,16 @@ import { useI18n } from 'vue-i18n';
 import { looksLikeEmail } from '../../../frontend/email';
 import type { InvitableRole, SeatsOut } from '../../../frontend/sdk-types/hubs';
 import { useErrorText } from '../error-text';
-import { memberTexts } from '../member-texts';
 
 const props = defineProps<{
-  business: { id: string; name: string; is_platform: boolean };
+  business: { id: string; name: string };
   /** The roles the account may invite with (`hubs.member.list`'s `invitable_roles`). */
   invitableRoles: InvitableRole[];
   /** The roles that take no place of the plan (`hubs.member.list`'s `free_roles`). */
   freeRoles: InvitableRole[];
   seats: SeatsOut;
+  /** That such a role takes no place (`memberTexts`); `null` where there is no plan. */
+  freeRoleText: string | null;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -39,7 +40,7 @@ const role = shallowRef<InvitableRole>('hub_employee');
 const message = shallowRef('');
 
 const freeRole = computed(() => props.freeRoles.includes(role.value));
-const freeRoleHint = computed(() => (freeRole.value ? memberTexts(props.business).freeRole : null));
+const freeRoleHint = computed(() => (freeRole.value ? props.freeRoleText : null));
 const full = computed(
   () =>
     !freeRole.value &&

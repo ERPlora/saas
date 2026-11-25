@@ -23,11 +23,11 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-async function mountTransfer(api: () => Response, business: { name?: string; is_platform?: boolean } = {}) {
+async function mountTransfer(api: () => Response, billingText: string | null = 'hubs.members.transfer.consequenceBilling') {
   const open = ref(true);
   const Host = {
     render: () =>
-      h(TransferDialog, { member: CARLOS, business: { id: 'h1', name: 'Panadería López', is_platform: false, ...business }, open: open.value, 'onUpdate:open': (v: boolean) => (open.value = v) }),
+      h(TransferDialog, { member: CARLOS, business: { id: 'h1', name: 'Panadería López' }, billingText, open: open.value, 'onUpdate:open': (v: boolean) => (open.value = v) }),
   };
   const m = await mountHubs(Host, { api });
   await flush();
@@ -63,8 +63,8 @@ describe('TransferDialog', () => {
     expect(open.value).toBe(false);
   });
 
-  it('says nothing of a plan when it hands ERPlora’s own business over', async () => {
-    const s = await mountTransfer(() => Response.json({}), { name: 'ERPlora', is_platform: true });
+  it('says nothing of a plan without one', async () => {
+    const s = await mountTransfer(() => Response.json({}), null);
     const dialog = s.q('transfer-dialog');
     expect(dialog.textContent).toContain('They have 7 days to accept it; until then nothing changes.');
     expect(dialog.textContent).not.toMatch(/plan|card|charged/i);

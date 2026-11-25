@@ -22,6 +22,7 @@ import { accessibleName, apiError, BYE, closeRowMenu, describeCall, errorFrame, 
 import { member } from '../__tests__/members';
 import InviteModal from './InviteModal.vue';
 import MembersTab from './MembersTab.vue';
+import TransferDialog from './TransferDialog.vue';
 
 // The DataTable's test helpers: a row's actions wherever they are, and a phone's viewport.
 import { offeredRowActions } from '@erplora/ui/testing/data-table';
@@ -182,6 +183,16 @@ describe('MembersTab: the list', () => {
       'Accountant: the accountancy firm that keeps the books. It only reads sales and invoices, with their taxes, and downloads the invoices.',
     ]);
     expect(s.testid('members-seats').exists()).toBe(false);
+  });
+
+  it.each([
+    [false, 'hubs.members.inviteModal.freeRole', 'hubs.members.transfer.consequenceBilling'],
+    [true, null, null],
+  ])('its dialogs speak of the plan only where there is one (is_platform: %s)', async (is_platform, freeRole, billing) => {
+    const s = await setup({ is_platform });
+    await s.show(page());
+    expect(s.wrapper.findComponent(InviteModal).props('freeRoleText')).toBe(freeRole);
+    expect(s.wrapper.findComponent(TransferDialog).props('billingText')).toBe(billing);
   });
 
   it('an error is the table’s, with «Retry»', async () => {

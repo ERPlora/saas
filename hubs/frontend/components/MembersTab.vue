@@ -293,6 +293,7 @@ async function withdrawOffer(id: string): Promise<void> {
       :invitable-roles="invitableRoles"
       :free-roles="freeRoles"
       :seats="seats"
+      :free-role-text="texts.freeRole"
     />
     <RoleModal
       v-model:open="roleOpen"
@@ -307,6 +308,7 @@ async function withdrawOffer(id: string): Promise<void> {
       v-model:open="transferOpen"
       :member="target"
       :business="business"
+      :billing-text="texts.transferBilling"
     />
   </div>
 </template>

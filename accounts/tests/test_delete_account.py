@@ -52,6 +52,13 @@ def _exists(user) -> bool:
     return get_user_model().objects.filter(pk=user.pk).exists()
 
 
+def refused_for_paying(response, business) -> None:
+    """The deletion is refused (409) for ``business``, which the account still pays for."""
+    error = response.json()["error"]
+    assert (response.status_code, error["code"]) == (409, "accounts.pays_businesses")
+    assert error["businesses"] == [{"id": str(business.pk), "name": business.name, "is_platform": False}]
+
+
 def speak(user, language: str) -> None:
     """The language the account reads ERPlora in."""
     get_user_model().objects.filter(pk=user.pk).update(language=language)
@@ -190,12 +197,7 @@ class TestPayersFirstHandThePaymentOver:
         return business
 
     def test_the_payer_of_a_business_is_refused_with_it(self, signed_in, ana, handed_over):
-        response = api_post(signed_in, DELETE)
-
-        assert response.status_code == 409
-        error = response.json()["error"]
-        assert error["code"] == "accounts.pays_businesses"
-        assert error["businesses"] == [{"id": str(handed_over.pk), "name": "Panadería López", "is_platform": False}]
+        refused_for_paying(api_post(signed_in, DELETE), handed_over)
         assert _exists(ana)
 
     def test_refused_before_the_password_is_asked(self, signed_in_long_ago, handed_over):
@@ -251,12 +253,7 @@ class TestPayersFirstHandThePaymentOver:
             ctx_for(make_owner), BillingProfileIn(hub_id=handed_over.id, billing_name="Marta SL")
         )
 
-        response = api_post(signed_in, DELETE)
-
-        assert response.status_code == 409
-        error = response.json()["error"]
-        assert error["code"] == "accounts.pays_businesses"
-        assert error["businesses"] == [{"id": str(handed_over.pk), "name": "Panadería López", "is_platform": False}]
+        refused_for_paying(api_post(signed_in, DELETE), handed_over)
         assert _exists(ana)
 
     def test_a_deleted_business_does_not_hold_its_payer(self, signed_in, ana, handed_over):
