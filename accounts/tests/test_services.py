@@ -267,11 +267,10 @@ class TestSeedDemoPlatformAdmin:
             ("platform@example.com", True, True)
         ]
 
-    def test_a_platform_role_never_travels_to_a_hub(self):
+    def test_a_platform_role_never_travels_to_a_hub_it_enters_as_support(self):
         user = demo_accounts.seed_demo_platform_admin("platform@example.com", "platform")
 
-        with pytest.raises(hub_jump.HubAccessDenied):
-            hub_jump.issue_code(user, "a")
+        assert hub_jump.redeem_code(hub_jump.issue_code(user, "a"), "a").role == "hub_support"
 
     def test_running_it_again_changes_nothing(self):
         first = demo_accounts.seed_demo_platform_admin("platform@example.com", "platform")

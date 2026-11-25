@@ -143,6 +143,14 @@ def _upgrade_only() -> Conflict:
     )
 
 
+def _plan_net(plan: Plan, interval: str) -> Decimal:
+    return Decimal((plan.price_annual if interval == "year" else plan.price_monthly) or 0)
+
+
+def _module_net(module: Module, interval: str) -> Decimal:
+    return Decimal(module.price_annual_cents if interval == "year" else module.price_monthly_cents) / 100
+
+
 def plan_sale(hub: Hub | None, slug: str, interval: str) -> Sale:
     """The plan ``slug`` as ``hub`` buys it; without a business, as any business nobody marked."""
     plan = queries.plan_on_sale(slug, hub)
@@ -157,7 +165,6 @@ def plan_sale(hub: Hub | None, slug: str, interval: str) -> Sale:
             code="billing.plan_is_free",
         )
     price_id = plan_price_id(plan, interval)
-    net = plan.price_annual if interval == "year" else plan.price_monthly
     if not price_id:
         raise _not_on_sale(f"Plan {plan.slug} ({interval})")
     return Sale(
@@ -165,7 +172,7 @@ def plan_sale(hub: Hub | None, slug: str, interval: str) -> Sale:
         plan.slug,
         interval,
         price_id,
-        Decimal(net or 0),
+        _plan_net(plan, interval),
         vat.SAAS_SUBSCRIPTION_CATEGORY,
         plan=plan,
     )
@@ -181,9 +188,6 @@ def module_sale(slug: str, interval: str, *, module: Module | None = None) -> Sa
         if interval == "year"
         else module.stripe_price_id_monthly
     )
-    cents = (
-        module.price_annual_cents if interval == "year" else module.price_monthly_cents
-    )
     if not price_id:
         raise _not_on_sale(f"Module {module.slug} ({interval})")
     return Sale(
@@ -191,7 +195,7 @@ def module_sale(slug: str, interval: str, *, module: Module | None = None) -> Sa
         module.slug,
         interval,
         price_id,
-        Decimal(cents) / 100,
+        _module_net(module, interval),
         vat.SOFTWARE_LICENSE_CATEGORY,
         module=module,
     )
@@ -213,6 +217,16 @@ def _require_module_not_owned(subscription: Subscription | None, slug: str) -> N
         )
 
 
+def _renewing_modules_net(subscription: Subscription, interval: str) -> Decimal:
+    """The modules the business bought, at ``interval``'s prices: one cancelled, or that left the catalogue, is not
+    charged again."""
+    renewing = SubscriptionItem.objects.filter(
+        subscription=subscription, source=SubscriptionItem.Source.PURCHASE, valid_until__isnull=True
+    )
+    modules = Module.objects.filter(slug__in=renewing.values("module_slug"))
+    return sum((_module_net(module, interval) for module in modules), Decimal("0"))
+
+
 def _recurring_net(
     subscription: Subscription | None,
     interval: str,
@@ -222,33 +236,11 @@ def _recurring_net(
 ) -> Decimal:
     """What a renewal of the business charges, net, once ``adding`` is in: the plan and its bought modules,
     at ``interval``'s prices (the full invoice decides on the whole renewal, not one line of it)."""
-    total = Decimal("0")
-    plan = (
-        plan
-        if plan is not None
-        else (subscription.plan if _paying(subscription) else None)
-    )
-    if plan is not None:
-        total += Decimal(
-            (plan.price_annual if interval == "year" else plan.price_monthly) or 0
-        )
+    if plan is None and _paying(subscription):
+        plan = subscription.plan
+    total = _plan_net(plan, interval) if plan is not None else Decimal("0")
     if subscription is not None:
-        now = timezone.now()
-        for item in SubscriptionItem.objects.filter(
-            subscription=subscription, source=SubscriptionItem.Source.PURCHASE
-        ):
-            if not item.is_live(now) or item.valid_until is not None:
-                continue
-            module = Module.objects.filter(slug=item.module_slug).first()
-            if module is not None:
-                total += (
-                    Decimal(
-                        module.price_annual_cents
-                        if interval == "year"
-                        else module.price_monthly_cents
-                    )
-                    / 100
-                )
+        total += _renewing_modules_net(subscription, interval)
     if adding is not None and adding.kind == "module":
         total += adding.net
     return total
@@ -324,20 +316,19 @@ def _item_sale(subscription: Subscription, line: dict) -> Sale | None:
             plan.slug,
             interval,
             price_id,
-            Decimal((plan.price_annual if interval == "year" else plan.price_monthly) or 0),
+            _plan_net(plan, interval),
             vat.SAAS_SUBSCRIPTION_CATEGORY,
             plan=plan,
         )
     found = queries.module_for_price(price_id)
     if found is not None:
         module, interval = found
-        cents = module.price_annual_cents if interval == "year" else module.price_monthly_cents
         return Sale(
             "module",
             module.slug,
             interval,
             price_id,
-            Decimal(cents) / 100,
+            _module_net(module, interval),
             vat.SOFTWARE_LICENSE_CATEGORY,
             module=module,
         )

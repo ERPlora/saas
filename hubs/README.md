@@ -52,7 +52,7 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   asistente. La copia que leía antes (`accounts.HubMembership`) salió del código en `accounts/0011` y su tabla, de la
   base de datos en `accounts/0012` (saas#220). El salto se queda en `accounts`: moverlo (`/hub-login/`,
   `/internal/auth/redeem`, `AuthExchangeCode`) no quitaba ninguna copia. Guardarraíl AST: `tests/test_access.py`.
-- **El negocio propio de ERPlora** (`Hub.is_platform`, HUBS-F38): su fila solo guarda sus personas. La crea
+- **El negocio propio de ERPlora** (`Hub.is_platform`, HUBS-F39): su fila solo guarda sus personas. La crea
   `manage.py create_platform_business`, con el id que ya tiene en el Hub; al Hub solo va su foto, `{hub_id, slug, version,
   members}`, y nunca `PUT`, `DELETE` ni `restore`. Las puertas que cambian o cobran un negocio la rechazan
   (`services.refusals.refuse_platform_business`); las que el Hub llama no la conocen.

@@ -10,7 +10,8 @@ The account plane (``Hub``, ``HubMember``, ``HubOwnershipTransfer``, ``BillingPr
 a superuser. Superusers get the platform's actions (``services.platform_actions.send_latest_state``, ``retry_owed``,
 ``deliver_revocations``); ``support`` only sees (data migration ``0007``). A ``User``'s page lists the businesses of the
 account (``AccountMemberInline``), and «Hubs» (``hubs_view``, ``/admin/accounts/hubs/``, routed in ``config/urls.py``)
-has one row per business people enter, each with «Open in the Hub admin».
+has one row per business people enter, each with «Open in the Hub admin» and «Enter as support», which the record of a
+business has too.
 
 ``HubUsageDaily`` is what the Hub measured of each business every night (``collect_hub_usage``): read only, for
 superusers, with its sizes readable and the database's, which the customer never sees.
@@ -26,11 +27,11 @@ from django.db.models import F
 from django.http import HttpRequest, HttpResponse
 from django.template.defaultfilters import filesizeformat
 from django.template.response import TemplateResponse
-from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import ngettext
 
 from accounts.admin.hub_admin_jump import JUMP_FAILED, JUMP_FAILED_UNKNOWN, OPEN_IN_HUB_ADMIN, open_hub_admin_url
+from accounts.admin.hub_admin_jump import ENTER_AS_SUPPORT, enter_as_support_url, jump_button
 from accounts.admin.users import UserAdmin
 from hubs.services import platform_actions, refusals, subscription_sync
 from hubs.queries import hub_sync, membership
@@ -226,6 +227,7 @@ class HubAdmin(PlatformActions):
     list_filter = ["status", "pending_hub_call", "can_buy_internal_plans"]
     search_fields = ["slug", "name"]
     inlines = [HubMemberInline]
+    readonly_fields = ["enter_as_support"]
     actions = [
         "send_latest_state",
         "retry_owed",
@@ -246,6 +248,10 @@ class HubAdmin(PlatformActions):
             for name in self.TEST_CLOCK_ACTIONS:
                 actions.pop(name, None)
         return actions
+
+    @admin.display(description=_("Support"))
+    def enter_as_support(self, obj):
+        return jump_button(enter_as_support_url(obj.slug), ENTER_AS_SUPPORT, self.get_empty_value_display())
 
     def _with_a_plan(self, request, queryset):
         """The chosen businesses that have a plan to act on: ERPlora's own has none, and the staff is told."""
@@ -341,10 +347,7 @@ class HubMemberAdmin(PlatformActions):
 
     @admin.display(description=_("Hub admin"))
     def open_in_hub_admin(self, obj):
-        url = open_hub_admin_url(obj.hub.slug)
-        if url is None:
-            return self.get_empty_value_display()
-        return format_html('<a class="button" href="{}">{}</a>', url, OPEN_IN_HUB_ADMIN)
+        return jump_button(open_hub_admin_url(obj.hub.slug), OPEN_IN_HUB_ADMIN, self.get_empty_value_display())
 
 
 class AccountMemberInline(ReadOnly, admin.StackedInline):
@@ -364,7 +367,7 @@ UserAdmin.inlines = [*UserAdmin.inlines, AccountMemberInline]
 
 
 def hubs_view(request: HttpRequest) -> HttpResponse:
-    """«Hubs» (``/admin/accounts/hubs/``): every business people enter, each with «Open in the Hub admin».
+    """«Hubs» (``/admin/accounts/hubs/``): every business people enter, with its two jumps (``hub_admin_jump``).
 
     Wrapped in ``admin.site.admin_view`` by ``config/urls.py``: only active staff, and of them only
     whoever may view businesses (superuser and ``support``). A failed jump comes back here with
@@ -375,7 +378,7 @@ def hubs_view(request: HttpRequest) -> HttpResponse:
     if "error" in request.GET:
         messages.error(request, JUMP_FAILED.get(request.GET["error"], JUMP_FAILED_UNKNOWN))
     hubs = [
-        {"slug": slug, "members": members, "url": open_hub_admin_url(slug)}
+        {"slug": slug, "members": members, "url": open_hub_admin_url(slug), "support": enter_as_support_url(slug)}
         for slug, members in membership.hubs_with_members()
     ]
     context = {
@@ -384,6 +387,7 @@ def hubs_view(request: HttpRequest) -> HttpResponse:
         "opts": Hub._meta,
         "hubs": hubs,
         "open_in_hub_admin": OPEN_IN_HUB_ADMIN,
+        "enter_as_support": ENTER_AS_SUPPORT,
     }
     return TemplateResponse(request, "admin/hubs/hubs.html", context)
 

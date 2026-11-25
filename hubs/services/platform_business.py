@@ -1,4 +1,4 @@
-"""ERPlora's own business, which erplora.com keeps only for its people (HUBS-F38, ``manage.py create_platform_business``)."""
+"""ERPlora's own business, which erplora.com keeps only for its people (HUBS-F39, ``manage.py create_platform_business``)."""
 
 import logging
 from uuid import UUID
