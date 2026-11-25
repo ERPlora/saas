@@ -141,7 +141,9 @@ def test_a_search_of_an_earlier_request_no_longer_takes_a_place_in_the_turn(acco
     done = [user(DARKEN), asked(search), answer(search), {"role": "assistant", "content": "Done."}]
     later = [user("Thanks."), user("What do I pay a month?")]
     assert names(turn(context, *done, *later)["tools"]) == names(turn(context, *later)["tools"])
-    assert shared.tool_name("accounts.preferences.update") in names(turn(context, *done, user("dark, please"))["tools"])
+    update, again = shared.tool_name("accounts.preferences.update"), user("yes, that one")
+    assert update not in names(turn(context, user(DARKEN), again)["tools"])  # positive control: its words name no theme
+    assert update in names(turn(context, *done, again)["tools"])
 
 
 @pytest.mark.parametrize("sells", [True, False])
