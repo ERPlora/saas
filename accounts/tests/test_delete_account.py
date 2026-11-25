@@ -52,6 +52,18 @@ def _exists(user) -> bool:
     return get_user_model().objects.filter(pk=user.pk).exists()
 
 
+def refused_for_paying(response, business) -> None:
+    """The deletion is refused (409) for ``business``, which the account still pays for."""
+    error = response.json()["error"]
+    assert (response.status_code, error["code"]) == (409, "accounts.pays_businesses")
+    assert error["businesses"] == [{"id": str(business.pk), "name": business.name, "is_platform": False}]
+
+
+def speak(user, language: str) -> None:
+    """The language the account reads ERPlora in."""
+    get_user_model().objects.filter(pk=user.pk).update(language=language)
+
+
 class TestOwnersFirstHandTheirBusinessesOver:
     def test_the_owner_of_a_business_is_refused_with_its_businesses_and_nothing_changes(
         self, signed_in, ana, make_owner, plans  # noqa: F811
@@ -63,6 +75,7 @@ class TestOwnersFirstHandTheirBusinessesOver:
         other = create_business(make_owner, name="Café Central")
         HubMember.objects.filter(hub=other, user=make_owner).update(role=HubMember.Role.ADMIN)
         add_member(other, ana, HubMember.Role.OWNER)
+        speak(ana, "en")
 
         response = api_post(signed_in, DELETE)
 
@@ -70,24 +83,49 @@ class TestOwnersFirstHandTheirBusinessesOver:
         error = response.json()["error"]
         assert error["code"] == "accounts.owns_businesses"
         assert sorted(error["businesses"], key=lambda row: row["name"]) == [
-            {"id": str(other.pk), "name": "Café Central"},
-            {"id": str(business.pk), "name": "Panadería López"},
+            {"id": str(other.pk), "name": "Café Central", "is_platform": False},
+            {"id": str(business.pk), "name": "Panadería López", "is_platform": False},
         ]
+        assert error["message"] == "You own businesses: transfer or delete them before deleting your account."
         assert _exists(ana)
 
-    def test_the_owner_of_erploras_own_business_is_refused_too(self, signed_in, ana):
+    @pytest.mark.parametrize(
+        ("language", "told"),
+        [
+            ("en", "You own ERPlora's business: transfer it before deleting your account."),
+            ("es", "Eres propietario del negocio de ERPlora: transfiérelo antes de eliminar tu cuenta."),
+        ],
+    )
+    def test_the_owner_of_erploras_own_business_is_only_told_to_transfer_it(self, signed_in, ana, language, told):
         """Nobody deletes that business, so it is handed over before its owner's account may go."""
         from hubs.models import HubMember
 
         business = platform_row()
         add_member(business, ana, HubMember.Role.OWNER)
+        speak(ana, language)
 
         response = api_post(signed_in, DELETE)
 
         error = response.json()["error"]
         assert (response.status_code, error["code"]) == (409, "accounts.owns_businesses")
-        assert error["businesses"] == [{"id": str(business.pk), "name": "ERPlora"}]
+        assert error["businesses"] == [{"id": str(business.pk), "name": "ERPlora", "is_platform": True}]
+        assert error["message"] == told
         assert _exists(ana)
+
+    @pytest.mark.usefixtures("plans")
+    def test_the_owner_of_another_business_too_is_told_what_to_do_with_each(self, signed_in, ana):
+        from hubs.models import HubMember
+
+        create_business(ana, name="Panadería López")
+        add_member(platform_row(), ana, HubMember.Role.OWNER)
+        speak(ana, "en")
+
+        response = api_post(signed_in, DELETE)
+
+        assert response.json()["error"]["message"] == (
+            "You own businesses: transfer or delete them before deleting your account. "
+            "You own ERPlora's business: transfer it before deleting your account."
+        )
 
     def test_refused_before_the_password_is_asked(self, signed_in_long_ago, ana, plans):  # noqa: F811
         """A refusal never tests a password: the 409 comes before the reauthentication."""
@@ -159,12 +197,7 @@ class TestPayersFirstHandThePaymentOver:
         return business
 
     def test_the_payer_of_a_business_is_refused_with_it(self, signed_in, ana, handed_over):
-        response = api_post(signed_in, DELETE)
-
-        assert response.status_code == 409
-        error = response.json()["error"]
-        assert error["code"] == "accounts.pays_businesses"
-        assert error["businesses"] == [{"id": str(handed_over.pk), "name": "Panadería López"}]
+        refused_for_paying(api_post(signed_in, DELETE), handed_over)
         assert _exists(ana)
 
     def test_refused_before_the_password_is_asked(self, signed_in_long_ago, handed_over):
@@ -220,12 +253,7 @@ class TestPayersFirstHandThePaymentOver:
             ctx_for(make_owner), BillingProfileIn(hub_id=handed_over.id, billing_name="Marta SL")
         )
 
-        response = api_post(signed_in, DELETE)
-
-        assert response.status_code == 409
-        error = response.json()["error"]
-        assert error["code"] == "accounts.pays_businesses"
-        assert error["businesses"] == [{"id": str(handed_over.pk), "name": "Panadería López"}]
+        refused_for_paying(api_post(signed_in, DELETE), handed_over)
         assert _exists(ana)
 
     def test_a_deleted_business_does_not_hold_its_payer(self, signed_in, ana, handed_over):

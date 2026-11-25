@@ -25,6 +25,8 @@ const props = defineProps<{
   /** The roles that take no place of the plan (`hubs.member.list`'s `free_roles`). */
   freeRoles: InvitableRole[];
   seats: SeatsOut;
+  /** That such a role takes no place (`memberTexts`); `null` where there is no plan. */
+  freeRoleText: string | null;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -38,6 +40,7 @@ const role = shallowRef<InvitableRole>('hub_employee');
 const message = shallowRef('');
 
 const freeRole = computed(() => props.freeRoles.includes(role.value));
+const freeRoleHint = computed(() => (freeRole.value ? props.freeRoleText : null));
 const full = computed(
   () =>
     !freeRole.value &&
@@ -142,9 +145,9 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
             data-testid="invite-seats"
           >{{ $t('hubs.members.seats', { used: seats.used, limit: seats.limit }) }}</span>
           <span
-            v-if="freeRole"
+            v-if="freeRoleHint"
             data-testid="invite-free-role"
-          >{{ $t('hubs.members.inviteModal.freeRole') }}</span>
+          >{{ $t(freeRoleHint) }}</span>
         </p>
       </div>
     </template>

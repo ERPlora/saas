@@ -859,6 +859,9 @@ msgstr "Confirma que eres tú: vuelve a escribir tu contraseña."
 msgid "You own businesses: transfer or delete them before deleting your account."
 msgstr "Eres propietario de negocios: transfiérelos o elimínalos antes de eliminar tu cuenta."
 
+msgid "You own ERPlora's business: transfer it before deleting your account."
+msgstr "Eres propietario del negocio de ERPlora: transfiérelo antes de eliminar tu cuenta."
+
 msgid "Your account has no password yet: set one with «Forgot your password?» before changing your email."
 msgstr "Tu cuenta aún no tiene contraseña: crea una con «¿Has olvidado tu contraseña?» antes de cambiar tu correo."
 

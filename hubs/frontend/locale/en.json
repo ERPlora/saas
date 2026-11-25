@@ -401,6 +401,10 @@
       "rolesAdmin": "Admin: the team, the modules and the settings.",
       "rolesStaff": "Manager and employee: they work inside the business. Employees who only use a PIN at the till are managed inside the business.",
       "rolesAccountant": "Accountant: the accountancy firm that keeps the books. It only reads sales and invoices, with their taxes, and downloads the invoices; it takes no place on the plan.",
+      "platform": {
+        "rolesOwner": "Owner: everything, also transferring the business.",
+        "rolesAccountant": "Accountant: the accountancy firm that keeps the books. It only reads sales and invoices, with their taxes, and downloads the invoices."
+      },
       "pendingTransfer": {
         "heading": "Ownership offered to {email}",
         "body": "They have until {date} to accept it. Until then you are still the owner.",

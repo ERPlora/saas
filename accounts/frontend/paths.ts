@@ -17,3 +17,8 @@ export const BILLING = `${PANEL}/billing`;
 export const ACCOUNT = `${PANEL}/account`;
 /** «Report a problem» of the user menu. */
 export const REPORT_PROBLEM = `${PANEL}/report-a-problem`;
+
+/** Where a business lets its owner's account go: its Settings, to transfer or delete it, or its Members for ERPlora's
+ *  own, which is only transferred. */
+export const letGoPage = (business: { id: string; is_platform: boolean }) =>
+  `${BUSINESSES}/${business.id}/${business.is_platform ? 'members' : 'settings'}`;

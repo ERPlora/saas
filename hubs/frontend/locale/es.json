@@ -401,6 +401,10 @@
       "rolesAdmin": "Administrador: equipo, módulos y ajustes.",
       "rolesStaff": "Encargado y empleado: trabajan dentro del negocio. Los empleados que solo usan un PIN en la caja se gestionan dentro del negocio.",
       "rolesAccountant": "Gestoría: la asesoría que lleva las cuentas. Solo lee las ventas y las facturas, con sus impuestos, y descarga las facturas; no ocupa plaza del plan.",
+      "platform": {
+        "rolesOwner": "Propietario: todo, también transferir el negocio.",
+        "rolesAccountant": "Gestoría: la asesoría que lleva las cuentas. Solo lee las ventas y las facturas, con sus impuestos, y descarga las facturas."
+      },
       "pendingTransfer": {
         "heading": "Propiedad ofrecida a {email}",
         "body": "Tiene hasta el {date} para aceptarla. Mientras tanto sigues siendo el propietario.",

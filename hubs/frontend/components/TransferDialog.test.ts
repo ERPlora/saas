@@ -23,11 +23,11 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-async function mountTransfer(api: () => Response) {
+async function mountTransfer(api: () => Response, billingText: string | null = 'hubs.members.transfer.consequenceBilling') {
   const open = ref(true);
   const Host = {
     render: () =>
-      h(TransferDialog, { member: CARLOS, business: { id: 'h1', name: 'Panadería López' }, open: open.value, 'onUpdate:open': (v: boolean) => (open.value = v) }),
+      h(TransferDialog, { member: CARLOS, business: { id: 'h1', name: 'Panadería López' }, billingText, open: open.value, 'onUpdate:open': (v: boolean) => (open.value = v) }),
   };
   const m = await mountHubs(Host, { api });
   await flush();
@@ -45,14 +45,7 @@ describe('TransferDialog', () => {
   });
 
   it('asks for the business’s name, offers the ownership and says to whom', async () => {
-    const open = ref(true);
-    const Host = {
-      render: () =>
-        h(TransferDialog, { member: CARLOS, business: { id: 'h1', name: 'Panadería López' }, open: open.value, 'onUpdate:open': (v: boolean) => (open.value = v) }),
-    };
-    const m = await mountHubs(Host, { api: () => Response.json({ id: 't1', to_email: 'carlos@example.com', status: 'pending' }) });
-    await flush();
-    const q = (id: string) => document.querySelector(`[data-testid="${id}"]`) as HTMLElement & Record<string, unknown>;
+    const { q, open, ...m } = await mountTransfer(() => Response.json({ id: 't1', to_email: 'carlos@example.com', status: 'pending' }));
     expect(q('transfer-dialog').getAttribute('aria-label')).toBe('Transfer Panadería López');
     expect(q('transfer-dialog').textContent).toContain('We offer the ownership to Carlos Ruiz.');
     expect(q('transfer-dialog').textContent).toContain('They have 7 days to accept it; until then nothing changes.');
@@ -68,5 +61,12 @@ describe('TransferDialog', () => {
     expect(m.calls().map((c) => [c.path, c.body])).toEqual([['/api/hubs/ownership/transfer', { hub_id: 'h1', member_id: 'carlos' }]]);
     expect(toastSuccess).toHaveBeenCalledWith('Offer sent to carlos@example.com: they have 7 days to accept it');
     expect(open.value).toBe(false);
+  });
+
+  it('says nothing of a plan without one', async () => {
+    const s = await mountTransfer(() => Response.json({}), null);
+    const dialog = s.q('transfer-dialog');
+    expect(dialog.textContent).toContain('They have 7 days to accept it; until then nothing changes.');
+    expect(dialog.textContent).not.toMatch(/plan|card|charged/i);
   });
 });

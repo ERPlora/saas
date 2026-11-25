@@ -15,6 +15,8 @@ import { useErrorText } from '../error-text';
 const props = defineProps<{
   member: MemberRowOut | null;
   business: { id: string; name: string };
+  /** What the transfer does to a paid plan (`memberTexts`); `null` where there is none. */
+  billingText: string | null;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -25,7 +27,7 @@ const transfer = useCommand('hubs.ownership.transfer');
 
 const consequences = computed(() => [
   { text: t('hubs.members.transfer.consequenceWindow'), icon: 'ion:time-outline' },
-  { text: t('hubs.members.transfer.consequenceBilling'), icon: 'ion:receipt-outline' },
+  ...(props.billingText ? [{ text: t(props.billingText), icon: 'ion:receipt-outline' }] : []),
 ]);
 
 async function confirm(): Promise<void> {

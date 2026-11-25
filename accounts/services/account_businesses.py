@@ -15,7 +15,7 @@ OWNER = "hub_owner"
 
 def businesses_holding(ctx: OperationContext) -> tuple[list[dict], list[dict]]:
     """``(owned, paid)``: the businesses that are not deleted which the caller owns, and those it pays for without
-    owning them, as ``[{id, name}]``, from ``hubs.business.list``.
+    owning them, as ``[{id, name, is_platform}]``, from ``hubs.business.list``.
 
     A business has one owner, and its row says the account's role. ``is_payer`` says the account still pays for it: it owns the business's payer, or the
     plan is still charged to its card after a hand-over (``hubs.queries.payers.still_pays``); and a payer cannot be
@@ -31,7 +31,7 @@ def businesses_holding(ctx: OperationContext) -> tuple[list[dict], list[dict]]:
         for row in page.rows:
             if row.deletion_requested_at is not None:
                 continue
-            entry = {"id": str(row.id), "name": row.name}
+            entry = {"id": str(row.id), "name": row.name, "is_platform": row.is_platform}
             if row.role == OWNER:
                 owned.append(entry)
             elif row.is_payer:
