@@ -62,6 +62,17 @@ class Verdict:
     category: str = ""
 
 
+@dataclass(frozen=True)
+class _Filing:
+    """The customer a message is filed under, and how it got here."""
+
+    customer: str
+    direction: str
+    source: str
+    contact_name: str = ""
+    follow_up: bool = False
+
+
 @dataclass
 class Parsed:
     messages: list[Message] = field(default_factory=list)
@@ -99,50 +110,60 @@ def _change(parsed: Parsed, waba_id: str, kind: str, value: dict) -> None:
             parsed.verdicts.append(verdict)
         return
     metadata = _dict(value.get("metadata"))
-    phone_number_id = str(metadata.get("phone_number_id") or "")
+    phone_number_id = _text(metadata, "phone_number_id")
     if not phone_number_id:
         return
-    business = _digits(metadata.get("display_phone_number"))
     if kind == "messages":
-        names = {
-            str(_dict(contact).get("wa_id") or ""): str(_dict(_dict(contact).get("profile")).get("name") or "")
-            for contact in _list(value.get("contacts"))
-        }
-        for message in _list(value.get("messages")):
-            sender = str(_dict(message).get("from") or "")
-            _keep(parsed, _message(phone_number_id, message, sender, "inbound", "live", names.get(sender, "")))
-        for status in _list(value.get("statuses")):
-            _keep_status(parsed, phone_number_id, _dict(status))
+        _customers(parsed, phone_number_id, value)
     elif kind == "smb_message_echoes":
-        for message in _list(value.get("message_echoes")):
-            customer = str(_dict(message).get("to") or "")
-            _keep(parsed, _message(phone_number_id, message, customer, "outbound", "live"))
+        _echoes(parsed, phone_number_id, value)
     elif kind == "history":
-        _history(parsed, phone_number_id, business, value)
+        _history(parsed, phone_number_id, _digits(metadata.get("display_phone_number")), value)
+
+
+def _customers(parsed: Parsed, phone_number_id: str, value: dict) -> None:
+    names = {
+        _text(contact, "wa_id"): _text(_dict(contact.get("profile")), "name")
+        for contact in _dicts(value.get("contacts"))
+    }
+    for message in _dicts(value.get("messages")):
+        sender = _text(message, "from")
+        _keep(parsed, _message(phone_number_id, message, _Filing(sender, "inbound", "live", names.get(sender, ""))))
+    for status in _dicts(value.get("statuses")):
+        _keep_status(parsed, phone_number_id, status)
+
+
+def _echoes(parsed: Parsed, phone_number_id: str, value: dict) -> None:
+    for message in _dicts(value.get("message_echoes")):
+        _keep(parsed, _message(phone_number_id, message, _Filing(_text(message, "to"), "outbound", "live")))
 
 
 def _history(parsed: Parsed, phone_number_id: str, business: str, value: dict) -> None:
-    for chunk in _list(value.get("history")):
-        chunk = _dict(chunk)
+    for chunk in _dicts(value.get("history")):
         if chunk.get("errors"):
             parsed.history_declined.append(phone_number_id)
-        for thread in _list(chunk.get("threads")):
-            thread = _dict(thread)
-            customer = str(thread.get("id") or "")
-            for message in _list(thread.get("messages")):
-                sender = str(_dict(message).get("from") or "")
-                direction = "inbound" if sender == customer else "outbound"
-                _keep(parsed, _message(phone_number_id, message, customer, direction, "history"))
+        for thread in _dicts(chunk.get("threads")):
+            _thread(parsed, phone_number_id, thread)
     if value.get("errors"):
         parsed.history_declined.append(phone_number_id)
-    # The follow-up with the backlog's recent media: top-level messages, the same ids as their placeholders.
-    for message in _list(value.get("messages")):
-        sender = str(_dict(message).get("from") or "")
+    _follow_up(parsed, phone_number_id, business, value)
+
+
+def _thread(parsed: Parsed, phone_number_id: str, thread: dict) -> None:
+    customer = _text(thread, "id")
+    for message in _dicts(thread.get("messages")):
+        direction = "inbound" if _text(message, "from") == customer else "outbound"
+        _keep(parsed, _message(phone_number_id, message, _Filing(customer, direction, "history")))
+
+
+def _follow_up(parsed: Parsed, phone_number_id: str, business: str, value: dict) -> None:
+    """The backlog's recent media: top-level messages, with the same ids as their placeholders."""
+    for message in _dicts(value.get("messages")):
+        sender = _text(message, "from")
         if business and _digits(sender) == business:
             parsed.skipped += 1
-            continue
-        found = _message(phone_number_id, message, sender, "inbound", "history")
-        _keep(parsed, found if found is None else _replace(found, follow_up=True))
+        else:
+            _keep(parsed, _message(phone_number_id, message, _Filing(sender, "inbound", "history", follow_up=True)))
 
 
 def _keep(parsed: Parsed, message: Message | None) -> None:
@@ -152,49 +173,38 @@ def _keep(parsed: Parsed, message: Message | None) -> None:
         parsed.messages.append(message)
 
 
-def _replace(message: Message, **changes) -> Message:
-    return Message(**{**message.__dict__, **changes})
-
-
-def _message(  # noqa: PLR0913, PLR0917
-    phone_number_id: str, raw, customer: str, direction: str, source: str, contact_name: str = ""
-) -> Message | None:
-    message = _dict(raw)
-    wa_message_id = str(message.get("id") or "")
-    if not wa_message_id or not customer:
+def _message(phone_number_id: str, message: dict, filing: _Filing) -> Message | None:
+    wa_message_id = _text(message, "id")
+    if not wa_message_id or not filing.customer:
         return None
-    kind = str(message.get("type") or "text")
+    kind = _text(message, "type") or "text"
     media_id, media = "", None
     text = ""
     reply = None
-    reply_to = str(_dict(message.get("context")).get("id") or "")
+    reply_to = _text(_dict(message.get("context")), "id")
     content = _dict(message.get(kind))
     if kind == "text":
-        text = str(content.get("body") or "")
+        text = _text(content, "body")
     elif kind in MEDIA_TYPES:
-        media_id = str(content.get("id") or "")
-        text = str(content.get("caption") or "")
-        media = {
-            "mime_type": str(content.get("mime_type") or ""),
-            "filename": str(content.get("filename") or ""),
-            "caption": text,
-        }
+        media_id = _text(content, "id")
+        text = _text(content, "caption")
+        media = {"mime_type": _text(content, "mime_type"), "filename": _text(content, "filename"), "caption": text}
     elif kind == "button":
-        reply = {"id": str(content.get("payload") or ""), "title": str(content.get("text") or "")}
+        reply = {"id": _text(content, "payload"), "title": _text(content, "text")}
         text = reply["title"]
     elif kind == "interactive":
-        tapped = _dict(content.get(str(content.get("type") or "")))
-        reply = {"id": str(tapped.get("id") or ""), "title": str(tapped.get("title") or "")}
+        tapped = _dict(content.get(_text(content, "type")))
+        reply = {"id": _text(tapped, "id"), "title": _text(tapped, "title")}
         text = reply["title"]
     elif kind == "reaction":
-        text = str(content.get("emoji") or "")
-        reply_to = str(content.get("message_id") or "") or reply_to
+        text = _text(content, "emoji")
+        reply_to = _text(content, "message_id") or reply_to
     body = {
         "wa_message_id": wa_message_id,
-        "from": customer,
-        "contact_name": contact_name,
-        "direction": direction,
-        "source": source,
+        "from": filing.customer,
+        "contact_name": filing.contact_name,
+        "direction": filing.direction,
+        "source": filing.source,
         "type": kind,
         "text": text,
         "media": media,
@@ -206,10 +216,11 @@ def _message(  # noqa: PLR0913, PLR0917
     return Message(
         phone_number_id=phone_number_id,
         wa_message_id=wa_message_id,
-        contact=customer,
+        contact=filing.customer,
         body=body,
         media_id=media_id,
         placeholder=kind == PLACEHOLDER,
+        follow_up=filing.follow_up,
     )
 
 
@@ -274,3 +285,12 @@ def _dict(value) -> dict:
 
 def _list(value) -> list:
     return value if isinstance(value, list) else []
+
+
+def _dicts(value) -> list[dict]:
+    """The objects of a list of Meta's, with ``{}`` in the place of what is not one."""
+    return [_dict(item) for item in _list(value)]
+
+
+def _text(source: dict, key: str) -> str:
+    return str(source.get(key) or "")

@@ -23,11 +23,12 @@ from uuid import UUID
 from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
+from live.context import OperationContext
 from live.errors import OperationError
 
 from whatsapp import meta, queries
 from whatsapp.gateway.answers import EXPIRED_PERMISSION
-from whatsapp.schemas import MediaIn, ReconnectIn
+from whatsapp.schemas import MediaIn, MediaOut, ReconnectIn
 from whatsapp.services import phone_numbers, platform_actor
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,10 @@ CHUNK = 64 * 1024
 
 def _error(status: int, code: str, message: str) -> JsonResponse:
     return JsonResponse({"error": {"code": code, "message": message}}, status=status)
+
+
+def _refusal(refused: OperationError) -> JsonResponse:
+    return JsonResponse(refused.envelope(), status=refused.status)
 
 
 def _unavailable() -> JsonResponse:
@@ -84,43 +89,60 @@ def _filename(name: str) -> str:
 
 @never_cache
 @require_GET
-def media(request: HttpRequest, delivery_id: str) -> HttpResponse:  # noqa: C901, PLR0911
+def media(request: HttpRequest, delivery_id: str) -> HttpResponse:
     if not request.user.is_authenticated:
         return _error(401, "unauthorized", "Sign in to erplora.com to open this attachment.")
-    try:
-        key = UUID(delivery_id)
-    except ValueError:
-        return _error(404, "whatsapp.media_not_found", "This attachment is not available.")
     ctx = platform_actor.platform_context()
     try:
-        found = queries.media_locate(ctx, MediaIn(delivery_id=key, user_id=request.user.pk))
+        found = _locate(ctx, delivery_id, request.user.pk)
     except OperationError as refused:
-        return JsonResponse(refused.envelope(), status=refused.status)
+        return _refusal(refused)
     token = found.token.get_secret_value()
     try:
         info = meta.get(found.media_id, token=token)
-    except meta.MetaRefused as refused:
-        if refused.code == EXPIRED_PERMISSION:
-            return _reconnect(ctx, found.hub_id)
-        logger.info("whatsapp.media.refused meta_status=%s meta_code=%s", refused.status, refused.code)
-        return _error(404, "whatsapp.media_not_found", "This attachment is not available.")
-    except meta.MetaUnreachable:
-        return _unavailable()
+    except (meta.MetaRefused, meta.MetaUnreachable) as failure:
+        return _not_given(ctx, found.hub_id, failure)
     stack = ExitStack()
     try:
         upstream = stack.enter_context(meta.download(str(info.get("url") or ""), token=token))
-    except meta.MetaRefused as refused:
-        stack.close()
-        if refused.code == EXPIRED_PERMISSION:
-            return _reconnect(ctx, found.hub_id)
-        logger.warning("whatsapp.media.download_refused meta_status=%s meta_code=%s", refused.status, refused.code)
+    except (meta.MetaRefused, meta.MetaUnreachable) as failure:
+        return _not_downloaded(ctx, found.hub_id, failure)
+    return _streamed(_Stream(stack, upstream), info, found)
+
+
+def _locate(ctx: OperationContext, delivery_id: str, user_id: int) -> MediaOut:
+    """The attachment this person may open; an id that is not one is like one that does not exist."""
+    try:
+        key = UUID(delivery_id)
+    except ValueError:
+        raise queries.media_not_found() from None
+    return queries.media_locate(ctx, MediaIn(delivery_id=key, user_id=user_id))
+
+
+def _not_given(ctx: OperationContext, hub_id: UUID, failure: Exception) -> JsonResponse:
+    """Meta did not say where the attachment is."""
+    if isinstance(failure, meta.MetaUnreachable):
         return _unavailable()
-    except meta.MetaUnreachable as failure:
-        stack.close()
+    if failure.code == EXPIRED_PERMISSION:
+        return _reconnect(ctx, hub_id)
+    logger.info("whatsapp.media.refused meta_status=%s meta_code=%s", failure.status, failure.code)
+    return _refusal(queries.media_not_found())
+
+
+def _not_downloaded(ctx: OperationContext, hub_id: UUID, failure: Exception) -> JsonResponse:
+    """Meta said where the attachment is but its download did not open."""
+    if isinstance(failure, meta.MetaUnreachable):
         logger.warning("whatsapp.media.unavailable error=%s", failure)
         return _unavailable()
+    if failure.code == EXPIRED_PERMISSION:
+        return _reconnect(ctx, hub_id)
+    logger.warning("whatsapp.media.download_refused meta_status=%s meta_code=%s", failure.status, failure.code)
+    return _unavailable()
+
+
+def _streamed(stream: _Stream, info: dict, found: MediaOut) -> StreamingHttpResponse:
     served, inline = _content_type(str(info.get("mime_type") or found.mime_type))
-    response = StreamingHttpResponse(_Stream(stack, upstream), content_type=served)
+    response = StreamingHttpResponse(stream, content_type=served)
     size = info.get("file_size")
     if isinstance(size, int) and size >= 0:
         response["Content-Length"] = str(size)

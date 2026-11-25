@@ -170,64 +170,6 @@
     ]
   },
   {
-    "path": "whatsapp/gateway/message_templates.py",
-    "file_name": "message_templates.py",
-    "functions": [
-      {
-        "name": "sync_templates",
-        "complexity": 17
-      }
-    ]
-  },
-  {
-    "path": "whatsapp/gateway/sending.py",
-    "file_name": "sending.py",
-    "functions": [
-      {
-        "name": "send",
-        "complexity": 18
-      }
-    ]
-  },
-  {
-    "path": "whatsapp/gateway/token_renewal.py",
-    "file_name": "token_renewal.py",
-    "functions": [
-      {
-        "name": "renew_tokens",
-        "complexity": 16
-      }
-    ]
-  },
-  {
-    "path": "whatsapp/media.py",
-    "file_name": "media.py",
-    "functions": [
-      {
-        "name": "media",
-        "complexity": 16
-      }
-    ]
-  },
-  {
-    "path": "whatsapp/parse.py",
-    "file_name": "parse.py",
-    "functions": [
-      {
-        "name": "_change",
-        "complexity": 18
-      },
-      {
-        "name": "_history",
-        "complexity": 22
-      },
-      {
-        "name": "_message",
-        "complexity": 23
-      }
-    ]
-  },
-  {
     "path": "whatsapp/templates.py",
     "file_name": "templates.py",
     "functions": [
