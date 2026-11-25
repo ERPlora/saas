@@ -80,7 +80,7 @@ def known_hub(ref: str, *, live: bool = True) -> Hub | None:
     """The business ``ref`` names, by its slug or its UUID (lowercase, with hyphens, as the Hub sends it).
 
     ``live``: one that still works (preparing, active, past due or suspended); otherwise also one being deleted,
-    whose data can still be forgotten. A purged one, never.
+    whose data can still be forgotten. A purged one, never, nor ERPlora's own, which has no WhatsApp.
     """
     try:
         key = UUID(ref)
@@ -88,7 +88,7 @@ def known_hub(ref: str, *, live: bool = True) -> Hub | None:
         key = None
     # 32 hex digits are a valid slug too: only the UUID's own spelling names it by id.
     named = Q(id=key) if key is not None and str(key) == ref else Q(slug=ref)
-    hubs = Hub.objects.filter(named)
+    hubs = Hub.objects.filter(named, is_platform=False)
     hubs = hubs.filter(status__in=LIVE_STATUSES) if live else hubs.exclude(status=Hub.Status.DELETED)
     return hubs.first()
 

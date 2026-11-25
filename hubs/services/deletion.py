@@ -20,7 +20,7 @@ from hubs.schemas.businesses import BusinessDeleteIn, BusinessDetailOut
 from hubs.schemas.common import ByIdIn
 from hubs.services.creation import check_free_quota
 from hubs.services.hub_push import Call, push_after_commit
-from hubs.services.refusals import business_deleted
+from hubs.services.refusals import business_deleted, refuse_platform_business
 from hubs.services.subscription_sync import sync_plan_modules
 
 
@@ -56,6 +56,7 @@ def business_delete(ctx: OperationContext, data: BusinessDeleteIn) -> dict:
     back to Free on the spot (it comes back on Free)."""
     member = access_control.access(access_control.account_of(ctx), data.id, Role.OWNER, lock=True)
     hub = member.hub
+    refuse_platform_business(hub)
     if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
         raise business_deleted()
     if data.confirm_name.strip().casefold() != hub.name.strip().casefold():
@@ -155,6 +156,7 @@ def business_restore(ctx: OperationContext, data: ByIdIn) -> dict:
     """The owner recovers a deleted business within its 90 days, on Free."""
     member = access_control.access(access_control.account_of(ctx), data.id, Role.OWNER, lock=True)
     hub = member.hub
+    refuse_platform_business(hub)
     if hub.status != Hub.Status.DELETING:
         raise Conflict(
             _("This business is not deleted."), code="hubs.business_not_deleted"

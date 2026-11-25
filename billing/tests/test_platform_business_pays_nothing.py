@@ -7,7 +7,7 @@ from live.errors import Conflict, NotFound, PermissionDenied
 
 from billing.models import CheckoutAttempt, Invoice
 from billing.queries import invoices as invoice_queries
-from billing.queries import paying_customers
+from billing.queries.paying_customers import paying_customers
 from billing.queries import subscriptions as subscription_queries
 from billing.schemas.checkout import CheckoutConfirmIn, CheckoutStartIn
 from billing.schemas.common import HubIn
@@ -156,7 +156,7 @@ class TestWhatItsOwnerReads:
         assert stripe_double.calls == []
 
     def test_the_income_of_erplora_does_not_count_it(self, platform_business):
-        assert not paying_customers.paying_customers().exists()
+        assert not paying_customers().exists()
 
 
 class TestItsTestClock:

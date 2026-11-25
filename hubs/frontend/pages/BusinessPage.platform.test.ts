@@ -1,8 +1,7 @@
 // The page of ERPlora's own business (`is_platform`): its Summary and its Members. It has no plan, its apps are not
 // chosen here and nobody changes its settings, so those sections are not offered, and an address to one shows the
 // Summary.
-import { applySurface } from '@erplora/ui/shell';
-import { AppPage } from '@erplora/ui/shell';
+import { AppPage, applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ionic/vue', async (importOriginal) => ({

@@ -1,11 +1,24 @@
-"""The refusals several commands of hubs share: a deleted business and a plan with no seat left."""
+"""The refusals several commands of hubs share: a deleted business, ERPlora's own and a plan with no seat left."""
 
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from live.errors import Conflict
+
+from hubs.models import Hub
+
+PLATFORM_BUSINESS = gettext_lazy(
+    "ERPlora's own business has no plan or payments, and it cannot be changed, deleted or recovered here."
+)
 
 
 def business_deleted() -> Conflict:
     return Conflict(_("This business was deleted."), code="hubs.business_deleted")
+
+
+def refuse_platform_business(hub: Hub) -> None:
+    """409 ``hubs.platform_business`` for ERPlora's own business: erplora.com keeps it only for its people."""
+    if hub.is_platform:
+        raise Conflict(str(PLATFORM_BUSINESS), code="hubs.platform_business")
 
 
 class SeatLimitReached(Conflict):

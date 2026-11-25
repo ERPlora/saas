@@ -104,6 +104,7 @@ def plan_take_over(ctx: OperationContext, data: HubIn) -> dict:
     card has nothing to keep (409 ``billing.nothing_to_take_over``); an unpaid invoice is paid first."""
     user = access_control.account_of(ctx)
     member = access_control.access(user, data.hub_id, HubMember.Role.OWNER, lock=True)
+    refusals.refuse_platform_business(member.hub)
     if not access_control.is_writable(member.hub):
         raise refusals.business_deleted()
     hub = Hub.objects.select_related("billing_profile").get(pk=member.hub_id)

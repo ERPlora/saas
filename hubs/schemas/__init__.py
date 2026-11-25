@@ -19,3 +19,4 @@ from hubs.schemas import data_copies
 from hubs.schemas import signup
 from hubs.schemas import custom_domains
 from hubs.schemas import payers
+from hubs.schemas import platform_business

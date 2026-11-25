@@ -32,7 +32,7 @@ from django.utils.translation import ngettext
 
 from accounts.admin.hub_admin_jump import JUMP_FAILED, JUMP_FAILED_UNKNOWN, OPEN_IN_HUB_ADMIN, open_hub_admin_url
 from accounts.admin.users import UserAdmin
-from hubs.services import platform_actions, subscription_sync
+from hubs.services import platform_actions, refusals, subscription_sync
 from hubs.queries import hub_sync, membership
 from hubs.models import (
     CustomDomain,
@@ -247,12 +247,18 @@ class HubAdmin(PlatformActions):
                 actions.pop(name, None)
         return actions
 
+    def _with_a_plan(self, request, queryset):
+        """The chosen businesses that have a plan to act on: ERPlora's own has none, and the staff is told."""
+        if queryset.filter(is_platform=True).exists():
+            self.message_user(request, refusals.PLATFORM_BUSINESS, messages.WARNING)
+        return queryset.filter(is_platform=False)
+
     @admin.action(description=_("Attach its payer to a Stripe test clock (test keys only)"), permissions=["sync"])
     @traced
     def attach_test_clock(self, request, queryset):
         from billing.services import staff_test_clocks
 
-        for hub in queryset:
+        for hub in self._with_a_plan(request, queryset):
             try:
                 clock = staff_test_clocks.attach_test_clock(hub.id)
             except staff_test_clocks.TestClockRefused as refused:
@@ -267,7 +273,7 @@ class HubAdmin(PlatformActions):
     def advance_test_clock(self, request, queryset):
         from billing.services import staff_test_clocks
 
-        for hub in queryset:
+        for hub in self._with_a_plan(request, queryset):
             try:
                 reached = staff_test_clocks.advance_test_clock_of(hub.id)
             except staff_test_clocks.TestClockRefused as refused:
@@ -282,7 +288,8 @@ class HubAdmin(PlatformActions):
     @admin.action(description=_("Let its owner buy the internal plans"), permissions=["sync"])
     @traced
     def allow_internal_plans(self, request, queryset):
-        changed = platform_actions.mark_for_internal_plans(list(queryset.values_list("id", flat=True)), allowed=True)
+        chosen = self._with_a_plan(request, queryset)
+        changed = platform_actions.mark_for_internal_plans(list(chosen.values_list("id", flat=True)), allowed=True)
         self.message_user(
             request, _("%(count)d business(es): its owner now sees the internal plans in the Store.") % {"count": changed}
         )
@@ -290,7 +297,8 @@ class HubAdmin(PlatformActions):
     @admin.action(description=_("Stop selling it the internal plans"), permissions=["sync"])
     @traced
     def stop_internal_plans(self, request, queryset):
-        changed = platform_actions.mark_for_internal_plans(list(queryset.values_list("id", flat=True)), allowed=False)
+        chosen = self._with_a_plan(request, queryset)
+        changed = platform_actions.mark_for_internal_plans(list(chosen.values_list("id", flat=True)), allowed=False)
         self.message_user(
             request,
             _("%(count)d business(es): the Store no longer offers it the internal plans; a plan already bought stays.")

@@ -1771,3 +1771,40 @@ msgstr "Ver sus negocios, sus miembros y su uso"
 
 msgid "Create, change and delete businesses, invite members and transfer ownership"
 msgstr "Crear, cambiar y borrar negocios, invitar miembros y traspasar la propiedad"
+
+#: models/businesses.py
+msgid "ERPlora's own business"
+msgstr "negocio propio de ERPlora"
+
+#: models/businesses.py
+msgid "Kept only for its people: no plan, no payer, and nobody renames, moves or deletes it."
+msgstr "Guarda solo sus personas: sin plan ni pagador, y nadie le cambia el nombre ni la dirección ni lo elimina."
+
+#: queries/hub_usage.py
+msgid "The usage of ERPlora's own business is not collected."
+msgstr "El uso del negocio propio de ERPlora no se recoge."
+
+#: services/refusals.py
+msgid "ERPlora's own business has no plan or payments, and it cannot be changed, deleted or recovered here."
+msgstr "El negocio propio de ERPlora no tiene plan ni pagos, y aquí no se puede cambiar, eliminar ni recuperar."
+
+#: services/platform_business.py
+msgid "Only the platform creates ERPlora's own business."
+msgstr "Solo la plataforma crea el negocio propio de ERPlora."
+
+#: services/platform_business.py
+msgid "Another business has this id or this address, or ERPlora's own is here with another id."
+msgstr "Otro negocio tiene este identificador o esta dirección, o el propio de ERPlora ya está aquí con otro identificador."
+
+#: services/platform_business.py
+#, python-format
+msgid "The Hub could not say what this id is: %(reason)s"
+msgstr "El Hub no ha podido decir de quién es este identificador: %(reason)s"
+
+#: services/platform_business.py
+msgid "The Hub does not have this id as ERPlora's own business, ready under its name."
+msgstr "En el Hub, este identificador no es el negocio propio de ERPlora, listo y con su nombre."
+
+#: services/platform_business.py
+msgid "No active account with a proven address has this email."
+msgstr "Ninguna cuenta activa con la dirección confirmada tiene este correo."

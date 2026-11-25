@@ -34,7 +34,8 @@ class SecondFactorRequired(HubAccessDenied):
 class InvalidCode(Exception):
     """The code is unknown, expired, already used, for another hub or for an account that lost access.
 
-    Also when the hub is no hub slug (``live.slugs``): no reserved name ever gets a session.
+    Also when the hub is no hub slug (``is_hub_slug``): no reserved name but ERPlora's own business's ever gets a
+    session.
     """
 
 
@@ -59,7 +60,10 @@ class HubIdentity:
 
 
 def is_hub_slug(hub_slug) -> bool:
-    """Whether ``hub_slug`` follows the rule shared with the Hub (``live.slugs``) and is no platform host."""
+    """Whether ``hub_slug`` follows the rule shared with the Hub (``live.slugs``) and is no platform host. Of the
+    reserved names, ERPlora's own business's alone is one."""
+    if hub_slug == settings.PLATFORM_HUB_SLUG:
+        return True
     try:
         validate_hub_slug(hub_slug)
     except ValueError:
@@ -106,9 +110,9 @@ def issue_code(
     """Mint a one-time code for ``user`` to enter ``hub_slug``; return it (only its hash is kept).
 
     ``hub-session`` needs a membership of the hub. ``hub-admin`` needs no membership, only an
-    active staff account with a platform role (``_platform_role``). A reserved or malformed slug,
-    or the platform host, is refused even if a membership row names it (rows saved without
-    validation, or before the shared rule).
+    active staff account with a platform role (``_platform_role``). A reserved or malformed slug (but
+    ERPlora's own business's), or the platform host, is refused even if a membership row names it (rows
+    saved without validation, or before the shared rule).
 
     ``second_factor`` is whether the caller's session passed the second factor
     (``mfa.mfa_completed(request)``); it only counts with ``ACCOUNTS_MFA_ENABLED`` on. Then

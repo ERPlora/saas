@@ -15,6 +15,7 @@ from hubs.models import BillingProfile
 from hubs.queries import access_control, payers
 from hubs.queries.access_control import Role
 from hubs.schemas.payers import BillingProfileIn, BillingProfileOut, postal_code_problem
+from hubs.services.refusals import refuse_platform_business
 
 
 @operation(
@@ -53,6 +54,7 @@ def billing_profile_update(ctx: OperationContext, data: BillingProfileIn) -> dic
 
     member = access_control.access(access_control.account_of(ctx), data.hub_id, Role.OWNER, lock=True)
     hub = member.hub
+    refuse_platform_business(hub)
     values = data.model_dump(exclude={"hub_id"})
     if data.same_as_business:
         values["billing_name"] = hub.name

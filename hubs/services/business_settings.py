@@ -15,7 +15,7 @@ from hubs.queries.access_control import Role
 from hubs.schemas.businesses import BusinessAddressIn, BusinessDetailOut, BusinessUpdateIn
 from hubs.services.creation import _chosen_slug, _slug_taken
 from hubs.services.hub_push import Call, push_after_commit
-from hubs.services.refusals import business_deleted
+from hubs.services.refusals import business_deleted, refuse_platform_business
 
 
 @operation(
@@ -47,6 +47,7 @@ def business_update(ctx: OperationContext, data: BusinessUpdateIn) -> dict:
     ``hubs.country_locked``; sending the same one again is no change."""
     member = access_control.access(access_control.account_of(ctx), data.id, Role.ADMIN, lock=True)
     hub = member.hub
+    refuse_platform_business(hub)
     if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
         raise business_deleted()
     sent = data.model_dump(exclude_unset=True, exclude_none=True, exclude={"id"})
@@ -100,6 +101,7 @@ def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> d
     it and receives the old links and QR codes. The same address again changes nothing."""
     member = access_control.access(access_control.account_of(ctx), data.id, Role.OWNER, lock=True)
     hub = member.hub
+    refuse_platform_business(hub)
     if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
         raise business_deleted()
     if data.slug == hub.slug:

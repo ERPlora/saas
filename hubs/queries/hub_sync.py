@@ -48,10 +48,19 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
     included, so the validated authorisation alone opens the Hub's «live» through ERPlora. ``whatsapp``:
     the business's WhatsApp channel (its number, the month's usage against the plan's allowance and its
     templates at Meta), door 4 of the Hub's ``whatsapp_inbox`` contract (``whatsapp.queries.channel_block``).
+    Of ERPlora's own business, its people alone: the rest is not erplora.com's to say.
     """
     from whatsapp.queries import channel_block  # whatsapp reads hubs; hubs reads it only here
 
     hub = Hub.objects.get(pk=hub_id)
+    people = {
+        "hub_id": str(hub.id),
+        "slug": hub.slug,
+        "version": hub.state_version,
+        "members": _snapshot_members(hub),
+    }
+    if hub.is_platform:
+        return people
     now = timezone.now()
     subscription = (
         Subscription.objects.select_related("plan", "trial_plan")
@@ -64,21 +73,8 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
         if subscription
         else []
     )
-    members = (
-        HubMember.objects.select_related("user")
-        .filter(hub=hub, accepted_at__isnull=False)
-        .annotate(
-            rank=Case(
-                *[When(role=role, then=Value(rank)) for role, rank in RANK.items()],
-                output_field=IntegerField(),
-            )
-        )
-        .order_by("rank", "joined_at", "id")
-    )
     return {
-        "hub_id": str(hub.id),
-        "slug": hub.slug,
-        "version": hub.state_version,
+        **people,
         "status": SNAPSHOT_STATUS.get(hub.status, "suspended"),
         "plan": _snapshot_plan(plan),
         "modules": [
@@ -91,15 +87,6 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
             }
             for item in items
         ],
-        "members": [
-            {
-                "user_id": str(member.user_id),
-                "email": member.user.email,
-                "name": member.user.get_full_name() or member.user.email,
-                "role": member.role,
-            }
-            for member in members
-        ],
         "verifactu": verifactu_representation(hub.id),
         # The business's WhatsApp channel, door 4 of the Hub's whatsapp_inbox contract: the body of its door 3 at the
         # snapshot's version (whatsapp.queries.channel_block).
@@ -107,6 +94,30 @@ def hub_snapshot(hub_id: UUID) -> dict[str, Any]:
         **_snapshot_custom_domain(hub, plan),
         **_snapshot_deadline(hub, subscription),
     }
+
+
+def _snapshot_members(hub: Hub) -> list[dict[str, str]]:
+    """The people of the business who answered, the owner first."""
+    members = (
+        HubMember.objects.select_related("user")
+        .filter(hub=hub, accepted_at__isnull=False)
+        .annotate(
+            rank=Case(
+                *[When(role=role, then=Value(rank)) for role, rank in RANK.items()],
+                output_field=IntegerField(),
+            )
+        )
+        .order_by("rank", "joined_at", "id")
+    )
+    return [
+        {
+            "user_id": str(member.user_id),
+            "email": member.user.email,
+            "name": member.user.get_full_name() or member.user.email,
+            "role": member.role,
+        }
+        for member in members
+    ]
 
 
 def _snapshot_custom_domain(hub: Hub, plan: Plan | None) -> dict[str, str]:

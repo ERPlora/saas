@@ -24,7 +24,7 @@ from hubs.schemas.common import ByIdIn
 from hubs.schemas.custom_domains import CustomDomainOut, CustomDomainRequestIn, CustomDomainStatusOut
 from hubs.services.custom_domain_checks import _check_custom_domain
 from hubs.services.hub_push import bump_state
-from hubs.services.refusals import business_deleted
+from hubs.services.refusals import business_deleted, refuse_platform_business
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +99,7 @@ def custom_domain_request(ctx: OperationContext, data: CustomDomainRequestIn) ->
     """
     user = access_control.account_of(ctx)
     hub = access_control.access(user, data.id, Role.OWNER).hub
+    refuse_platform_business(hub)
     _custom_domains_on()
     if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
         raise business_deleted()
