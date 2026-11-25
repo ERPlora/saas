@@ -272,10 +272,61 @@ def _browser(group, request: HttpRequest) -> str:
     return token if isinstance(token, str) and token else landing.visitor_address(group, request)
 
 
+def _status_at_door(outcome: str) -> JsonResponse:
+    """The page goes to the door, which says ``outcome``."""
+    return _status(outcome, _door(outcome)["Location"])
+
+
+def _status_ended(request: HttpRequest, slug: str, why: int | str) -> JsonResponse:
+    """The demo is over (``why``, the Hub's status of it or of its answer): the browser forgets it."""
+    _forget(request)
+    logger.info("demo.status.ended hub=%s status=%s", slug, why)
+    return _status_at_door("expired")
+
+
+def _status_told(request: HttpRequest, live: dict[str, Any], answer: hub_client.HubAnswer) -> JsonResponse:
+    """How the demo is going, as the Hub's ``answer`` about it says."""
+    slug = live["slug"]
+    body = answer.body if isinstance(answer.body, dict) else {}
+    hub_status, maintenance = body.get("status"), body.get("maintenance")
+    if hub_status == "ready":
+        _remember(request, live, ready=True)
+        logger.info("demo.status.ready hub=%s", slug)
+        return _status("ready", hub_start_url(slug, "/"))
+    if isinstance(maintenance, dict) and maintenance.get("frozen") is True:
+        return _status("maintenance")
+    if hub_status in hub_client.PREPARING_STATUSES:
+        return _status("preparing")
+    if hub_status == hub_client.FAILED_STATUS:
+        # The Hub retries it on its own: «Try again» waits for the same demo.
+        logger.warning("demo.status.not_prepared hub=%s", slug)
+        return _status_at_door("not_ready")
+    if hub_status in hub_client.ENDED_STATUSES:
+        return _status_ended(request, slug, hub_status)
+    logger.error("demo.status.bad_answer hub=%s status=%s hub_status=%r", slug, answer.status, hub_status)
+    return _status_at_door("unavailable")
+
+
+def _status_asked(request: HttpRequest, live: dict[str, Any]) -> JsonResponse:
+    """How a demo being prepared is going, asked to the Hub; a Hub away a moment is still being waited for."""
+    slug = live["slug"]
+    try:
+        answer = hub_client.get_hub(live["id"])
+    except HubRefused as refused:
+        if refused.status in (404, 410):
+            return _status_ended(request, slug, refused.status)
+        logger.error("demo.status.bad_answer hub=%s status=%s code=%s", slug, refused.status, refused.code)
+        return _status_at_door("unavailable")
+    except HubUnavailable as away:
+        logger.warning("demo.status.hub_unavailable hub=%s %s", slug, away)
+        return _status("preparing")
+    return _status_told(request, live, answer)
+
+
 @require_safe
 @never_cache
 @ratelimit(key=_browser, rate=_status_rate, block=False)
-def status(request: HttpRequest) -> JsonResponse:  # noqa: C901, PLR0911
+def status(request: HttpRequest) -> JsonResponse:
     """How the browser's demo is going, for the door's page while it waits: ``{state}`` while the Hub prepares it (or
     is away a moment), ``{state, url}`` when the page should go to ``url``: the jump once it is ready (remembered, so
     the Hub is asked no more), or the door with what happened.
@@ -289,44 +340,12 @@ def status(request: HttpRequest) -> JsonResponse:  # noqa: C901, PLR0911
     if live is None:
         # None, or its hour passed: the door says which (and forgets an ended one, once).
         return _status("idle", door)
-    slug = live["slug"]
     if live["ready"]:
-        return _status("ready", hub_start_url(slug, "/"))
+        return _status("ready", hub_start_url(live["slug"], "/"))
     if getattr(request, "limited", False):
-        logger.info("demo.status.throttled hub=%s", slug)
+        logger.info("demo.status.throttled hub=%s", live["slug"])
         return _status("preparing")
-    try:
-        answer = hub_client.get_hub(live["id"])
-    except HubRefused as refused:
-        if refused.status in (404, 410):
-            _forget(request)
-            logger.info("demo.status.ended hub=%s status=%s", slug, refused.status)
-            return _status("expired", _door("expired")["Location"])
-        logger.error("demo.status.bad_answer hub=%s status=%s code=%s", slug, refused.status, refused.code)
-        return _status("unavailable", _door("unavailable")["Location"])
-    except HubUnavailable as away:
-        logger.warning("demo.status.hub_unavailable hub=%s %s", slug, away)
-        return _status("preparing")
-    hub_status = answer.body.get("status") if isinstance(answer.body, dict) else None
-    if hub_status == "ready":
-        _remember(request, live, ready=True)
-        logger.info("demo.status.ready hub=%s", slug)
-        return _status("ready", hub_start_url(slug, "/"))
-    maintenance = answer.body.get("maintenance") if isinstance(answer.body, dict) else None
-    if isinstance(maintenance, dict) and maintenance.get("frozen") is True:
-        return _status("maintenance")
-    if hub_status in hub_client.PREPARING_STATUSES:
-        return _status("preparing")
-    if hub_status == hub_client.FAILED_STATUS:
-        # The Hub retries it on its own: «Try again» waits for the same demo.
-        logger.warning("demo.status.not_prepared hub=%s", slug)
-        return _status("not_ready", _door("not_ready")["Location"])
-    if hub_status in hub_client.ENDED_STATUSES:
-        _forget(request)
-        logger.info("demo.status.ended hub=%s status=%s", slug, hub_status)
-        return _status("expired", _door("expired")["Location"])
-    logger.error("demo.status.bad_answer hub=%s status=%s hub_status=%r", slug, answer.status, hub_status)
-    return _status("unavailable", _door("unavailable")["Location"])
+    return _status_asked(request, live)
 
 
 @require_safe

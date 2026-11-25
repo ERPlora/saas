@@ -44,18 +44,12 @@ NOT_CONFIRMED = (
     "The person said no on the card and the card is closed: nothing was done. Say it was not done, and do not tell them "
     "to confirm it."
 )
-STOPPED = "The person stopped this request: nothing more was done."
 ASKED_AGAIN = (
     "The person already said no to this and has not written since: nothing was done. Do not ask again: say it was not "
     "done, and they will write if they want something else."
 )
 NOT_AVAILABLE = "This tool is not available to this person here: nothing was done."
 NOT_FROM_THE_CHAT = "This cannot be done from the chat (it names no record): nothing was done. Say where it is done."
-
-
-def _refused(outcome: str, code: str, message: str) -> assistant.ToolOutcome:
-    """A tool that did not run, told to the model in the same envelope as an operation's error."""
-    return assistant.ToolOutcome(outcome, code, assistant.shared.error_content(code, message))
 
 
 def _words(content) -> str:
@@ -117,41 +111,60 @@ def _declined_before(messages: list[dict], call_id: str) -> set[str]:
     return declined
 
 
-def _answer(ctx: OperationContext, tools: dict, call, decision, *, stopped: bool):  # noqa: C901, PLR0911
-    """Run one pending ``call`` (a read alone; a write with the person's yes) → ``(outcome, card)``: the card when the
-    write still waits for its answer. None for data the write would refuse: the model hears which
-    (``invalid_payload``) and asks again with them corrected, in the same turn."""
-    op = assistant.shared.operation_of(call.name, tools)
-    if op is None:
-        return _refused("refused", "not_available", NOT_AVAILABLE), None
-    if stopped:
-        return _refused("cancelled", "base.assistant_stopped", STOPPED), None
-    if op.kind == "query":
-        return assistant.shared.run_tool(ctx, op, call.arguments), None
-    try:
-        arguments = json.loads(call.arguments or "{}")
-    except ValueError:
-        arguments = None
-    if not isinstance(arguments, dict):
-        return assistant.shared.run_tool(ctx, op, call.arguments), None
+def _declined(card: dict, decision) -> assistant.ToolOutcome | None:
+    """What the person's ``decision`` on ``card`` leaves undone, or ``None`` when it is a yes to run. A no is told in
+    the panel's own words (``live.assistant.declined`` tells it in the Hub's)."""
+    if card["blocked"]:
+        return assistant.shared.refusal("cancelled", "base.assistant_not_from_chat", NOT_FROM_THE_CHAT)
+    if decision.stop:
+        return assistant.shared.stopped()
+    if not decision.accepted or not assistant.shared.confirmed(card, decision.typed):
+        return assistant.shared.refusal("cancelled", NOT_CONFIRMED_CODE, NOT_CONFIRMED)
+    return None
+
+
+def _waiting(ctx: OperationContext, op, arguments: dict, card: dict):
+    """``(outcome, card)`` of a write nobody has answered: its card, with what it will do; one whose preview cannot be
+    read gets no card and tells the model why."""
+    if card["blocked"]:
+        return None, card
+    failure, preview = assistant.shared.preview(ctx, op, arguments)
+    if failure is not None:
+        return failure, None
+    return None, {**card, "preview": preview}
+
+
+def _answer_write(ctx: OperationContext, op, call, arguments: dict, decision):
+    """``(outcome, card)`` of the write ``call``, which runs only with the person's yes to its card. No card for data
+    the write would refuse: the model hears which (``invalid_payload``) and asks again with them corrected, in the same
+    turn."""
     refused = assistant.shared.invalid_arguments(op, arguments)
     if refused is not None:
         return refused, None
     card = assistant.card(op, arguments, ctx)
     if decision is None or decision.call_id != call.call_id:
-        if card["blocked"]:
-            return None, card
-        failure, preview = assistant.shared.preview(ctx, op, arguments)
-        if failure is not None:
-            return failure, None
-        return None, {**card, "preview": preview}
-    if card["blocked"]:
-        return _refused("cancelled", "base.assistant_not_from_chat", NOT_FROM_THE_CHAT), None
-    if decision.stop:
-        return _refused("cancelled", "base.assistant_stopped", STOPPED), None
-    if not decision.accepted or not assistant.shared.confirmed(card, decision.typed):
-        return _refused("cancelled", NOT_CONFIRMED_CODE, NOT_CONFIRMED), None
+        return _waiting(ctx, op, arguments, card)
+    declined = _declined(card, decision)
+    if declined is not None:
+        return declined, None
     return assistant.shared.run_tool(ctx, op, call.arguments), None
+
+
+def _answer(ctx: OperationContext, tools: dict, call, decision, *, stopped: bool):
+    """Run one pending ``call`` (a read alone; a write with the person's yes, ``_answer_write``) → ``(outcome, card)``:
+    the card when the write still waits for its answer."""
+    op = assistant.shared.operation_of(call.name, tools)
+    if op is None:
+        return assistant.shared.refusal("refused", "not_available", NOT_AVAILABLE), None
+    if stopped:
+        return assistant.shared.stopped(), None
+    try:
+        arguments = None if op.kind == "query" else json.loads(call.arguments or "{}")
+    except ValueError:
+        arguments = None
+    if not isinstance(arguments, dict):
+        return assistant.shared.run_tool(ctx, op, call.arguments), None
+    return _answer_write(ctx, op, call, arguments, decision)
 
 
 @operation(
