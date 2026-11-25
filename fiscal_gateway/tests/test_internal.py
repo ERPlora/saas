@@ -44,6 +44,7 @@ from fiscal_gateway.tests.internal_calls import (
     probe_body,
 )
 from hubs.models import Hub
+from hubs.tests.conftest import platform_row
 
 pytestmark = pytest.mark.usefixtures("_known_business", "_secrets")
 
@@ -256,6 +257,23 @@ def test_the_platform_hub_has_no_exception_with_a_certificate_of_its_own(
 
     assert error_of(response) == (404, "hub_unknown")
     assert not respx_mock.calls
+
+
+def test_the_row_of_erploras_own_business_changes_nothing_here(client, respx_mock, erplora_seal, own_p12):
+    """erplora.com keeps it for its people: its records still go through ERPlora's seal, by its name alone."""
+    row = platform_row()
+    respx_mock.post(PRE_SEAL).respond(200, text=ANSWER)
+
+    assert call(client, "submit", payload(hub=PLATFORM)).status_code == 200
+    sent = len(respx_mock.calls)
+    for body in (
+        own(own_p12, hub=PLATFORM),
+        own(own_p12, hub=str(row.id)),
+        payload(hub=str(row.id)),
+        payload(hub=str(row.id), environment="production"),
+    ):
+        assert error_of(call(client, "submit", body)) == (404, "hub_unknown")
+    assert len(respx_mock.calls) == sent
 
 
 def test_the_own_route_needs_no_authorisation(client, respx_mock):

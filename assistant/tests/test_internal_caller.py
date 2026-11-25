@@ -14,6 +14,7 @@ from django.test import Client
 
 from assistant.tests.doors import door, error_code
 from hubs.models import Hub
+from hubs.tests.conftest import platform_row
 
 USAGE = "/internal/assistant/usage"
 DOORS = [
@@ -119,6 +120,16 @@ def test_a_purged_business_is_unknown(client, internal, business):
 
     assert response.status_code == 404
     assert error_code(response) == "hub_unknown"
+
+
+def test_erploras_own_business_stays_unknown_with_its_row_here(client, internal, plans):
+    """It has no plan, so it has no messages to spend, not even the Free plan's."""
+    own = platform_row()
+
+    for named in (own.slug, str(own.id)):
+        response = door(client, USAGE, {"hub": named})
+
+        assert (response.status_code, error_code(response)) == (404, "hub_unknown")
 
 
 @pytest.mark.parametrize("status", [Hub.Status.PREPARING, Hub.Status.SUSPENDED, Hub.Status.DELETING])

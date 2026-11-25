@@ -10,7 +10,7 @@ body-only v1), records every call and answers what the test asks for, with the H
   Hub would refuse, which refuses the whole snapshot;
 - ``GET /internal/hubs/{id}`` → 200 with the registry's status (a demo's too: ``requested`` until the test says
   ``ready``, ``expired`` once it ended), its ``maintenance`` and its ``move_scheduled_for`` (``null`` until the test
-  sets one), 404 for a hub it never got;
+  sets one), and a business's ``id``, ``slug`` and ``is_demo``; 404 for a hub it never got;
 - ``GET /internal/hubs/{id}/dumps`` → 200 ``{"available": bool, "dumps": [...]}``: the copies of ``dumps[id]`` as the
   test sets them (``{id, kind, created_at, bytes}``), newest first, each with a fresh ``url`` (a presigned link of 15
   minutes in the Hub); ``[]`` for a known hub without any; ``available`` false for a hub in ``without_copies`` (no
@@ -235,6 +235,9 @@ class HubDouble:
                 return 404, {"error": {"code": "not_found", "message": "Unknown hub."}}
             row = self.registry[hub_id]
             return 200, {
+                "id": hub_id,
+                "slug": row.get("slug"),
+                "is_demo": row.get("is_demo", False),
                 "status": row["status"],
                 "maintenance": row.get("maintenance"),
                 "move_scheduled_for": row.get("move_scheduled_for"),
