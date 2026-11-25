@@ -542,8 +542,9 @@ class TestTheMirror:
             {"next": f"{TEMPLATES}?after=QVFI"},
             {"next": f"{TEMPLATES}?after=QVFI", "cursors": {}},
             {"next": f"{TEMPLATES}?after=QVFI", "cursors": "x"},
+            {"next": f"{TEMPLATES}?after=QVFI", "cursors": {"after": ""}},
         ],
-        ids=["none", "not_an_object", "no_next", "no_cursors", "no_after", "cursors_not_an_object"],
+        ids=["none", "not_an_object", "no_next", "no_cursors", "no_after", "cursors_not_an_object", "empty_after"],
     )
     @respx.mock
     def test_a_page_that_names_no_next_one_is_the_last(self, number, business, paging):
