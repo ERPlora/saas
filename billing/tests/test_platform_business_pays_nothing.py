@@ -9,11 +9,13 @@ from billing.models import CheckoutAttempt, Invoice
 from billing.queries import invoices as invoice_queries
 from billing.queries.paying_customers import paying_customers
 from billing.queries import subscriptions as subscription_queries
+from billing.queries.catalog import store_catalog
 from billing.schemas.checkout import CheckoutConfirmIn, CheckoutStartIn
 from billing.schemas.common import HubIn
 from billing.schemas.invoices import InvoiceListIn
 from billing.schemas.payment_methods import PaymentMethodIn
 from billing.schemas.stripe_pages import PortalOpenIn
+from billing.schemas.store import StoreCatalogIn
 from billing.schemas.subscription_changes import ModuleIn, PlanChangeIn
 from billing.schemas.subscriptions import SubscriptionListIn
 from billing.services import (
@@ -154,6 +156,12 @@ class TestWhatItsOwnerReads:
         assert subscription_queries.payment_method_get(ctx, PaymentMethodIn()).methods == []
         assert invoice_queries.invoice_list(ctx, InvoiceListIn()).rows == []
         assert stripe_double.calls == []
+
+    def test_the_store_offers_it_no_plan(self, platform_business, founder, shop, owner):
+        offered = store_catalog(ctx_for(founder), StoreCatalogIn(hub_id=platform_business.id))
+
+        assert (offered.subscription, offered.offered_plans, offered.internal_plans) == (None, [], [])
+        assert "starter" in store_catalog(ctx_for(owner), StoreCatalogIn(hub_id=shop.id)).offered_plans
 
     def test_the_income_of_erplora_does_not_count_it(self, platform_business):
         assert not paying_customers().exists()
