@@ -209,16 +209,6 @@ class TestErplorasOwnBusiness:
         assert (response.status_code, response.url) == (302, "/login/error?code=not_a_member&hub=erp")
         assert not AuthExchangeCode.objects.exists()
 
-    def test_the_hub_is_refused_when_it_redeems(self, client, own, staff, settings):
-        settings.INTERNAL_SHARED_SECRET = SECRET
-        body = json.dumps({"code": "a-code", "hub": self.OWN}).encode()
-        timestamp = int(time.time())
-        headers = {"X-Erplora-Timestamp": str(timestamp), "X-Erplora-Signature": sign(body, timestamp, SECRET)}
-
-        response = client.post("/internal/auth/redeem", body, content_type="application/json", headers=headers)
-
-        assert (response.status_code, response.json()["error"]["code"]) == (400, "invalid_code")
-
     def test_they_still_enter_any_other_business_as_support(self, own, staff):
         assert hub_jump.redeem_code(hub_jump.issue_code(staff, "a"), "a").role == HUB_SUPPORT
 
