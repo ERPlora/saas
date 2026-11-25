@@ -618,6 +618,24 @@ class TestInTheTurn:
 
         assert [frame["name"] for frame in got if isinstance(frame, dict) and frame["type"] == "function_call"] == ["sale_order_list"]
 
+    def test_an_answer_with_ours_and_the_hubs_runs_ours_and_tells_the_model_to_ask_the_hubs_again(self, internal, business, answering, fake_provider):
+        """What our tools give never reaches the Hub, so the Hub's tool waits for an answer of its own: no call is lost,
+        each gets its result or the reason it did not run, in the order the model asked for them."""
+        both = [
+            {"index": 0, "id": "call_h", "type": "function", "function": {"name": "sale_order_list", "arguments": "{}"}},
+            {"index": 1, "id": "call_d", "type": "function", "function": {"name": "current_datetime", "arguments": "{}"}},
+        ]
+        fake_provider.reply("POST", COMPLETIONS, sse=[openai_chunk(tool_calls=both), openai_chunk(finish="tool_calls"), "[DONE]"])
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("sale_order_list", "{}", call_id="call_h2"))
+
+        got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business, [{"name": "sale_order_list"}])))
+
+        assert [frame["call_id"] for frame in got if isinstance(frame, dict) and frame["type"] == "function_call"] == ["call_h2"]
+        *_, asked, hubs, ours = self.chat_requests(fake_provider)[1].body["messages"]
+        assert [call["id"] for call in asked["tool_calls"]] == ["call_h", "call_d"]
+        assert (hubs["tool_call_id"], json.loads(hubs["content"])["code"]) == ("call_h", "assistant.tool_not_run")
+        assert (ours["tool_call_id"], "utc" in json.loads(ours["content"])) == ("call_d", True)
+
     def test_a_tool_of_the_hub_named_as_one_of_ours_is_ours(self, internal, business, answering, fake_provider):
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))
 

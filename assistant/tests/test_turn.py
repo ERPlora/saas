@@ -21,6 +21,7 @@ from assistant import history, queries, server_tools
 from assistant.models import AIModel, AIRoutingPolicy, AssistantUsage
 from assistant.tests.conftest import API_KEY, on_plan, openai_answer, openai_tool_call
 from assistant.tests.doors import door, error_code, frames, hang_up
+from assistant.tests.fake_provider import openai_chunk
 from base.tests.conftest import names_the_file
 
 STREAM = "/internal/assistant/chat/stream"
@@ -167,7 +168,7 @@ class TestTheLiveAnswer:
         offered = {tool["function"]["name"] for tool in sent.body["tools"]}
         assert {"sale_order_list", "customer_customer_list"} <= offered
         assert "" not in offered
-        assert sent.body["parallel_tool_calls"] is False
+        assert "parallel_tool_calls" not in sent.body
 
     def test_the_turn_counts_one_message_and_records_its_tokens_and_cost(self, client, internal, business, answering, fake_provider):
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok", tokens=(1000, 250)))
@@ -205,6 +206,34 @@ class TestTheHubsTools:
             {"type": "function_call", "name": "sale_order_list", "call_id": "call_7", "arguments": '{"status":"open"}'}
         ]
         assert isinstance(response["continuation"], str) and response["continuation"]
+        assert usage_row(business).messages == 1
+
+    def test_the_tools_of_one_answer_all_go_back_in_order_and_their_results_cost_no_message(self, client, internal, business, answering, fake_provider):
+        """«How many products and how many customers?» in one round of the model: the Hub runs both reads at once."""
+        asked = [
+            {"index": 0, "id": "call_p", "type": "function", "function": {"name": "inventory_product_list", "arguments": "{}"}},
+            {"index": 1, "id": "call_c", "type": "function", "function": {"name": "customer_customer_list", "arguments": "{}"}},
+        ]
+        fake_provider.reply("POST", COMPLETIONS, sse=[openai_chunk(tool_calls=asked), openai_chunk(finish="tool_calls"), "[DONE]"])
+        tools = [{"type": "function", "name": "inventory_product_list"}, {"type": "function", "name": "customer_customer_list"}]
+
+        got = frames(door(client, STREAM, turn(business, user("How many products and customers?"), tools=tools)))
+
+        calls = [frame for frame in got if isinstance(frame, dict) and frame["type"] == "function_call"]
+        assert [call["call_id"] for call in calls] == ["call_p", "call_c"]
+        response = next(frame for frame in got if isinstance(frame, dict) and frame["type"] == "response")
+        assert [item["call_id"] for item in response["output"]] == ["call_p", "call_c"]
+        answered = [
+            user("How many products and customers?"),
+            {"role": "assistant", "content": "", "tool_calls": [{"id": c["id"], "type": "function", "function": c["function"]} for c in asked]},
+            {"role": "tool", "tool_call_id": "call_p", "content": '{"count": 12}'},
+            {"role": "tool", "tool_call_id": "call_c", "content": '{"count": 30}'},
+        ]
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("12 products and 30 customers."))
+
+        frames(door(client, STREAM, turn(business, *answered, tools=tools, continuation=response["continuation"])))
+
+        assert [m.get("tool_call_id") for m in chat_requests(fake_provider)[1].body["messages"][-2:]] == ["call_p", "call_c"]
         assert usage_row(business).messages == 1
 
     def _asked(self, client, business, fake_provider) -> tuple[list, str]:

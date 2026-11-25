@@ -455,6 +455,45 @@ class TestAWrite:
         assert not Hub.objects.filter(name="Sol Hair").exists()
         assert model_requests(fake_provider) == [] and used_by(account) == 0
 
+    def test_a_read_and_a_write_of_one_answer_run_the_read_and_stop_at_the_writes_card(
+        self, signed_in, account, answering, fake_provider
+    ):
+        listed = {"call_id": "c0", "name": "hubs__business__list", "arguments": "{}"}
+        messages = self.asked()
+        messages[-1]["tool_calls"].insert(0, {"id": "c0", "type": "function", "function": {"name": listed["name"], "arguments": "{}"}})
+
+        got = frames(post_turn(signed_in, {"messages": messages, "pending": [listed, self.CREATE]}))
+
+        assert types(got) == ["executed", "confirm", "done"]
+        assert (got[0]["name"], got[1]["call"], got[2]["pending"]) == ("hubs.business.list", self.CREATE, [self.CREATE])
+        assert [m["tool_call_id"] for m in got[2]["append"]] == ["c0"]
+        assert model_requests(fake_provider) == [] and not Hub.objects.filter(name="Sol Hair").exists()
+
+    def test_two_writes_of_one_answer_show_one_card_at_a_time_and_a_yes_runs_only_its_own(
+        self, signed_in, account, answering, fake_provider
+    ):
+        hub = create_business(account, name="Bar Lena")
+        renames = [
+            {"call_id": call_id, "name": "hubs__business__update", "arguments": json.dumps({"id": str(hub.id), "name": name})}
+            for call_id, name in (("c1", "Bar Nuevo"), ("c2", "Bar Final"))
+        ]
+        asked = [{"id": c["call_id"], "type": "function", "function": {"name": c["name"], "arguments": c["arguments"]}} for c in renames]
+        messages = [ask("Rename Bar Lena to Bar Nuevo, then to Bar Final"), {"role": "assistant", "content": "", "tool_calls": asked}]
+
+        first = frames(post_turn(signed_in, {"messages": messages, "pending": renames}))
+
+        assert types(first) == ["confirm", "done"]
+        assert (first[0]["call"], first[1]["pending"]) == (renames[0], renames)
+        yes = {"call_id": "c1", "accepted": True}
+
+        then = frames(post_turn(signed_in, {"messages": messages, "pending": first[1]["pending"], "decision": yes}))
+
+        assert types(then) == ["executed", "confirm", "done"]
+        assert (then[0]["call_id"], then[0]["outcome"], then[1]["call"]) == ("c1", "ok", renames[1])
+        assert [m["tool_call_id"] for m in then[2]["append"]] == ["c1"] and then[2]["pending"] == [renames[1]]
+        hub.refresh_from_db()
+        assert hub.name == "Bar Nuevo" and model_requests(fake_provider) == []
+
     def test_it_runs_only_with_the_word_typed(self, signed_in, account, answering, fake_provider):
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Done: Sol Hair is ready."))
         decision = {"call_id": "c1", "accepted": True, "typed": " confirm "}

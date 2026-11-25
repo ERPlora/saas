@@ -70,12 +70,14 @@ async def test_an_older_model_keeps_its_temperature(fake_provider):
     assert fake_provider.requests[0].body["temperature"] == 0.2
 
 
-async def test_a_tool_call_streamed_in_fragments_comes_out_whole(fake_provider):
+async def test_the_tool_calls_of_one_answer_streamed_in_fragments_come_out_whole_in_order(fake_provider):
+    """OpenAI may ask for several tools in one answer (``parallel_tool_calls`` left at its default): each comes out."""
     fake_provider.reply(
         "POST",
         "/v1/chat/completions",
         sse=[
             openai_chunk(tool_calls=[{"index": 0, "id": "call_1", "function": {"name": "find_customer", "arguments": '{"na'}}]),
+            openai_chunk(tool_calls=[{"index": 1, "id": "call_2", "function": {"name": "list_orders", "arguments": "{}"}}]),
             openai_chunk(tool_calls=[{"index": 0, "function": {"arguments": 'me": "Ana"}'}}], finish="tool_calls"),
             "[DONE]",
         ],
@@ -86,13 +88,14 @@ async def test_a_tool_call_streamed_in_fragments_comes_out_whole(fake_provider):
 
     assert [(e.type, e.payload) for e in events] == [
         ("tool_call", {"call_id": "call_1", "name": "find_customer", "arguments": '{"name": "Ana"}'}),
+        ("tool_call", {"call_id": "call_2", "name": "list_orders", "arguments": "{}"}),
         ("finish", {"reason": "tool_use"}),
     ]
     sent = fake_provider.requests[0].body
     assert sent["tools"] == [
         {"type": "function", "function": {"name": "find_customer", "description": "Find a customer", "parameters": {"type": "object", "properties": {}}}}
     ]
-    assert sent["parallel_tool_calls"] is False
+    assert "parallel_tool_calls" not in sent
 
 
 @pytest.mark.parametrize(("raw", "reason"), [("length", "length"), ("content_filter", "content_filter"), ("other", "stop")])
