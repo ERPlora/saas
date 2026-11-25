@@ -5,7 +5,8 @@ The jump code is stored as its SHA-256, bound to one hub, and spent by a single 
 (a member enters their hub, and the platform's staff enter a business they are no member of as its
 support, ``hub_support``) and ``hub-admin`` (the platform's staff open a hub in the Hub's Django
 admin at ``hubs.erplora.com``). The business decides whether support comes in: the Hub refuses a
-``hub_support`` code while the business has its support access off.
+``hub_support`` code while the business has its support access off. ERPlora's own business takes
+none (``takes_support``).
 """
 
 import logging
@@ -78,6 +79,12 @@ def is_hub_slug(hub_slug) -> bool:
     return hub_slug != PLATFORM_HOST_SLUG
 
 
+def takes_support(hub_slug) -> bool:
+    """Whether the platform's staff may enter ``hub_slug`` as support: any hub's but ERPlora's own business's, which
+    only its people enter."""
+    return is_hub_slug(hub_slug) and hub_slug != settings.PLATFORM_HUB_SLUG
+
+
 def _platform_role(user) -> str | None:
     """The role ``user`` takes in the Hub's admin, or ``None`` if they may not enter it.
 
@@ -95,11 +102,11 @@ def _platform_role(user) -> str | None:
 
 def _role_in(user, hub_slug: str, audience: str) -> str | None:
     """What ``user`` is on ``hub_slug`` for ``audience``: a member's ``hub_*`` role, ``hub_support`` for the platform's
-    staff on a business they are no member of, or a platform role in the Hub admin."""
+    staff on a business they are no member of and that takes support, or a platform role in the Hub admin."""
     if audience == AuthExchangeCode.HUB_ADMIN_AUDIENCE:
         return _platform_role(user)
     role = account_hubs.hub_roles_of(user).get(hub_slug)
-    if role is None and _platform_role(user) is not None:
+    if role is None and takes_support(hub_slug) and _platform_role(user) is not None:
         return HUB_SUPPORT_ROLE
     return role
 
@@ -121,7 +128,7 @@ def issue_code(
     """Mint a one-time code for ``user`` to enter ``hub_slug``; return it (only its hash is kept).
 
     ``hub-session`` needs a membership of the hub, or else an active staff account with a platform
-    role, which enters as support (``hub_support``). ``hub-admin`` needs no membership, only an
+    role, which enters as support (``hub_support``) where ``takes_support``. ``hub-admin`` needs no membership, only an
     active staff account with a platform role (``_platform_role``). A reserved or malformed slug (but
     ERPlora's own business's), or the platform host, is refused even if a membership row names it (rows
     saved without validation, or before the shared rule).

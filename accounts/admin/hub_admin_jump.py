@@ -61,17 +61,18 @@ def open_hub_admin_url(slug: str) -> str | None:
 
 
 def enter_as_support_url(slug: str) -> str | None:
-    """The admin's jump into the app of the business ``slug`` as support, or ``None`` if ``slug`` is no hub.
+    """The admin's jump into the app of the business ``slug`` as support, or ``None`` if ``slug`` takes no support
+    (``hub_jump.takes_support``).
 
     ``http://a.localhost:8000/auth/login?next=/`` locally, ``https://a.erplora.com/auth/login?next=/`` in production.
     """
-    if not hub_jump.is_hub_slug(slug):
+    if not hub_jump.takes_support(slug):
         return None
     return hub_links.hub_start_url(slug)
 
 
 def jump_button(url: str | None, label, empty: str) -> str:
-    """A jump of the admin as a button, or ``empty`` when ``url`` is ``None`` (no hub to jump to)."""
+    """A jump of the admin as a button, or ``empty`` when ``url`` is ``None`` (nowhere to jump to)."""
     if url is None:
         return empty
     return format_html('<a class="button" href="{}">{}</a>', url, label)

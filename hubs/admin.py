@@ -33,7 +33,7 @@ from django.utils.translation import ngettext
 from accounts.admin.hub_admin_jump import JUMP_FAILED, JUMP_FAILED_UNKNOWN, OPEN_IN_HUB_ADMIN, open_hub_admin_url
 from accounts.admin.hub_admin_jump import ENTER_AS_SUPPORT, enter_as_support_url, jump_button
 from accounts.admin.users import UserAdmin
-from hubs.services import platform_actions, refusals, subscription_sync
+from hubs.services import platform_actions, subscription_sync
 from hubs.queries import hub_sync, membership
 from hubs.models import (
     CustomDomain,
@@ -254,10 +254,7 @@ class HubAdmin(PlatformActions):
         return jump_button(enter_as_support_url(obj.slug), ENTER_AS_SUPPORT, self.get_empty_value_display())
 
     def _with_a_plan(self, request, queryset):
-        """The chosen businesses that have a plan to act on: ERPlora's own has none, and the staff is told."""
-        if queryset.filter(is_platform=True).exists():
-            self.message_user(request, refusals.PLATFORM_BUSINESS, messages.WARNING)
-        return queryset.filter(is_platform=False)
+        return platform_actions.with_a_plan(queryset, lambda said: self.message_user(request, said, messages.WARNING))
 
     @admin.action(description=_("Attach its payer to a Stripe test clock (test keys only)"), permissions=["sync"])
     @traced
@@ -294,8 +291,7 @@ class HubAdmin(PlatformActions):
     @admin.action(description=_("Let its owner buy the internal plans"), permissions=["sync"])
     @traced
     def allow_internal_plans(self, request, queryset):
-        chosen = self._with_a_plan(request, queryset)
-        changed = platform_actions.mark_for_internal_plans(list(chosen.values_list("id", flat=True)), allowed=True)
+        changed = platform_actions.mark_for_internal_plans(self._with_a_plan(request, queryset), allowed=True)
         self.message_user(
             request, _("%(count)d business(es): its owner now sees the internal plans in the Store.") % {"count": changed}
         )
@@ -303,8 +299,7 @@ class HubAdmin(PlatformActions):
     @admin.action(description=_("Stop selling it the internal plans"), permissions=["sync"])
     @traced
     def stop_internal_plans(self, request, queryset):
-        chosen = self._with_a_plan(request, queryset)
-        changed = platform_actions.mark_for_internal_plans(list(chosen.values_list("id", flat=True)), allowed=False)
+        changed = platform_actions.mark_for_internal_plans(self._with_a_plan(request, queryset), allowed=False)
         self.message_user(
             request,
             _("%(count)d business(es): the Store no longer offers it the internal plans; a plan already bought stays.")
