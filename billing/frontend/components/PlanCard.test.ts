@@ -4,29 +4,11 @@ import { CollapsibleChecklist } from '@erplora/ui/components';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FREE, FREE_SUBSCRIPTION, PAYMENT_TEST, STARTER, plan, subscription } from '../__tests__/fixtures';
-import { flush, ionProps, mountBilling } from '../__tests__/mount-billing';
-import type { Block } from '../store';
-import PlanCard from './PlanCard.vue';
+import { flush, ionProps } from '../__tests__/mount-billing';
+import { card } from '../__tests__/plan-card';
 
 const PRO = plan('pro', 'Pro', '59.99', '599.90');
 const nb = (text: string) => text.replace(/ €/g, ' €');
-
-async function card(props: {
-  plan?: typeof STARTER;
-  period?: 'month' | 'year';
-  subscription?: unknown;
-  block?: Block | null;
-  scheduledPlanName?: string;
-  locale?: 'en' | 'es';
-}) {
-  const { locale, ...rest } = props;
-  const m = await mountBilling(PlanCard, {
-    locale,
-    props: { plan: STARTER, period: 'month', subscription: subscription(), block: null, ...rest },
-  });
-  const text = (id: string) => m.wrapper.find(`[data-testid="${id}"]`);
-  return { ...m, text };
-}
 
 beforeEach(() => {
   // The card says a trial only while `trial_end` is ahead of now: the clock stays before the fixtures' dates

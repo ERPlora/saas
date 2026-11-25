@@ -41,6 +41,7 @@
       "suspended": "Suspended because of an unpaid invoice. Your data is safe: pay the invoice and it works again at once.",
       "suspendedApp": "Suspended because of an unpaid invoice. Your data is safe. To pay it, go to erplora.com in your browser.",
       "deleting": "Deleted. You can recover it until {date}.",
+      "moveScheduled": "Scheduled maintenance: the business will be unavailable while it lasts, from {date}.",
       "preparingSoon": "Ready in a few seconds",
       "pastDueUntil": "There is an unpaid invoice. Pay it before {date} or the business is suspended.",
       "pastDueUntilApp": "There is an unpaid invoice: it keeps working until {date}. To pay it, go to erplora.com in your browser.",
@@ -400,6 +401,10 @@
       "rolesAdmin": "Admin: the team, the modules and the settings.",
       "rolesStaff": "Manager and employee: they work inside the business. Employees who only use a PIN at the till are managed inside the business.",
       "rolesAccountant": "Accountant: the accountancy firm that keeps the books. It only reads sales and invoices, with their taxes, and downloads the invoices; it takes no place on the plan.",
+      "platform": {
+        "rolesOwner": "Owner: everything, also transferring the business.",
+        "rolesAccountant": "Accountant: the accountancy firm that keeps the books. It only reads sales and invoices, with their taxes, and downloads the invoices."
+      },
       "pendingTransfer": {
         "heading": "Ownership offered to {email}",
         "body": "They have until {date} to accept it. Until then you are still the owner.",

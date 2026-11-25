@@ -10,10 +10,11 @@ It wakes on the first of:
 - the next quarter of an hour (``next_round``: :00, :15, :30 and :45 UTC, whatever the process's start).
 
 Each wake-up runs the pass of the deliveries (``deliveries.deliver_pass``, under the lock of ``whatsapp_deliver``: the
-command of the same name and another worker never run one beside it), and at each quarter the two reconciliations,
-each under its own lock (``PERIODIC``: the passes of ``reconcile_hub_states`` and ``reconcile_platform_invoices``, the
-same functions their commands run). Between two wake-ups it sends nothing to the database, so Aurora can go down to its
-minimum: its connections go back to the pool and the wait is on the socket of its own LISTEN connection
+command of the same name and another worker never run one beside it), and at each quarter the two reconciliations and
+the question to the Hub about the maintenance scheduled for each business's night, each under its own lock
+(``PERIODIC``: the passes of ``reconcile_hub_states`` and ``reconcile_platform_invoices``, the same functions their
+commands run, and ``check_scheduled_moves``). Between two wake-ups it sends nothing to the database, so Aurora can go
+down to its minimum: its connections go back to the pool and the wait is on the socket of its own LISTEN connection
 (``base.listener``). It never looks again at once when a pass took nothing (``IDLE_FLOOR``) and, after a pass that
 failed, looks again in ``RETRY_AFTER_FAILURE`` at most.
 
@@ -36,7 +37,7 @@ from django.utils import timezone
 
 from base.listener import Listener
 from billing.services import platform_invoices
-from hubs.services import reconciliation
+from hubs.services import reconciliation, scheduled_moves
 from whatsapp import queries
 from whatsapp.gateway import deliveries
 from whatsapp.schemas import NextDueIn
@@ -79,6 +80,7 @@ PERIODIC = (
         platform_invoices.reconcile_platform_invoices_exclusively,
         platform_invoices.platform_run_failed,
     ),
+    Periodic(scheduled_moves.PASS, scheduled_moves.check_scheduled_moves_exclusively, scheduled_moves.run_failed),
 )
 
 

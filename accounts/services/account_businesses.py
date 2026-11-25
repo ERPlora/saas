@@ -9,14 +9,15 @@ from accounts.queries import account_hubs
 
 #: The businesses of an account, read through their operation (accounts never imports hubs).
 BUSINESS_LIST = "hubs.business.list"
+#: The role of a business's owner in its rows.
+OWNER = "hub_owner"
 
 
 def businesses_holding(ctx: OperationContext) -> tuple[list[dict], list[dict]]:
     """``(owned, paid)``: the businesses that are not deleted which the caller owns, and those it pays for without
-    owning them, as ``[{id, name}]``, from ``hubs.business.list``.
+    owning them, as ``[{id, name, is_platform}]``, from ``hubs.business.list``.
 
-    A business has one owner, and its row says what that owner may do: ``can.delete`` is
-    «the owner, not deleted». ``is_payer`` says the account still pays for it: it owns the business's payer, or the
+    A business has one owner, and its row says the account's role. ``is_payer`` says the account still pays for it: it owns the business's payer, or the
     plan is still charged to its card after a hand-over (``hubs.queries.payers.still_pays``); and a payer cannot be
     taken out of the business (``hubs.member_pays``), so the list sees it. A deleted business in its 90 days of
     recovery holds nobody (``deletion_requested_at``).
@@ -28,10 +29,12 @@ def businesses_holding(ctx: OperationContext) -> tuple[list[dict], list[dict]]:
     while True:
         page = business_list(ctx, business_list.input(limit=100, offset=offset))
         for row in page.rows:
-            entry = {"id": str(row.id), "name": row.name}
-            if row.can.delete:
+            if row.deletion_requested_at is not None:
+                continue
+            entry = {"id": str(row.id), "name": row.name, "is_platform": row.is_platform}
+            if row.role == OWNER:
                 owned.append(entry)
-            elif row.is_payer and row.deletion_requested_at is None:
+            elif row.is_payer:
                 paid.append(entry)
         offset += page.limit
         if offset >= page.total:

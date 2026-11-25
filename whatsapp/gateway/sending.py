@@ -11,6 +11,9 @@ frees the place and the key (the same 409 with a name, or 503 ``whatsapp.meta_un
 """
 
 import logging
+from uuid import UUID
+
+from live.context import OperationContext
 
 from whatsapp import meta, templates
 from whatsapp.gateway.answers import (
@@ -20,13 +23,13 @@ from whatsapp.gateway.answers import (
     WINDOW_CLOSED,
     envelope,
 )
-from whatsapp.schemas import SendClaimIn, SendIn, SendRecordIn
+from whatsapp.schemas import SendClaimIn, SendClaimOut, SendIn, SendRecordIn
 from whatsapp.services import message_sends, platform_actor
 
 logger = logging.getLogger("whatsapp.gateway")
 
 
-def send(data: SendIn, key: str) -> tuple[int, dict]:  # noqa: PLR0911
+def send(data: SendIn, key: str) -> tuple[int, dict]:
     ctx = platform_actor.platform_context()
     template = data.template
     try:
@@ -46,55 +49,67 @@ def send(data: SendIn, key: str) -> tuple[int, dict]:  # noqa: PLR0911
         return _sent(claim.wa_message_id)
     if claim.outcome == "refused":
         return claim.status, envelope(claim.code, claim.message)
-    token = claim.token.get_secret_value()
-    media_id = ""
-    if sample is not None:
-        # Uploading sends no message: whatever happens to it, the place and the key are free and nothing left.
-        try:
-            media_id = meta.upload_media(
-                claim.phone_number_id, token, name=sample.name, mime_type=sample.mime_type, content=sample.content
-            )
-        except meta.MetaRefused as refused:
-            message_sends.message_record(
-                ctx,
-                SendRecordIn(send_id=claim.send_id, outcome="released", needs_reconnect=refused.code == EXPIRED_PERMISSION),
-            )
-            logger.warning("whatsapp.send.upload_refused hub=%s meta_code=%s", data.hub, refused.code)
-            return _refusal(refused)
-        except meta.MetaUnreachable:
-            message_sends.message_record(ctx, SendRecordIn(send_id=claim.send_id, outcome="released"))
-            logger.warning("whatsapp.send.upload_unreachable hub=%s", data.hub)
-            return 503, envelope(
-                "whatsapp.meta_unreachable", "Meta did not take the header's file: nothing left. Retry later."
-            )
+    try:
+        media_id = _upload(claim, sample)
+    except (meta.MetaRefused, meta.MetaUnreachable) as failure:
+        return _upload_failed(ctx, claim.send_id, data.hub, failure)
     try:
         answer = meta.post(
             f"{claim.phone_number_id}/messages",
-            token=token,
+            token=claim.token.get_secret_value(),
             json=_meta_message(data, sample, media_id),
             timeout=meta.SEND_TIMEOUT,
         )
-    except meta.MetaRefused as refused:
-        message_sends.message_record(
-            ctx,
-            SendRecordIn(send_id=claim.send_id, outcome="released", needs_reconnect=refused.code == EXPIRED_PERMISSION),
-        )
-        logger.warning("whatsapp.send.refused hub=%s meta_status=%s meta_code=%s", data.hub, refused.status, refused.code)
-        return _refusal(refused)
-    except meta.MetaUnreachable as unreachable:
-        if unreachable.sent:
-            message_sends.message_record(ctx, SendRecordIn(send_id=claim.send_id, outcome="unknown"))
-            logger.warning("whatsapp.send.unknown hub=%s", data.hub)
-            return 502, envelope(
-                "whatsapp.meta_unknown", "Meta gave no answer: the message may have left. Retry with the same key."
-            )
-        message_sends.message_record(ctx, SendRecordIn(send_id=claim.send_id, outcome="released"))
-        return 503, envelope("whatsapp.meta_unreachable", "Meta could not be reached: nothing left. Retry later.")
+    except (meta.MetaRefused, meta.MetaUnreachable) as failure:
+        return _send_failed(ctx, claim.send_id, data.hub, failure)
     accepted = answer.get("messages")
     first = accepted[0] if isinstance(accepted, list) and accepted and isinstance(accepted[0], dict) else {}
     wa_message_id = str(first.get("id") or "")[:255]
     message_sends.message_record(ctx, SendRecordIn(send_id=claim.send_id, outcome="sent", wa_message_id=wa_message_id))
     return _sent(wa_message_id)
+
+
+def _upload(claim: SendClaimOut, sample: templates.Sample | None) -> str:
+    """The id of the header's file, uploaded to the business's number; ``""`` for a message without one."""
+    if sample is None:
+        return ""
+    return meta.upload_media(
+        claim.phone_number_id,
+        claim.token.get_secret_value(),
+        name=sample.name,
+        mime_type=sample.mime_type,
+        content=sample.content,
+    )
+
+
+def _upload_failed(ctx: OperationContext, send_id: UUID, hub: str, failure: Exception) -> tuple[int, dict]:
+    """Uploading sends no message: whatever happened to it, the place and the key are free and nothing left."""
+    _release(ctx, send_id, failure)
+    if isinstance(failure, meta.MetaRefused):
+        logger.warning("whatsapp.send.upload_refused hub=%s meta_code=%s", hub, failure.code)
+        return _refusal(failure)
+    logger.warning("whatsapp.send.upload_unreachable hub=%s", hub)
+    return 503, envelope("whatsapp.meta_unreachable", "Meta did not take the header's file: nothing left. Retry later.")
+
+
+def _send_failed(ctx: OperationContext, send_id: UUID, hub: str, failure: Exception) -> tuple[int, dict]:
+    if isinstance(failure, meta.MetaUnreachable) and failure.sent:
+        message_sends.message_record(ctx, SendRecordIn(send_id=send_id, outcome="unknown"))
+        logger.warning("whatsapp.send.unknown hub=%s", hub)
+        return 502, envelope(
+            "whatsapp.meta_unknown", "Meta gave no answer: the message may have left. Retry with the same key."
+        )
+    _release(ctx, send_id, failure)
+    if isinstance(failure, meta.MetaRefused):
+        logger.warning("whatsapp.send.refused hub=%s meta_status=%s meta_code=%s", hub, failure.status, failure.code)
+        return _refusal(failure)
+    return 503, envelope("whatsapp.meta_unreachable", "Meta could not be reached: nothing left. Retry later.")
+
+
+def _release(ctx: OperationContext, send_id: UUID, failure: Exception) -> None:
+    """Nothing left: the place and the key are free. Meta's 190 marks the number «needs reconnecting»."""
+    expired = isinstance(failure, meta.MetaRefused) and failure.code == EXPIRED_PERMISSION
+    message_sends.message_record(ctx, SendRecordIn(send_id=send_id, outcome="released", needs_reconnect=expired))
 
 
 def _sent(wa_message_id: str) -> tuple[int, dict]:

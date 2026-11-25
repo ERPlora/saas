@@ -4,11 +4,13 @@ Keys are UUIDv7.
 - ``AIProvider``: one of the four APIs of models the gateway speaks (``kind``) at its address, and the variable of the
   environment its key is read from (``key_variable``). No key is ever kept in the database.
 - ``AIModel``: a model of a provider the staff chose, with its prices (USD per million tokens, typed by hand:
-  the APIs do not give them) and what it supports.
+  the APIs do not give them), those of reading from and writing to its provider's cache among them, and what it
+  supports.
 - ``AIRoutingPolicy``: one row, the model that answers and the fallback one; a model it uses is never deleted.
 - ``AssistantUsage``: what a business (or a demo) spent through the gateway, a row per calendar month
-  (UTC; a demo, one row for its whole life): its messages, the tokens of its turns and of its embeddings, its voice
-  and what it cost. Numbers only: never a conversation, a person nor a text.
+  (UTC; a demo, one row for its whole life): its messages, the tokens of its turns (all of their input, of which
+  those read from the provider's cache and those written to it) and of its embeddings, its voice and what it cost.
+  Numbers only: never a conversation, a person nor a text.
 - ``DocChunk`` (ASSISTANT-F27): an excerpt of ERPlora's documentation with its fingerprint, what
   ``assistant.docs.search`` returns to the panel's assistant (``assistant.knowledge``; written by ``index_docs``).
 
@@ -157,6 +159,22 @@ class AIModel(models.Model):
     price_output_per_1m = models.DecimalField(
         _("output price"), max_digits=10, decimal_places=4, default=Decimal("0"), help_text=_("USD per million output tokens.")
     )
+    price_cache_read_per_1m = models.DecimalField(
+        _("cache read price"),
+        max_digits=10,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text=_("USD per million input tokens read from the provider's cache. Empty: the input price."),
+    )
+    price_cache_write_per_1m = models.DecimalField(
+        _("cache write price"),
+        max_digits=10,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text=_("USD per million input tokens written to the provider's cache. Empty: the input price."),
+    )
     supports_tools = models.BooleanField(_("tools"), default=True)
     supports_vision = models.BooleanField(_("images"), default=False)
     is_available = models.BooleanField(
@@ -234,14 +252,15 @@ class AIRoutingPolicy(models.Model):
 
 
 class AssistantUsage(models.Model):
-    """What a business spent through the gateway in a calendar month (UTC), a demo in its whole life, or an account
-    with the assistant of erplora.com's own panel in a calendar month.
+    """What a business spent through the gateway with one model in a calendar month (UTC), a demo in its whole life, or
+    an account with the assistant of erplora.com's own panel in a calendar month.
 
     ``messages`` is what the allowance is counted against — a business's plan's (``Plan.assistant_messages_per_month``),
-    a demo's few, an account's fixed ``ASSISTANT_ACCOUNT_MESSAGES`` —, one per request of a person, reserved before the
-    model is called (``assistant.message.claim``); the tokens and the cost (USD, with the prices of the model that
-    answered) are added when the turn ends. A demo has no row in the SaaS (its Hub keeps it): it is named by its
-    ``demo-…`` address and has one row. Each row is of exactly one of them: an account's never counts its businesses'.
+    a demo's few, an account's fixed ``ASSISTANT_ACCOUNT_MESSAGES`` —, one per request of a person, reserved on the row
+    of the model asked before it is called (``assistant.message.claim``); the allowance adds the messages of every
+    model. The tokens and the cost (USD, with its prices) go to the row of the model that answered, when the turn ends.
+    A demo has no row in the SaaS (its Hub keeps it): it is named by its ``demo-…`` address. Each row is of exactly one
+    of them: an account's never counts its businesses'.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
@@ -263,9 +282,22 @@ class AssistantUsage(models.Model):
         verbose_name=_("account"),
     )
     month = models.DateField(_("month"), help_text=_("The first day of the month (UTC)."))
+    model = models.CharField(
+        _("model"),
+        max_length=128,
+        blank=True,
+        default="",
+        help_text=_("The name the provider's API gives it; empty in the records from before the model was kept."),
+    )
     messages = models.PositiveIntegerField(_("messages"), default=0)
     tokens_input = models.PositiveBigIntegerField(_("input tokens"), default=0)
     tokens_output = models.PositiveBigIntegerField(_("output tokens"), default=0)
+    tokens_cache_read = models.PositiveBigIntegerField(
+        _("cache read tokens"), default=0, help_text=_("Of the input tokens, those read from the provider's cache.")
+    )
+    tokens_cache_write = models.PositiveBigIntegerField(
+        _("cache write tokens"), default=0, help_text=_("Of the input tokens, those written to the provider's cache.")
+    )
     tokens_embedding = models.PositiveBigIntegerField(_("embedding tokens"), default=0)
     transcriptions = models.PositiveIntegerField(_("dictations"), default=0)
     speech_characters = models.PositiveBigIntegerField(_("characters read aloud"), default=0)
@@ -280,7 +312,7 @@ class AssistantUsage(models.Model):
     class Meta:
         verbose_name = _("assistant usage record")
         verbose_name_plural = _("assistant usage records")
-        ordering = ["-month", "hub__name", "demo", "user__email"]
+        ordering = ["-month", "hub__name", "demo", "user__email", "model"]
         constraints = [
             models.CheckConstraint(
                 condition=(Q(hub__isnull=False) & Q(demo="") & Q(user__isnull=True))
@@ -289,17 +321,23 @@ class AssistantUsage(models.Model):
                 name="assistant_usage_business_demo_or_account",
             ),
             models.UniqueConstraint(
-                fields=["hub", "month"], condition=Q(hub__isnull=False), name="assistant_usage_one_per_month"
+                fields=["hub", "month", "model"],
+                condition=Q(hub__isnull=False),
+                name="assistant_usage_one_per_model_month",
             ),
-            models.UniqueConstraint(fields=["demo"], condition=~Q(demo=""), name="assistant_usage_one_per_demo"),
             models.UniqueConstraint(
-                fields=["user", "month"], condition=Q(user__isnull=False), name="assistant_usage_one_per_account_month"
+                fields=["demo", "model"], condition=~Q(demo=""), name="assistant_usage_one_per_demo_model"
+            ),
+            models.UniqueConstraint(
+                fields=["user", "month", "model"],
+                condition=Q(user__isnull=False),
+                name="assistant_usage_one_per_account_model_month",
             ),
         ]
 
     def __str__(self):
         who = self.demo or (self.hub.name if self.hub_id else self.user.email if self.user_id else "—")
-        return f"{who} · {self.month:%Y-%m}"
+        return f"{who} · {self.month:%Y-%m} · {self.model or '—'}"
 
 
 #: The length of a fingerprint of ``assistant.media.EMBEDDING_MODEL`` (``text-embedding-3-small``).

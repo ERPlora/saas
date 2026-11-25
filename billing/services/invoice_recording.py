@@ -238,11 +238,7 @@ def _record_paid(ctx, hub: Hub, data: InvoiceRecordIn, existing: Invoice | None)
     payer = queries.payer_of(hub)
     breakdown = vat.resolve_vat(
         from_cents(total),
-        customer_country=payer.country,
-        customer_postal_code=payer.postal_code,
-        customer_tax_id=payer.tax_id,
-        customer_tax_id_type=payer.tax_id_type,
-        customer_tax_id_verified=data.tax_id_verified,
+        payer.cleared(data.tax_id_verified),
         category_key=vat.SAAS_SUBSCRIPTION_CATEGORY,
         tax_cents=plan_changes.tax_cents_of(stripe_invoice),
         tax_included=False,

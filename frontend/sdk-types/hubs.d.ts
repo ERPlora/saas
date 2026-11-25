@@ -87,6 +87,8 @@ export interface BusinessRowOut {
   host: string;
   status: BusinessStatusCode;
   status_label: string;
+  /** ERPlora's own business: no plan nor payments, and only its people are managed here. */
+  is_platform: boolean;
   plan: PlanRefOut | null;
   role: HubRole;
   role_label: string;
@@ -95,6 +97,10 @@ export interface BusinessRowOut {
   open_blocked_reason: OpenBlockedReason | null;
   hub_error: string | null;
   maintenance?: HubMaintenanceOut | null;
+  /** When the maintenance scheduled for its night starts, while it is still ahead. */
+  move_scheduled_for?: string | null;
+  /** Its time zone: that moment is said on its clock. */
+  timezone: string;
   deletion_requested_at: string | null;
   purge_after: string | null;
   created_at: string;
@@ -180,6 +186,8 @@ export interface BusinessDetailOut {
   slug: string;
   name: string;
   host: string;
+  /** As in `BusinessRowOut`. */
+  is_platform: boolean;
   country: string;
   /** The country no longer changes: the business is ready and may invoice (409 `hubs.country_locked`). */
   country_locked: boolean;
@@ -190,6 +198,7 @@ export interface BusinessDetailOut {
   status_label: string;
   hub_error: string | null;
   maintenance?: HubMaintenanceOut | null;
+  move_scheduled_for?: string | null;
   ready_at: string | null;
   created_at: string;
   deletion_requested_at: string | null;

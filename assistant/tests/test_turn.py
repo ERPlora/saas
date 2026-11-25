@@ -4,10 +4,10 @@ ASSISTANT-F13 · the same turn answered at once, in JSON; ASSISTANT-F15 · refus
 ``POST /internal/assistant/chat/stream`` answers ``text/event-stream`` (over HTTP, no channels nor WebSocket)
 and ``POST /internal/assistant/chat`` the whole turn in one JSON. The conversation
 is the Hub's (the person's browser owns it): erplora.com puts the Hub's ``instructions`` as the only system
-message, keeps the last 100 messages, offers the Hub's tools and sends the turn to the model of the routing policy
-(ASSISTANT-F06), passing to its fallback if the provider fails before answering. What can be decided before the model
-is called is an HTTP status (quota, size, no model); a failure of the provider once the answer started is an ``error``
-frame. The provider is the local fake (``fake_provider``), never a real one.
+message, lightens the earlier requests (``assistant.history``), offers the Hub's tools and sends the turn to the
+model of the routing policy (ASSISTANT-F06), passing to its fallback if the provider fails before answering. What can
+be decided before the model is called is an HTTP status (quota, size, no model); a failure of the provider once the
+answer started is an ``error`` frame. The provider is the local fake (``fake_provider``), never a real one.
 """
 
 import logging
@@ -17,10 +17,11 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
-from assistant import queries, server_tools
+from assistant import history, queries, server_tools
 from assistant.models import AIModel, AIRoutingPolicy, AssistantUsage
 from assistant.tests.conftest import API_KEY, on_plan, openai_answer, openai_tool_call
 from assistant.tests.doors import door, error_code, frames, hang_up
+from assistant.tests.fake_provider import openai_chunk
 from base.tests.conftest import names_the_file
 
 STREAM = "/internal/assistant/chat/stream"
@@ -47,8 +48,13 @@ def chat_requests(fake_provider) -> list:
     return [seen for seen in fake_provider.requests if seen.path.endswith("/chat/completions")]
 
 
+#: The model the routing policy asks first (``answering``).
+MODEL = "gpt-test"
+
+
 def usage_row(business) -> AssistantUsage | None:
-    return AssistantUsage.objects.filter(hub=business, month=queries.usage.month_of(timezone.now())).first()
+    """The business's row of this month for the model asked first, where its messages are taken."""
+    return AssistantUsage.objects.filter(hub=business, month=queries.usage.month_of(timezone.now()), model=MODEL).first()
 
 
 class TestTheLiveAnswer:
@@ -109,16 +115,36 @@ class TestTheLiveAnswer:
         assert sent.body["max_tokens"] == 4096
         assert sent.headers["authorization"] == f"Bearer {API_KEY}"
 
-    def test_the_whole_conversation_reaches_the_model_trimmed_to_the_last_100(self, client, internal, business, answering, fake_provider):
+    def test_a_long_conversation_of_short_messages_reaches_the_model_whole(self, client, internal, business, answering, fake_provider):
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))
         conversation = [user(f"message {n}") if n % 2 == 0 else {"role": "assistant", "content": f"answer {n}"} for n in range(150)]
 
         frames(door(client, STREAM, turn(business, *conversation)))
 
         [sent] = chat_requests(fake_provider)
-        assert len(sent.body["messages"]) == 100
         assert sent.body["messages"][0]["role"] == "system"
-        assert sent.body["messages"][-1] == {"role": "assistant", "content": "answer 149"}
+        assert sent.body["messages"][1:] == conversation
+
+    def test_what_a_tool_gave_an_older_request_reaches_the_model_as_a_short_note(self, client, internal, business, answering, fake_provider):
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))
+        listed = '{"rows": [' + ", ".join(f'{{"name": "Product {n}"}}' for n in range(200)) + "]}"
+
+        def asked(n: int, question: str) -> list[dict]:
+            call = {"id": f"call_{n}", "type": "function", "function": {"name": "inventory_product_list", "arguments": "{}"}}
+            return [
+                user(question),
+                {"role": "assistant", "content": "", "tool_calls": [call]},
+                {"role": "tool", "tool_call_id": f"call_{n}", "content": listed},
+            ]
+
+        older, before, in_progress = asked(1, "How many products?"), asked(2, "And the cheapest?"), asked(3, "And the dearest?")
+        answered = [*older, {"role": "assistant", "content": "200."}, *before, {"role": "assistant", "content": "Water."}]
+
+        frames(door(client, STREAM, turn(business, *answered, *in_progress)))
+
+        [sent] = chat_requests(fake_provider)
+        results = [message["content"] for message in sent.body["messages"] if message["role"] == "tool"]
+        assert results == [history.CLEARED, listed, listed]
 
     def test_a_tool_result_without_its_call_is_dropped(self, client, internal, business, answering, fake_provider):
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))
@@ -142,7 +168,7 @@ class TestTheLiveAnswer:
         offered = {tool["function"]["name"] for tool in sent.body["tools"]}
         assert {"sale_order_list", "customer_customer_list"} <= offered
         assert "" not in offered
-        assert sent.body["parallel_tool_calls"] is False
+        assert "parallel_tool_calls" not in sent.body
 
     def test_the_turn_counts_one_message_and_records_its_tokens_and_cost(self, client, internal, business, answering, fake_provider):
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok", tokens=(1000, 250)))
@@ -182,6 +208,34 @@ class TestTheHubsTools:
         assert isinstance(response["continuation"], str) and response["continuation"]
         assert usage_row(business).messages == 1
 
+    def test_the_tools_of_one_answer_all_go_back_in_order_and_their_results_cost_no_message(self, client, internal, business, answering, fake_provider):
+        """«How many products and how many customers?» in one round of the model: the Hub runs both reads at once."""
+        asked = [
+            {"index": 0, "id": "call_p", "type": "function", "function": {"name": "inventory_product_list", "arguments": "{}"}},
+            {"index": 1, "id": "call_c", "type": "function", "function": {"name": "customer_customer_list", "arguments": "{}"}},
+        ]
+        fake_provider.reply("POST", COMPLETIONS, sse=[openai_chunk(tool_calls=asked), openai_chunk(finish="tool_calls"), "[DONE]"])
+        tools = [{"type": "function", "name": "inventory_product_list"}, {"type": "function", "name": "customer_customer_list"}]
+
+        got = frames(door(client, STREAM, turn(business, user("How many products and customers?"), tools=tools)))
+
+        calls = [frame for frame in got if isinstance(frame, dict) and frame["type"] == "function_call"]
+        assert [call["call_id"] for call in calls] == ["call_p", "call_c"]
+        response = next(frame for frame in got if isinstance(frame, dict) and frame["type"] == "response")
+        assert [item["call_id"] for item in response["output"]] == ["call_p", "call_c"]
+        answered = [
+            user("How many products and customers?"),
+            {"role": "assistant", "content": "", "tool_calls": [{"id": c["id"], "type": "function", "function": c["function"]} for c in asked]},
+            {"role": "tool", "tool_call_id": "call_p", "content": '{"count": 12}'},
+            {"role": "tool", "tool_call_id": "call_c", "content": '{"count": 30}'},
+        ]
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("12 products and 30 customers."))
+
+        frames(door(client, STREAM, turn(business, *answered, tools=tools, continuation=response["continuation"])))
+
+        assert [m.get("tool_call_id") for m in chat_requests(fake_provider)[1].body["messages"][-2:]] == ["call_p", "call_c"]
+        assert usage_row(business).messages == 1
+
     def _asked(self, client, business, fake_provider) -> tuple[list, str]:
         fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("sale_order_list", "{}", call_id="call_7"))
         got = frames(door(client, STREAM, turn(business, user("Open orders?"), tools=[{"type": "function", "name": "sale_order_list"}])))
@@ -206,7 +260,7 @@ class TestTheHubsTools:
     def test_the_last_message_of_the_month_still_gets_its_tools_answered(self, client, internal, business, answering, fake_provider):
         """The turn that follows a tool is answered even when the message that asked for it was the month's last one:
         otherwise the person sees the tool run and no answer."""
-        AssistantUsage.objects.create(hub=business, month=queries.usage.month_of(timezone.now()), messages=29)
+        AssistantUsage.objects.create(hub=business, model=MODEL, month=queries.usage.month_of(timezone.now()), messages=29)
         conversation, token = self._asked(client, business, fake_provider)
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Done."))
 
@@ -259,7 +313,7 @@ class TestTheHubsTools:
 
 class TestRefusalsBeforeTheModel:
     def test_a_spent_allowance_is_refused_without_calling_the_model(self, client, internal, business, answering, fake_provider):
-        AssistantUsage.objects.create(hub=business, month=queries.usage.month_of(timezone.now()), messages=30)
+        AssistantUsage.objects.create(hub=business, model=MODEL, month=queries.usage.month_of(timezone.now()), messages=30)
 
         response = door(client, STREAM, turn(business))
 
@@ -278,7 +332,7 @@ class TestRefusalsBeforeTheModel:
         assert (response.status_code, error_code(response)) == (429, "assistant.quota_exceeded")
 
     def test_a_demo_out_of_its_ten_is_refused_with_no_renewal(self, client, internal, answering, fake_provider):
-        AssistantUsage.objects.create(demo="demo-1a2b3c4d", month=queries.usage.month_of(timezone.now()), messages=10)
+        AssistantUsage.objects.create(demo="demo-1a2b3c4d", model=MODEL, month=queries.usage.month_of(timezone.now()), messages=10)
 
         response = door(client, STREAM, {"hub": "demo-1a2b3c4d", "messages": [user("Hi")]})
 
@@ -433,7 +487,7 @@ class TestTheJsonDoor:
         assert any(names_the_file(line, unreadable_ca) for line in logged)
 
     def test_a_spent_allowance_is_a_429_with_the_same_code(self, client, internal, business, answering, fake_provider):
-        AssistantUsage.objects.create(hub=business, month=queries.usage.month_of(timezone.now()), messages=30)
+        AssistantUsage.objects.create(hub=business, model=MODEL, month=queries.usage.month_of(timezone.now()), messages=30)
 
         response = door(client, JSON, turn(business))
 

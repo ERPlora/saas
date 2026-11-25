@@ -13,7 +13,7 @@ from django.utils import timezone
 from live.ninja import ensure_api_parity, operation_ids
 
 from assistant import queries, services
-from assistant.schemas import Caller
+from assistant.schemas import Caller, ClaimIn
 from assistant.services.platform_actor import platform_context
 from config.api import api
 from hubs.tests.conftest import make_user, plans  # noqa: F401 - shared fixtures
@@ -104,8 +104,8 @@ class TestTheRoutes:
 
 class TestTheUsage:
     def test_the_account_sees_its_own_month(self, signed_in, account):
-        services.turn_usage.message_claim(platform_context(), Caller(user_id=account.pk))
-        services.turn_usage.message_claim(platform_context(), Caller(user_id=account.pk))
+        services.turn_usage.message_claim(platform_context(), ClaimIn(caller=Caller(user_id=account.pk), model="gpt-test"))
+        services.turn_usage.message_claim(platform_context(), ClaimIn(caller=Caller(user_id=account.pk), model="gpt-test"))
 
         response = signed_in.get("/api/assistant/usage", HTTP_HOST=HOST)
 
@@ -117,7 +117,7 @@ class TestTheUsage:
         from hubs.tests.conftest import create_business
 
         hub = create_business(account)
-        services.turn_usage.message_claim(platform_context(), Caller(hub_id=hub.id, slug=hub.slug))
+        services.turn_usage.message_claim(platform_context(), ClaimIn(caller=Caller(hub_id=hub.id, slug=hub.slug), model="gpt-test"))
 
         assert signed_in.get("/api/assistant/usage", HTTP_HOST=HOST).json()["used"] == 0
 

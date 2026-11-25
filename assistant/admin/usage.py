@@ -1,9 +1,9 @@
-"""«Assistant usage records»: what each business (or demo) spent by month, its messages of the plan's allowance,
-tokens, dictations, characters read aloud and cost. Read only for everybody: rows are written by the gateway alone
-(``assistant.message.claim|release``, ``assistant.usage.record``)."""
+"""«Assistant usage records»: what each business (or demo) spent by month and model, its messages of the plan's
+allowance, tokens, dictations, characters read aloud and cost. Read only for everybody: rows are written by the gateway
+alone (``assistant.message.claim|release``, ``assistant.usage.record``)."""
 
 from django.contrib import admin
-from django.utils.translation import gettext_lazy
+from django.utils.translation import gettext, gettext_lazy
 
 from assistant.models import AssistantUsage
 
@@ -33,8 +33,8 @@ class UsageKindFilter(admin.SimpleListFilter):
 
 @admin.register(AssistantUsage)
 class AssistantUsageAdmin(admin.ModelAdmin):
-    """What each business (or demo, or account with the panel's assistant) spent through the gateway, by month
-    (ASSISTANT-F24): read only for everybody, so no member of the staff gives a business its allowance back by editing
+    """What each business (or demo, or account with the panel's assistant) spent through the gateway, by month and
+    model (ASSISTANT-F24): read only for everybody, so no member of the staff gives a business its allowance back by editing
     or deleting its row."""
 
     # What the staff look for first (the allowance spent and what it cost) before the measures, so a desk's width shows
@@ -42,16 +42,19 @@ class AssistantUsageAdmin(admin.ModelAdmin):
     list_display = (
         "spender",
         "period",
+        "answered_by",
         "messages",
         "cost",
         "tokens_input",
+        "tokens_cache_read",
+        "tokens_cache_write",
         "tokens_output",
         "tokens_embedding",
         "transcriptions",
         "speech_characters",
     )
-    list_filter = (UsageKindFilter, "month")
-    search_fields = ("hub__name", "hub__slug", "demo", "user__email")
+    list_filter = (UsageKindFilter, "month", "model")
+    search_fields = ("hub__name", "hub__slug", "demo", "user__email", "model")
     list_select_related = ("hub", "user")
     date_hierarchy = "month"
     fields = (
@@ -59,8 +62,11 @@ class AssistantUsageAdmin(admin.ModelAdmin):
         "demo",
         "user",
         "month",
+        "model",
         "messages",
         "tokens_input",
+        "tokens_cache_read",
+        "tokens_cache_write",
         "tokens_output",
         "tokens_embedding",
         "transcriptions",
@@ -80,6 +86,10 @@ class AssistantUsageAdmin(admin.ModelAdmin):
     @admin.display(description=gettext_lazy("month"), ordering="month")
     def period(self, row: AssistantUsage) -> str:
         return row.month.strftime("%Y-%m")
+
+    @admin.display(description=gettext_lazy("model"), ordering="model")
+    def answered_by(self, row: AssistantUsage) -> str:
+        return row.model or gettext("Not recorded")
 
     @admin.display(description=gettext_lazy("cost (USD)"), ordering="cost_usd")
     def cost(self, row: AssistantUsage) -> str:

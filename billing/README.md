@@ -16,6 +16,7 @@ pago); detalle en «Facturas de ERPlora (L3-C)».
 | `models/tax.py`, `models/oss_notices.py` | `TaxCategory` (qué se vende), `TaxRule` (tipo por país/región/categoría con vigencia; `is_subject=False` = no sujeta), `FiscalPolicy` (emisor, alta en el ROI, OSS y su umbral; una sola fila), `CompanyConfig` (identidad fiscal de ERPlora, la del solicitante de VIES; una sola fila), `VatCheck` (bitácora de VIES: cada consulta es una fila nueva, nunca se edita) y `OssNotice` (los avisos al equipo del 80 % y del cruce del umbral OSS, uno por año y tipo) |
 | `vat.py` | Calificación: `quote_vat` (lo que se SUMA a un neto; `None` = no se vende), `resolve_vat` (reparte lo ya cobrado, concilia el cero de Stripe en una venta sujeta), `vat_rate_for`. Sin ORM: lee la tabla por `queries` |
 | `vat_breakdown.py` | El desglose de un importe en base y cuota: los tratamientos (`domestic`, `oss`, `reverse_charge`, `not_subject`, `exempt`), `VatBreakdown`, `add_vat`, `split_gross` y el reparto de lo cobrado (`_breakdown`). Sin ORM ni consultas |
+| `payer.py` | `Payer`: quién paga una venta (dónde está, su NIF y si VIES lo probó). Lo lee `queries.payer_of` y cada puerta que vende se lo da entero al motor. Sin ORM ni consultas |
 | `vat_countries.py` | Dónde factura y vende ERPlora: los tipos generales de la UE-27 (`EU_VAT_RATES`, el respaldo de la tabla), `BILLING_COUNTRIES`, `SOLD_TO_COUNTRIES`, `tax_id_type_for` y la región fiscal de un código postal español. Sin ORM ni consultas |
 | `vies.py` | Cliente REST de VIES como solicitante identificado; nunca lanza: red caída, timeout, HTTP ≥ 400, JSON roto o «válido sin número de consulta» = `unavailable` |
 | `services/vat_clearance.py`, `services/payer_vat_numbers.py`, `services/sale_tax.py` | Las puertas: el veredicto de VIES (`check_vat_number`, `verify_customer_vat`, `clear_tax_id_for_stripe`, `record_manual_override`), el NIF del pagador (`validate_vat_for_profile` y la operación `billing.vat_check.run`) y el impuesto de una venta (`sale_quote`, `sale_tax_rates`, `require_billing_location`) |
@@ -261,7 +262,7 @@ en otra solo por sus operaciones), que sube `state_version` y empuja la foto al 
 ### Webhook
 
 Eventos a suscribir en Stripe: **`billing.services.webhook_dispatch.STRIPE_WEBHOOK_EVENTS`**, la única lista (15 hoy: los de
-checkout, las facturas y sus rectificativas, las suscripciones y el cliente), junto al `match` que los trata;
+checkout, las facturas y sus rectificativas, las suscripciones y el cliente), que sale de la tabla que los reparte;
 `manage.py audit_stripe_webhooks` la compara con el destino de Stripe (cada día a las 05:40 UTC: ver «aws») y
 dice qué falta y qué sobra (BILLING-F39). Sin firma válida, 400; sin `STRIPE_WEBHOOK_SECRET`, 503;
 duplicado, 200 `duplicate`; en curso en otra entrega, 409; fallo, 500 (Stripe reintenta). Siempre se lee la
@@ -507,7 +508,8 @@ PDF). Aquí nunca se simula VeriFactu: sin respuesta del Hub la factura sigue «
 - `GET /internal/platform/invoices/{id}` — la misma respuesta: el SaaS pregunta por las `issued` y `rejected`
   hasta que la AEAT acepta (una rechazada la corrige el Hub con un registro nuevo; su siguiente respuesta manda).
 - `GET /internal/platform/invoices/{id}/pdf` — el PDF (`application/pdf`); 404 si no la tiene. El SaaS no lo
-  guarda: lo pide al descargarlo (PLAN-SAAS §3.6 punto 7).
+  guarda: lo pide al descargarlo (PLAN-SAAS §3.6 punto 7) y al mandar el correo de la factura, que lo lleva
+  adjunto y sin enlaces; sin el PDF el correo no sale y queda pendiente para la pasada siguiente.
 
 ### Reintentos
 
@@ -542,13 +544,14 @@ Ve una factura la cuenta que la pagó (su pagador ese día) y el propietario act
   409 `billing.invoice_paid`; anulada, 409 `billing.invoice_void`.
 - `billing.subscription.list` — `GET /api/billing/subscriptions` → una fila por negocio que Stripe cobra (del
   propietario o del pagador): plan y módulos a precio neto, `next_invoice {date, total_cents con IVA, currency}`
-  (null si se cancela; `total_cents` null sin lugar del pagador; con una bajada que espera, el importe del plan y
-  el periodo nuevos, con sus módulos a ese precio, y null si ese plan salió del catálogo, porque Stripe cobra ese
-  día los items nuevos: `plan` y `modules` siguen diciendo lo de hoy), estado, `cancelling`, `ends_at`,
+  (null si se cancela o si el negocio se eliminó; `total_cents` null sin lugar del pagador; con una bajada que espera,
+  el importe del plan y el periodo nuevos, con sus módulos a ese precio, y null si ese plan salió del catálogo, porque
+  Stripe cobra ese día los items nuevos: `plan` y `modules` siguen diciendo lo de hoy), estado (el de Stripe, o
+  `deleting` con la etiqueta del negocio si se eliminó, hasta que el barrido la termina), `cancelling`, `ends_at`,
   `cancel_requested`, `unpaid_invoice_id`, `scheduled_change` (la bajada que espera), `actions` (`view_invoice`
   primero si hay una sin cobrar; si no, `change_plan` o `keep_plan`; `cancel_plan`; `view_invoices`) y `can`.
   Cambiar/cancelar/mantener: el propietario que paga. Viva. Filtros `?hub_id=` (uno ajeno da la lista vacía) y
-  `?status=` (el de la suscripción); expuesta a las claves con `billing.read` (BILLING-F18, la API de
+  `?status=` (el de la suscripción; un negocio eliminado no sale); expuesta a las claves con `billing.read` (BILLING-F18, la API de
   suscripciones del SaaS antiguo). Un módulo terminado no sale.
 - `billing.payment_method.get` — `GET /api/billing/payment-method?hub_id=` → por pagador de la cuenta, sus
   negocios, la tarjeta (`brand`, `last4`, `exp_month`, `exp_year`; la de la suscripción o la del cliente),

@@ -2,6 +2,7 @@
 issued, in its own series."""
 
 import logging
+from dataclasses import dataclass
 from functools import partial
 from datetime import datetime
 
@@ -31,6 +32,32 @@ def rectification_type(reason: str | None) -> str:
     return Invoice.RectificationType.R4 if reason == "fraudulent" else Invoice.RectificationType.R1
 
 
+@dataclass(frozen=True)
+class _Rectification:
+    """What Stripe gave back of an invoice, once per ``source_id`` (its credit note, its refund or its negative
+    invoice): the ``items`` of :func:`_rectifying_lines`, which add up to ``expected_total``."""
+
+    source_id: str
+    items: list[dict]
+    expected_total: int
+    rtype: str
+    reason: str
+    billed_at: datetime | None
+    stripe_number: str = ""
+
+
+def _corrected_line(original: Invoice, sources: list[InvoiceLine], item: dict) -> InvoiceLine:
+    """The line of ``original`` (``sources``: all of them) an item gives back: the one Stripe names, else the first
+    that sells the same; without either, a line of what Stripe says it sells, at the invoice's rate."""
+    kind, slug, category = invoice_sealing._item_of(item.get("price") or "")
+    named = item.get("source_line")
+    return (
+        next((line for line in sources if named and line.stripe_line_id == named), None)
+        or next((line for line in sources if slug and line.item_slug == slug), None)
+        or InvoiceLine(item_kind=kind, item_slug=slug, tax_category_id=category, tax_rate=original.tax_rate)
+    )
+
+
 def _rectifying_lines(original: Invoice, items: list[dict]) -> list[InvoiceLine]:
     """The lines of a rectifying invoice, negative where they give money back, sealed with the qualification of
     the invoice they rectify (a rectifying invoice keeps it) and the rate of the line they correct. ``items``:
@@ -39,27 +66,25 @@ def _rectifying_lines(original: Invoice, items: list[dict]) -> list[InvoiceLine]
     sources = list(original.lines.all())
     lines = []
     for position, item in enumerate(items, start=1):
-        kind, slug, category = invoice_sealing._item_of(item.get("price") or "")
-        source = next((line for line in sources if line.stripe_line_id and line.stripe_line_id == item.get("source_line")), None)
-        source = source or next((line for line in sources if slug and line.item_slug == slug), None)
+        source = _corrected_line(original, sources, item)
         rate, net, tax = invoice_sealing._sealed_amounts(
             item["amount"],
             item["tax"],
             treatment=original.tax_treatment,
-            rate=source.tax_rate if source is not None else original.tax_rate,
+            rate=source.tax_rate,
             reconciled=item.get("split", False) or (original.vat_included_reconciled and not item["tax"]),
         )
         lines.append(
             InvoiceLine(
                 position=position,
-                description=(item.get("description") or (source.description if source else "") or _("Credit"))[:255],
-                item_kind=source.item_kind if source else kind,
-                item_slug=source.item_slug if source else slug,
+                description=(item.get("description") or source.description or _("Credit"))[:255],
+                item_kind=source.item_kind,
+                item_slug=source.item_slug,
                 quantity=max(int(item.get("quantity") or 1), 1),
                 proration=bool(item.get("proration")),
-                period_start=item.get("period_start") or (source.period_start if source else None),
-                period_end=item.get("period_end") or (source.period_end if source else None),
-                tax_category_id=source.tax_category_id if source else category,
+                period_start=item.get("period_start") or source.period_start,
+                period_end=item.get("period_end") or source.period_end,
+                tax_category_id=source.tax_category_id,
                 tax_treatment=original.tax_treatment,
                 tax_rate=rate,
                 net_cents=net,
@@ -71,18 +96,18 @@ def _rectifying_lines(original: Invoice, items: list[dict]) -> list[InvoiceLine]
     return lines
 
 
-def _rectify(ctx, original: Invoice, *, source_id: str, items: list[dict], expected_total: int, rtype: str,  # noqa: PLR0913
-             reason: str, stripe_number: str = "", billed_at: datetime | None = None) -> dict:
+def _rectify(ctx, original: Invoice, rectification: _Rectification) -> dict:
     """A rectifying invoice of ``original`` (``ERPR`` series, its qualification and recipient), once per Stripe
     ``source_id``; its lines must add up to what Stripe gave back, or nothing is invoiced. Issued after the
     COMMIT."""
+    source_id = rectification.source_id
     existing = Invoice.objects.filter(kind=Invoice.Kind.CREDIT_NOTE, stripe_source_id=source_id).first()
     if existing is not None:
         return invoice_sealing._record_out(existing, "duplicate")
-    lines = _rectifying_lines(original, items)
+    lines = _rectifying_lines(original, rectification.items)
     net_cents = sum(line.net_cents for line in lines)
     tax_cents = sum(line.tax_cents for line in lines)
-    invoice_sealing._require_adds_up(source_id, net_cents + tax_cents, expected_total, original.hub_id)
+    invoice_sealing._require_adds_up(source_id, net_cents + tax_cents, rectification.expected_total, original.hub_id)
     now = timezone.now()
     series, sequence, number, today = invoice_numbering.issue_number(Invoice.Kind.CREDIT_NOTE)
     copied = {
@@ -98,10 +123,10 @@ def _rectify(ctx, original: Invoice, *, source_id: str, items: list[dict], expec
         kind=Invoice.Kind.CREDIT_NOTE,
         rectifies=original,
         stripe_source_id=source_id,
-        stripe_number=(stripe_number or "")[:64],
-        billed_at=billed_at,
-        rectification_type=rtype,
-        rectification_reason=(reason or "")[:255],
+        stripe_number=(rectification.stripe_number or "")[:64],
+        billed_at=rectification.billed_at,
+        rectification_type=rectification.rtype,
+        rectification_reason=(rectification.reason or "")[:255],
         series=series,
         sequence=sequence,
         number=number,
@@ -182,13 +207,15 @@ def _record_negative(ctx, hub: Hub, stripe_invoice: dict) -> dict:
     return _rectify(
         ctx,
         found.invoice,
-        source_id=stripe_invoice["id"],
-        items=_stripe_items(lines, sign=1),
-        expected_total=int(stripe_invoice["total"]),
-        rtype=Invoice.RectificationType.R1,
-        reason=stripe_invoice.get("description") or "proration",
-        stripe_number=stripe_invoice.get("number") or "",
-        billed_at=invoice_sealing._moment_or_none(stripe_invoice.get("created")),
+        _Rectification(
+            source_id=stripe_invoice["id"],
+            items=_stripe_items(lines, sign=1),
+            expected_total=int(stripe_invoice["total"]),
+            rtype=Invoice.RectificationType.R1,
+            reason=stripe_invoice.get("description") or "proration",
+            stripe_number=stripe_invoice.get("number") or "",
+            billed_at=invoice_sealing._moment_or_none(stripe_invoice.get("created")),
+        ),
     )
 
 
@@ -284,13 +311,15 @@ def credit_note_record(ctx: OperationContext, data: CreditNoteRecordIn) -> dict:
     return _rectify(
         ctx,
         original,
-        source_id=credit_note["id"],
-        items=items,
-        expected_total=-int(credit_note.get("total") or 0),
-        rtype=rectification_type(credit_note.get("reason")),
-        reason=credit_note.get("memo") or credit_note.get("reason") or "credit_note",
-        stripe_number=credit_note.get("number") or "",
-        billed_at=invoice_sealing._moment_or_none(credit_note.get("created")),
+        _Rectification(
+            source_id=credit_note["id"],
+            items=items,
+            expected_total=-int(credit_note.get("total") or 0),
+            rtype=rectification_type(credit_note.get("reason")),
+            reason=credit_note.get("memo") or credit_note.get("reason") or "credit_note",
+            stripe_number=credit_note.get("number") or "",
+            billed_at=invoice_sealing._moment_or_none(credit_note.get("created")),
+        ),
     )
 
 
@@ -333,10 +362,12 @@ def refund_record(ctx: OperationContext, data: RefundRecordIn) -> dict:
     return _rectify(
         ctx,
         original,
-        source_id=refund["id"],
-        items=[{"amount": -amount, "tax": 0, "description": _("Refund"), "split": True}],
-        expected_total=-amount,
-        rtype=rectification_type(refund.get("reason")),
-        reason=refund.get("reason") or "refund",
-        billed_at=invoice_sealing._moment_or_none(refund.get("created")),
+        _Rectification(
+            source_id=refund["id"],
+            items=[{"amount": -amount, "tax": 0, "description": _("Refund"), "split": True}],
+            expected_total=-amount,
+            rtype=rectification_type(refund.get("reason")),
+            reason=refund.get("reason") or "refund",
+            billed_at=invoice_sealing._moment_or_none(refund.get("created")),
+        ),
     )

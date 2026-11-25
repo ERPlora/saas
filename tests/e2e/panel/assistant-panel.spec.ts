@@ -66,7 +66,7 @@ const WORDS = {
     goTo: 'Go to Businesses',
     create: `Create a business called ${NEW_BUSINESS}`,
     word: 'CONFIRM',
-    card: 'Create business in Businesses. Check each datum before going on.',
+    card: 'Create business in Businesses. Check each detail before you continue.',
     country: /Country:?\s*Spain/,
     notCreated: 'I did not create the business: nothing changed.',
     receipt: 'Not done, cancelled: Create business in Businesses',

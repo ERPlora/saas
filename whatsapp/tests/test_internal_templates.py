@@ -19,9 +19,10 @@ import httpx
 import pytest
 import respx
 from django.utils import timezone
+from live.models import OutboxEvent
 
 from hubs.models import Hub
-from whatsapp import queries
+from whatsapp import events, queries
 from whatsapp.gateway import answers, deliveries, message_templates
 from whatsapp.models import PhoneNumber, Template, TemplateSubmission
 from whatsapp.tests.conftest import APP_ID, GRAPH
@@ -493,18 +494,95 @@ class TestTheMirror:
         assert sorted(Template.objects.filter(hub=business).values_list("name", flat=True)) == ["a", "vieja"]
 
     @respx.mock
-    def test_meta_down_leaves_the_mirror_as_it_was(self, number, business):
+    def test_meta_down_leaves_the_mirror_as_it_was(self, number, business, caplog):
         mirrored(business)
         respx.get(TEMPLATES).mock(side_effect=httpx.ConnectError("down"))
 
-        message_templates.sync_templates(business.id)
+        assert message_templates.sync_templates(business.id) is False
 
         assert Template.objects.filter(hub=business).count() == 1
+        assert f"whatsapp.template.sync_failed hub_id={business.id} reason=MetaUnreachable" in caplog.text
+        assert not PhoneNumber.objects.get(pk=number.pk).needs_reconnect
+        assert not OutboxEvent.objects.filter(name=events.TEMPLATES_SYNCED).exists()
+
+    @pytest.mark.parametrize(("meta_code", "expired"), [(190, True), (10, False), (100, False)])
+    @respx.mock
+    def test_meta_refusing_its_list_leaves_the_mirror_as_it_was(
+        self, number, business, caplog, meta_code, expired
+    ):
+        """Only Meta's 190 (the permission expired or withdrawn) marks the number «needs reconnecting»."""
+        mirrored(business)
+        respx.get(TEMPLATES).mock(return_value=refused(400, meta_code))
+
+        assert message_templates.sync_templates(business.id) is False
+
+        assert Template.objects.filter(hub=business).count() == 1
+        assert f"whatsapp.template.sync_failed hub_id={business.id} reason=MetaRefused" in caplog.text
+        assert PhoneNumber.objects.get(pk=number.pk).needs_reconnect is expired
+        assert not OutboxEvent.objects.filter(name=events.TEMPLATES_SYNCED).exists()
+
+    @respx.mock
+    def test_every_page_asks_for_the_same_fields_and_as_many_templates(self, number, business):
+        pages = respx.get(TEMPLATES).mock(side_effect=[
+            httpx.Response(200, json={"data": [], "paging": {"cursors": {"after": "QVFI"}, "next": f"{TEMPLATES}?after=QVFI"}}),
+            httpx.Response(200, json={"data": []}),
+        ])
+        asked = {"fields": "id,name,language,category,status,rejected_reason,components", "limit": "100"}
+
+        assert message_templates.sync_templates(business.id) is True
+
+        assert [dict(call.request.url.params) for call in pages.calls] == [asked, {**asked, "after": "QVFI"}]
+
+    @pytest.mark.parametrize(
+        "paging",
+        [
+            None,
+            "x",
+            {"cursors": {"after": "QVFI"}},
+            {"next": f"{TEMPLATES}?after=QVFI"},
+            {"next": f"{TEMPLATES}?after=QVFI", "cursors": {}},
+            {"next": f"{TEMPLATES}?after=QVFI", "cursors": "x"},
+            {"next": f"{TEMPLATES}?after=QVFI", "cursors": {"after": ""}},
+        ],
+        ids=["none", "not_an_object", "no_next", "no_cursors", "no_after", "cursors_not_an_object", "empty_after"],
+    )
+    @respx.mock
+    def test_a_page_that_names_no_next_one_is_the_last(self, number, business, paging):
+        mirrored(business, name="vieja", meta_id="1")
+        page = {"data": [{"id": "2", "name": "a", "language": "es", "status": "APPROVED"}], "paging": paging}
+        pages = respx.get(TEMPLATES).mock(return_value=httpx.Response(200, json=page))
+
+        assert message_templates.sync_templates(business.id) is True
+
+        assert pages.call_count == 1
+        assert list(Template.objects.filter(hub=business).values_list("name", flat=True)) == ["a"]
+
+    @pytest.mark.parametrize("listed", [[], None, ["x", {"id": "9", "language": "es"}]], ids=["empty", "null", "not_templates"])
+    @respx.mock
+    def test_a_whole_list_without_templates_empties_the_mirror(self, number, business, listed):
+        mirrored(business)
+        respx.get(TEMPLATES).mock(return_value=httpx.Response(200, json={"data": listed}))
+
+        assert message_templates.sync_templates(business.id) is True
+
+        assert not Template.objects.filter(hub=business).exists()
+
+    @respx.mock
+    def test_a_list_that_never_ends_is_left_at_its_twentieth_page(self, number, business):
+        mirrored(business, name="vieja", meta_id="1")
+        endless = {"data": [{"id": "2", "name": "a", "language": "es", "status": "APPROVED"}],
+                   "paging": {"cursors": {"after": "QVFI"}, "next": f"{TEMPLATES}?after=QVFI"}}
+        pages = respx.get(TEMPLATES).mock(return_value=httpx.Response(200, json=endless))
+
+        assert message_templates.sync_templates(business.id) is False
+
+        assert pages.call_count == 20
+        assert sorted(Template.objects.filter(hub=business).values_list("name", flat=True)) == ["a", "vieja"]
 
     def test_a_business_without_a_number_reads_nothing(self, internal, business):
         with respx.mock:
             meta = respx.get(TEMPLATES)
-            message_templates.sync_templates(business.id)
+            assert message_templates.sync_templates(business.id) is False
 
         assert not meta.called
 

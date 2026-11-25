@@ -66,6 +66,8 @@
       "scheduled": "Bajada programada: {plan} hasta el {date} y después {next}.",
       "scheduledBilling": "Bajada programada: {plan} con pago {from} hasta el {date} y después {to}.",
       "scheduledFrom": "El negocio pasa a {plan} el {date}.",
+      "annualOnly": "Solo con pago anual",
+      "notOnSale": "No está a la venta ahora mismo",
       "payFirst": "Antes, paga la factura pendiente.",
       "later": "{plans}: disponibles al pasar a {plan}.",
       "trial": "Lo pruebas hasta el {date}",

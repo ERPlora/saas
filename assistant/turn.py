@@ -3,20 +3,22 @@ model, the tools offered, the answer streamed as the Hub's frames, and what it s
 
 The conversation is the Hub's (the person's browser owns it): erplora.com uses it for
 the call and forgets it. ``prepare`` refuses what is too big (never cuts it), drops the client's system messages for
-the Hub's ``instructions``, drops a tool result whose call is not there and keeps the last ``MAX_MESSAGES``. ``run``
-streams the turn through its route (``assistant.routing.stream``: the model that answers, then its fallback if the
-provider fails before answering) and yields the frames the Hub reads:
+the Hub's ``instructions``, drops a tool result whose call is not there and lightens the earlier requests
+(``assistant.history``: what their tools gave as a note, as many as fit its budget). ``run`` streams the turn
+through its route (``assistant.routing.stream``: the model that answers, then its fallback if the provider fails
+before answering) and yields the frames the Hub reads:
 
     {"type": "text_delta", "text": str}
     {"type": "function_call", "name": str, "call_id": str, "arguments": str}     # a tool of the Hub, for it to run
     {"type": "error", "code": str, "message": str, "retriable": bool}
     {"type": "web"}     # once, when a search brought pages: the caller keeps the mark with the answer (saas#287)
+    {"type": "sources", "sources": [str]}     # the web addresses one of erplora.com's tools consulted
 
 The mark goes back with a report of the answer, whose text is then not mailed: section 3(b)(i) of Brave Search's
 terms forbids keeping its results, and a mailbox keeps.
 
 ``Outcome`` keeps what the door needs after the stream: the text, the Hub's tool calls, the tokens and their cost
-(with the prices of the model that answered), whether anything was answered, whether it brought pages from the web
+of each model that answered (with its prices), whether anything was answered, whether it brought pages from the web
 and the error. The provider's own words of a failure reach neither the Hub nor a log (they may quote the
 conversation): the Hub gets a code and a plain sentence, the log the status.
 
@@ -39,7 +41,6 @@ import math
 from collections.abc import AsyncIterator, Sequence
 from contextlib import aclosing
 from dataclasses import dataclass, field
-from decimal import Decimal
 from typing import Any
 
 from asgiref.sync import sync_to_async
@@ -47,17 +48,16 @@ from django.http import HttpRequest, JsonResponse
 from django_ratelimit.core import get_usage
 from live.errors import OperationError
 
-from assistant import queries, routing, services
+from assistant import call_log, history, queries, routing, services
 from assistant.continuation import caller_key, continuation_token, is_continuation, tool_budget
-from assistant.models import estimate_cost
 from assistant.providers.base import ToolSpec, TurnRequest
-from assistant.schemas import Caller, ClaimOut, MessageReleaseIn, RouteCandidate, RouteIn, UsageRecordIn
+from assistant.schemas import Caller, ClaimIn, ClaimOut, MessageReleaseIn, RouteCandidate, RouteIn, UsageRecordIn
 from assistant.services.platform_actor import platform_context
+from assistant.turn_outcome import Outcome
+from assistant.usage_cost import Tokens
 
 logger = logging.getLogger(__name__)
 
-#: The messages of a conversation the model sees: the last ones (the system message apart).
-MAX_MESSAGES = 100
 #: The text of a conversation (its attachments apart, ``attachments``): over it the turn is refused, never cut.
 MAX_TEXT_BYTES = 1_000_000
 #: The longest answer of one call to the model, in tokens.
@@ -134,9 +134,7 @@ def prepare(messages: list[dict], instructions: str, *, answer_kept: bool = Fals
     if text_bytes(messages) > MAX_TEXT_BYTES:
         raise TurnRefused(413, "payload_too_large", f"The conversation's text exceeds {MAX_TEXT_BYTES} bytes.")
     client = [message for message in messages if message["role"] != "system"]
-    conversation = sanitized(client)[-(MAX_MESSAGES - 1) :]
-    while conversation and conversation[0]["role"] == "tool":
-        conversation = conversation[1:]
+    conversation = history.window(sanitized(client))
     system = "\n\n".join(part for part in (instructions, server_tools.rules(answer_kept=answer_kept)) if part)
     return [{"role": "system", "content": system}, *attachments.expand(conversation)]
 
@@ -166,27 +164,6 @@ def hub_tools(tools: Sequence[dict]) -> list[ToolSpec]:
 # --- The turn ----------------------------------------------------------------------------------------------------
 
 
-@dataclass
-class Outcome:
-    """What a turn produced, for the door to answer and record after it."""
-
-    text: str = ""
-    calls: list[dict] = field(default_factory=list)
-    tokens_input: int = 0
-    tokens_output: int = 0
-    cost: Decimal = Decimal("0")
-    answered: bool = False
-    web: bool = False
-    error: dict | None = None
-
-    def output(self) -> list[dict]:
-        items: list[dict] = []
-        if self.text:
-            items.append({"type": "message", "content": [{"type": "output_text", "text": self.text}]})
-        items.extend({"type": "function_call", **call} for call in self.calls)
-        return items
-
-
 def failure(payload: dict) -> dict:
     """The Hub's frame of a provider's failure: retriable or not, never the provider's words."""
     code = "assistant.provider_unavailable" if payload.get("retriable") else "assistant.provider_rejected"
@@ -204,22 +181,102 @@ def assistant_message(text: str, calls: list[dict]) -> dict:
     }
 
 
-async def run(started: Turn, outcome: Outcome) -> AsyncIterator[dict]:  # noqa: C901, PLR0912, PLR0915
+@dataclass
+class Round:
+    """One call to the model in a turn: the candidate that answered it, the size of what it was sent, its text, its
+    tools asked for, what it spent and its failure."""
+
+    answering: RouteCandidate
+    sizes: call_log.Sizes = call_log.Sizes()
+    text: str = ""
+    calls: list[dict] = field(default_factory=list)
+    tokens: Tokens | None = None
+    failed: dict | None = None
+
+
+async def ask(asked: Round, remaining: list, build, outcome: Outcome) -> AsyncIterator[dict]:
+    """Stream one round through the route: the frames of its text as they come; ``asked`` and ``outcome`` filled."""
+    async for event in routing.stream(remaining, build):
+        payload = event.payload
+        if event.type == "model":
+            asked.answering = next(candidate for candidate in remaining if candidate.model == _uuid(payload["model"]))
+        elif event.type == "fallback":
+            logger.warning("assistant.turn.fallback from=%s to=%s status=%s", payload["from"], payload["to"], payload["status"])
+        elif event.type == "text_delta":
+            asked.text += payload["text"]
+            outcome.text += payload["text"]
+            outcome.answered = True
+            yield {"type": "text_delta", "text": payload["text"]}
+        elif event.type == "tool_call":
+            asked.calls.append({"name": payload["name"], "call_id": payload["call_id"], "arguments": payload["arguments"]})
+        elif event.type == "usage":
+            asked.tokens = Tokens.of(payload)
+            outcome.add_usage(asked.answering, asked.tokens)
+        elif event.type == "error":
+            asked.failed = payload
+
+
+#: What the model gets for a tool of the Hub it asked for along with erplora.com's: what ours give never reaches the
+#: Hub, so the Hub's tool waits for an answer of its own.
+NOT_RUN = json.dumps({"error": "Not run: ask for it again now, without erplora.com's tools.", "code": "assistant.tool_not_run"})
+
+
+async def run_ours(started: Turn, conversation: list, asked: Round, outcome: Outcome) -> AsyncIterator[dict]:
+    """Run erplora.com's own tools the round asked for, on the caller's budget, and add every result to the
+    conversation in the order asked (a tool of the Hub among them gets ``NOT_RUN``); the ``web`` frame once, when one
+    brought pages that may not be kept, and the ``sources`` of each that consulted any, for the caller to check the
+    answer's addresses against."""
+    from assistant import server_tools
+
+    conversation.append(assistant_message(asked.text, asked.calls))
+    for call in asked.calls:
+        if not server_tools.is_server_tool(call["name"]):
+            conversation.append({"role": "tool", "tool_call_id": call["call_id"], "content": NOT_RUN})
+            continue
+        result = await server_tools.run(
+            call["name"], call["arguments"], tool_budget(started.caller), answer_kept=started.answer_kept
+        )
+        consulted = server_tools.sources_of(result)
+        outcome.sources += consulted
+        if not outcome.web and server_tools.not_to_keep(call["name"], result):
+            outcome.web = True
+            yield {"type": "web"}
+        if consulted:
+            yield {"type": "sources", "sources": consulted}
+        conversation.append({"role": "tool", "tool_call_id": call["call_id"], "content": result})
+
+
+def closing_frames(outcome: Outcome, theirs: list) -> list[dict]:
+    """The last frames of a turn: the line of its sources, when the answer names none of them, and the Hub's tools."""
+    from assistant import server_tools
+
+    frames: list[dict] = []
+    line = server_tools.source_line(outcome.text, outcome.sources)
+    if line:
+        outcome.text += line
+        frames.append({"type": "text_delta", "text": line})
+    for call in theirs:
+        outcome.calls.append(call)
+        outcome.answered = True
+        frames.append({"type": "function_call", **call})
+    return frames
+
+
+async def run(started: Turn, outcome: Outcome) -> AsyncIterator[dict]:
     """Stream the turn: the frames of the answer as they come; ``outcome`` filled as it goes. The tools erplora.com
     runs itself (``server_tools``) are run here, on the caller's budget, and the model is asked again, at most
-    ``server_tools.MAX_ROUNDS`` times; on the last round they are not offered, so the model answers. A tool of the Hub
-    named as one of ours is ours. An answer that names none of the sources they gave gets them written below it."""
+    ``server_tools.MAX_ROUNDS`` times; on the last round they are not offered, so the model answers. An answer may ask
+    for several tools: the Hub's, when none of ours is among them, all go to the Hub at once. A tool of the Hub named as
+    one of ours is ours. An answer that names none of the sources they gave gets them written below it."""
     from assistant import attachments, server_tools
 
     conversation = list(started.messages)
-    sources: list[str] = []
     theirs_offered = [tool for tool in started.tools if not server_tools.is_server_tool(tool.name)]
     remaining = list(started.candidates)
     ours = server_tools.specs(answer_kept=started.answer_kept)
     rounds = 0
     while True:
         offered = theirs_offered + (ours if rounds < server_tools.MAX_ROUNDS else [])
-        text, calls, failed, answering = "", [], None, remaining[0]
 
         def build(candidate: RouteCandidate) -> TurnRequest:
             return TurnRequest(
@@ -229,58 +286,25 @@ async def run(started: Turn, outcome: Outcome) -> AsyncIterator[dict]:  # noqa: 
                 max_tokens=MAX_OUTPUT_TOKENS,
             )
 
-        async for event in routing.stream(remaining, build):
-            payload = event.payload
-            if event.type == "model":
-                answering = next(candidate for candidate in remaining if candidate.model == _uuid(payload["model"]))
-            elif event.type == "fallback":
-                logger.warning("assistant.turn.fallback from=%s to=%s status=%s", payload["from"], payload["to"], payload["status"])
-            elif event.type == "text_delta":
-                text += payload["text"]
-                outcome.text += payload["text"]
-                outcome.answered = True
-                yield {"type": "text_delta", "text": payload["text"]}
-            elif event.type == "tool_call":
-                calls.append({"name": payload["name"], "call_id": payload["call_id"], "arguments": payload["arguments"]})
-            elif event.type == "usage":
-                spent_in, spent_out = int(payload["input_tokens"]), int(payload["output_tokens"])
-                outcome.tokens_input += spent_in
-                outcome.tokens_output += spent_out
-                outcome.cost += estimate_cost(
-                    answering.price_input_per_1m, answering.price_output_per_1m, spent_in, spent_out
-                )
-            elif event.type == "error":
-                failed = payload
-        if failed is not None:
+        asked = Round(remaining[0], call_log.Sizes.of(conversation, offered))
+        async for frame in ask(asked, remaining, build, outcome):
+            yield frame
+        call_log.record(caller_key(started.caller), asked.answering, asked.sizes, asked.tokens)
+        if asked.failed is not None:
             # The status only: the provider's words may quote what the person wrote.
-            logger.warning("assistant.turn.provider_failed status=%s retriable=%s", failed.get("status"), failed.get("retriable"))
-            outcome.error = failure(failed)
+            logger.warning("assistant.turn.provider_failed status=%s retriable=%s", asked.failed.get("status"), asked.failed.get("retriable"))
+            outcome.error = failure(asked.failed)
             yield outcome.error
             return
-        remaining = remaining[remaining.index(answering) :]
-        mine = [call for call in calls if server_tools.is_server_tool(call["name"])]
-        theirs = [call for call in calls if not server_tools.is_server_tool(call["name"])]
-        if mine and not theirs and rounds < server_tools.MAX_ROUNDS:
-            conversation.append(assistant_message(text, mine))
-            for call in mine:
-                result = await server_tools.run(
-                    call["name"], call["arguments"], tool_budget(started.caller), answer_kept=started.answer_kept
-                )
-                sources += server_tools.sources_of(result)
-                if not outcome.web and server_tools.not_to_keep(call["name"], result):
-                    outcome.web = True
-                    yield {"type": "web"}
-                conversation.append({"role": "tool", "tool_call_id": call["call_id"], "content": result})
+        remaining = remaining[remaining.index(asked.answering) :]
+        theirs = [call for call in asked.calls if not server_tools.is_server_tool(call["name"])]
+        if len(theirs) < len(asked.calls) and rounds < server_tools.MAX_ROUNDS:
+            async for frame in run_ours(started, conversation, asked, outcome):
+                yield frame
             rounds += 1
             continue
-        line = server_tools.source_line(outcome.text, sources)
-        if line:
-            outcome.text += line
-            yield {"type": "text_delta", "text": line}
-        for call in theirs:
-            outcome.calls.append(call)
-            outcome.answered = True
-            yield {"type": "function_call", **call}
+        for frame in closing_frames(outcome, theirs):
+            yield frame
         return
 
 
@@ -371,7 +395,8 @@ async def start(caller: Caller, data: Any, *, answer_kept: bool) -> Turn:
         raise Refused(503, refused.code, refused.message, retriable=False) from None
     claim = None
     if not is_continuation(caller, data.continuation, messages):
-        claim = await sync_to_async(services.turn_usage.message_claim)(platform_context(), caller)
+        asked = ClaimIn(caller=caller, model=route.candidates[0].model_id)
+        claim = await sync_to_async(services.turn_usage.message_claim)(platform_context(), asked)
         if not claim.claimed:
             raise Refused(
                 429,
@@ -388,19 +413,26 @@ async def start(caller: Caller, data: Any, *, answer_kept: bool) -> Turn:
 
 
 def settle(started: Turn, outcome: Outcome) -> dict:
-    """After the turn: its message given back if nothing was answered, what it spent recorded; the usage after it."""
-    if started.claim is not None and not outcome.answered:
-        services.turn_usage.message_release(platform_context(), MessageReleaseIn(caller=started.caller, month=started.claim.month))
-    if outcome.tokens_input or outcome.tokens_output:
-        services.turn_usage.usage_record(
-            platform_context(),
-            UsageRecordIn(
-                caller=started.caller,
-                tokens_input=outcome.tokens_input,
-                tokens_output=outcome.tokens_output,
-                cost_usd=outcome.cost,
-            ),
-        )
+    """After the turn: its message given back if nothing was answered, what each model spent recorded on its row; the
+    usage after it."""
+    claim = started.claim
+    if claim is not None and not outcome.answered:
+        given_back = MessageReleaseIn(caller=started.caller, month=claim.month, model=claim.model)
+        services.turn_usage.message_release(platform_context(), given_back)
+    for model, spent in outcome.spent.items():
+        if spent.tokens.input or spent.tokens.output:
+            services.turn_usage.usage_record(
+                platform_context(),
+                UsageRecordIn(
+                    caller=started.caller,
+                    model=model,
+                    tokens_input=spent.tokens.input,
+                    tokens_output=spent.tokens.output,
+                    tokens_cache_read=spent.tokens.cache_read,
+                    tokens_cache_write=spent.tokens.cache_write,
+                    cost_usd=spent.cost,
+                ),
+            )
     return queries.usage.usage_show(platform_context(), started.caller).model_dump(mode="json")
 
 

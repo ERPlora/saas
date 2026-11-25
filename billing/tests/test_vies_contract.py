@@ -27,6 +27,7 @@ from django.utils import timezone
 from billing import queries
 from billing.models import CompanyConfig, VatCheck
 from billing.services import sale_tax, vat_clearance
+from billing.tests.vat_sales import charged
 from billing.tests.vies_double import (
     FAKE_VAT,
     MEMBER_STATE_DOWN,
@@ -38,7 +39,6 @@ from billing.tests.vies_double import (
     vies_is_down,
     vies_says,
 )
-from billing.vat import resolve_vat
 from billing.vies import is_domestic_vat_number
 
 pytestmark = pytest.mark.django_db
@@ -107,12 +107,12 @@ class TestAFakeVatNumberIsNotReverseCharge:
                 FAKE_VAT, customer_country="DE"
             )
 
-        invoice = resolve_vat(
+        invoice = charged(
             NET,
-            customer_country="DE",
-            customer_tax_id=FAKE_VAT,
-            customer_tax_id_type="eu_vat",
-            customer_tax_id_verified=clearance.verified,
+            country="DE",
+            tax_id=FAKE_VAT,
+            tax_id_type="eu_vat",
+            tax_id_verified=clearance.verified,
             tax_cents=0,
             tax_included=False,
         )
@@ -332,12 +332,12 @@ class TestADomesticVatNumberIsNeverReverseCharge:
     """Even though Stripe types a Spanish NIF as ``eu_vat``, which it does."""
 
     def test_spanish_vat_is_charged_even_if_valid_in_vies(self):
-        result = resolve_vat(
+        result = charged(
             Decimal("121.00"),
-            customer_country="ES",
-            customer_tax_id="ESB27593136",
-            customer_tax_id_type="eu_vat",
-            customer_tax_id_verified=True,
+            country="ES",
+            tax_id="ESB27593136",
+            tax_id_type="eu_vat",
+            tax_id_verified=True,
         )
 
         assert (result.treatment, result.tax_country) == ("domestic", "ES")
@@ -361,24 +361,24 @@ class TestADomesticVatNumberIsNeverReverseCharge:
 class TestTheBreakdownSealsTheReconciliation:
     def test_the_breakdown_seals_whether_it_reconciled(self):
         """What decides the invoice's note is a fact of the breakdown, not a deduction."""
-        charged = resolve_vat(
+        with_tax = charged(
             Decimal("121.00"),
-            customer_country="ES",
-            customer_tax_id="ESB12345678",
-            customer_tax_id_type="eu_vat",
+            country="ES",
+            tax_id="ESB12345678",
+            tax_id_type="eu_vat",
             tax_cents=2100,
             tax_included=False,
         )
-        reconciled = resolve_vat(
+        reconciled = charged(
             NET,
-            customer_country="DE",
-            customer_tax_id=FAKE_VAT,
-            customer_tax_id_type="eu_vat",
+            country="DE",
+            tax_id=FAKE_VAT,
+            tax_id_type="eu_vat",
             tax_cents=0,
             tax_included=False,
         )
 
-        assert charged.vat_included_reconciled is False
+        assert with_tax.vat_included_reconciled is False
         assert reconciled.vat_included_reconciled is True
 
     def test_under_oss_the_sale_is_sealed_in_the_customers_jurisdiction(self):
@@ -387,11 +387,11 @@ class TestTheBreakdownSealsTheReconciliation:
         policy.oss_registered = True
         policy.save()
 
-        result = resolve_vat(
+        result = charged(
             NET,
-            customer_country="DE",
-            customer_tax_id=FAKE_VAT,
-            customer_tax_id_type="eu_vat",
+            country="DE",
+            tax_id=FAKE_VAT,
+            tax_id_type="eu_vat",
             tax_cents=0,
             tax_included=False,
         )

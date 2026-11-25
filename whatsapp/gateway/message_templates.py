@@ -195,9 +195,8 @@ def sync_templates(hub_id) -> bool:
             answer = meta.get(f"{account.waba_id}/message_templates", token=token, params=params)
             read = (templates.from_meta(item) for item in answer.get("data") or [] if isinstance(item, dict))
             items.extend(mirror for mirror in read if mirror is not None)
-            paging = answer.get("paging") if isinstance(answer.get("paging"), dict) else {}
-            after = (paging.get("cursors") or {}).get("after") if isinstance(paging.get("cursors"), dict) else None
-            if not paging.get("next") or not after:
+            after = _next_page(answer)
+            if after is None:
                 complete = True
                 break
             params = {**params, "after": after}
@@ -208,3 +207,14 @@ def sync_templates(hub_id) -> bool:
     if items or complete:
         template_mirror.template_sync(ctx, TemplateSyncIn(hub_id=hub_id, items=items, complete=complete))
     return complete
+
+
+def _next_page(answer: dict) -> str | None:
+    """The cursor of the page of Meta's list after this one; ``None`` when this is the last."""
+    paging = answer.get("paging")
+    if not isinstance(paging, dict) or not paging.get("next"):
+        return None
+    cursors = paging.get("cursors")
+    if not isinstance(cursors, dict):
+        return None
+    return cursors.get("after") or None

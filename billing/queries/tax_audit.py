@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from billing import vat, vat_breakdown, vat_countries
 from billing.models import GENERIC_CATEGORY, TaxRule
+from billing.payer import Payer
 from billing.queries.tax import fiscal_policy, tax_rule
 
 
@@ -88,12 +89,7 @@ def _audit_territories_outside_vat(report: TaxRuleAuditReport) -> None:
             continue
         # The other half: what the checkout would quote. It reads the region from the POSTAL CODE, so this
         # catches a break in that map — the table can be perfect and a Canarian still be charged 21 %.
-        quote = vat.quote_vat(
-            _AUDIT_PROBE,
-            customer_country="ES",
-            customer_postal_code=postal_code,
-            category_key=report.category,
-        )
+        quote = vat.quote_vat(_AUDIT_PROBE, Payer("ES", postal_code), category_key=report.category)
         if quote is None or quote.treatment != vat_breakdown.NOT_SUBJECT or quote.tax:
             charged = "nothing at all" if quote is None else f"{quote.tax} EUR ({quote.treatment})"
             report.problems.append(
@@ -160,12 +156,7 @@ def _audit_payers_on_file(report: TaxRuleAuditReport) -> None:
 
     for (country, region), postal_code in sorted(territories.items()):
         where = f"{country}/{region}" if region else country
-        quote = vat.quote_vat(
-            _AUDIT_PROBE,
-            customer_country=country,
-            customer_postal_code=postal_code,
-            category_key=report.category,
-        )
+        quote = vat.quote_vat(_AUDIT_PROBE, Payer(country, postal_code), category_key=report.category)
         if quote is None:
             report.problems.append(
                 f"A payer is on file in {where} and no rule resolves there, so a paid checkout to that "

@@ -64,9 +64,9 @@ function toSale(module: StoreModuleOut, app: AppSummaryOut | null): SaleModule {
   };
 }
 
-/** The businesses the account may buy for: it owns them and they are not deleted. */
+/** The businesses the account may buy for: it owns them and they are not deleted. ERPlora's own buys nothing. */
 export function ownedBusinesses(rows: readonly BusinessRowOut[]): BusinessRowOut[] {
-  return rows.filter((row) => row.role === 'hub_owner' && row.status !== 'deleting');
+  return rows.filter((row) => row.role === 'hub_owner' && row.status !== 'deleting' && !row.is_platform);
 }
 
 /** Why the business cannot buy now, or `null`. */

@@ -34,7 +34,8 @@ Quién la usa:
 - El **asistente del Hub** de cada negocio (y el de cada demo): manda a erplora.com cada turno, sus adjuntos, las
   preguntas de cómo se hace algo en ERPlora (ASSISTANT-F28) y los dictados, y enseña
   a la persona lo que le queda del cupo.
-- El **personal de ERPlora**, en «Registros de uso del asistente», ve lo que gasta cada negocio y lo que cuesta.
+- El **personal de ERPlora**, en «Registros de uso del asistente», ve lo que gasta cada negocio con cada modelo y lo que
+  cuesta.
 - La **persona con cuenta** en erplora.com, en el panel: abre el asistente con el botón «Asistente» de la barra y le
   pregunta o le dicta (ASSISTANT-F21) sobre sus negocios, lo que paga y su cuenta (ASSISTANT-F25), con 30 mensajes al
   mes (ASSISTANT-F26).
@@ -109,7 +110,9 @@ La lista de modelos de conversación que da la API del proveedor, con una casill
 tiene), su nombre y su contexto, y los botones «Guardar la elección» y «Volver al proveedor».
 
 ### Admin: Modelos de IA
-Todos los modelos de todos los proveedores, con su precio, su contexto y si están disponibles, para corregirlos.
+Todos los modelos de todos los proveedores, con su precio, su contexto y si están disponibles, para corregirlos. La
+ficha de cada uno tiene, además del «Precio de entrada» y el «Precio de salida», el «Precio de lectura de la caché» y el
+«Precio de escritura en la caché» del proveedor (vacíos: el de entrada).
 
 ### Admin: Modelo que contesta
 Una sola página (su lista la abre): «Modelo que contesta» y «Modelo de reserva», cada uno con los modelos que pueden
@@ -122,11 +125,14 @@ ve sin poder cambiarla. Arriba, «Probar un modelo» (solo para quien puede camb
 entrada», «Tokens de salida», «Tiempo» y «Coste» (en dólares).
 
 ### Admin: Registros de uso del asistente
-Una fila por negocio y mes (una demo, una sola en toda su vida; una cuenta, una por mes con el asistente del panel)
-con «Negocio, demo o cuenta» (de una cuenta, su correo), «Mes», «Mensajes», «Tokens de entrada», «Tokens de salida»,
-«Tokens de huellas», «Dictados», «Caracteres leídos en voz alta» y «Coste (USD)». Arriba, el buscador (por nombre o
-dirección del negocio, por la dirección de la demo o por el correo de la cuenta) y los meses; a la derecha, el filtro
-«Por tipo» («Negocios», «Demos» o «Cuentas») y el del mes. Cada fila se abre para verla entera, sin poder cambiarla.
+Una fila por negocio, mes y modelo (una demo, una por modelo en toda su vida; una cuenta, una por mes y modelo con el
+asistente del panel) con «Negocio, demo o cuenta» (de una cuenta, su correo), «Mes», «Modelo» (el nombre que le da su
+proveedor; «Sin registrar» en las filas de antes de que se guardara), «Mensajes», «Coste (USD)», «Tokens de entrada»,
+«Tokens leídos de la caché», «Tokens escritos en la caché», «Tokens de salida», «Tokens de huellas», «Dictados» y
+«Caracteres leídos en voz alta». Arriba, el buscador (por nombre
+o dirección del negocio, por la dirección de la demo, por el correo de la cuenta o por el modelo) y los meses; a la
+derecha, el filtro «Por tipo» («Negocios», «Demos» o «Cuentas»), el del mes y el del modelo. Cada fila se abre para
+verla entera, sin poder cambiarla.
 
 ### Panel: Asistente
 En todas las pantallas del panel de erplora.com con la sesión abierta, al final de la barra de arriba, el botón
@@ -220,8 +226,8 @@ Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. Cuando hay que llamar a un modelo (un turno del asistente, una prueba del admin o la lista de modelos de un proveedor), erplora.com prepara la llamada en la forma que pide la API del proveedor: OpenAI (y los compatibles con ella), Anthropic, Google Gemini o DeepSeek, con la clave del proveedor y su dirección.
-2. Manda la conversación con sus instrucciones, sus imágenes, las herramientas que se ofrecen (una sola por respuesta) y el máximo de salida, y recibe la respuesta en directo, trozo a trozo.
-3. Traduce lo que contesta cada proveedor a lo mismo para todos: el texto según llega, cada herramienta que el modelo pide con sus datos completos, el consumo de entrada y de salida y cómo terminó (normal, porque pidió una herramienta, por largo o por el filtro de contenido).
+2. Manda la conversación con sus instrucciones, sus imágenes, las herramientas que se ofrecen (una sola por respuesta) y el máximo de salida, y recibe la respuesta en directo, trozo a trozo. A Anthropic le pide que guarde en su caché lo que manda, en el orden en que lo lee: las herramientas, las instrucciones y la conversación hasta su último mensaje. La siguiente llamada de la misma petición empieza igual y Anthropic lee de su caché ese principio en vez de procesarlo otra vez; si solo cambian las instrucciones, sigue leyendo las herramientas. OpenAI, Gemini y DeepSeek guardan solos lo que se repite al principio.
+3. Traduce lo que contesta cada proveedor a lo mismo para todos: el texto según llega, cada herramienta que el modelo pide con sus datos completos, el consumo de entrada (toda, y de ella lo que la caché del proveedor leyó y escribió, si lo dice) y de salida y cómo terminó (normal, porque pidió una herramienta, por largo o por el filtro de contenido).
 4. Para la lista de modelos, pide al proveedor sus modelos de conversación, página a página, y deja fuera los que no conversan (voz, imágenes, huellas de texto).
 Entra: la API, la dirección y la clave del proveedor (la de su variable del entorno); el modelo, la conversación, las instrucciones y las herramientas.
 Sale: el texto, las herramientas pedidas, el consumo y el final del turno, iguales sea cual sea el proveedor; o la lista de modelos de conversación.
@@ -277,7 +283,7 @@ Pasos:
 1. En «Modelo que contesta», pulsa «Probar un modelo».
 2. Elige el «Modelo», escribe el «Mensaje» y, si quiere ver cómo pide herramientas, escribe en «Herramientas» una lista de herramientas con su nombre, como en el ejemplo.
 3. Pulsa «Enviar»: sale «Enviando…», el modelo que contesta y su respuesta según llega, con las herramientas que pide.
-4. Al acabar, «Hecho.» y la tabla con «Tokens de entrada», «Tokens de salida», «Tiempo» y «Coste» (con los precios del modelo).
+4. Al acabar, «Hecho.» y la tabla con «Tokens de entrada» (toda la entrada, también la que la caché del proveedor leyó o escribió), «Tokens de salida», «Tiempo» y «Coste» (con los precios del modelo, también los de la caché).
 Entra: el modelo, el mensaje y las herramientas.
 Sale: la respuesta del modelo con su consumo, su tiempo y su coste; la prueba queda en el registro de auditoría con quién la hizo, cuánto medía el mensaje y cuántas herramientas llevaba, nunca el mensaje (`assistant.model.tried`). No toca ningún negocio, cupo ni conversación.
 Si falla: sin modelo de la lista, «Elige de la lista el modelo que quieres probar.»; sin mensaje, «Escribe el mensaje que quieres enviar.»; unas herramientas mal escritas, «Las herramientas no están bien escritas: escribe una lista de herramientas como la del ejemplo, cada una con su nombre.»; un modelo apagado o de un proveedor apagado, «Este modelo está apagado o lo está su proveedor: enciéndelos para usarlo.»; un proveedor sin clave en el entorno, «Ningún modelo puede contestar: los proveedores de los modelos elegidos no tienen ninguna clave activa.»; si el proveedor falla, «El modelo no ha contestado: …» con su motivo, nunca la clave; más de 10 pruebas en un minuto, «Demasiadas pruebas en un minuto: espera un momento y vuelve a intentarlo.»; sin red, «No se ha podido enviar la prueba: revisa la conexión y vuelve a intentarlo.». Solo prueba quien puede cambiar el modelo que contesta (cada prueba gasta la clave de ERPlora); sin ese permiso, el admin no deja entrar.
@@ -343,12 +349,12 @@ Actor: el asistente del Hub de un negocio
 Pantalla: ninguna
 Pasos:
 1. La persona escribe al asistente del Hub; el Hub manda a erplora.com la conversación entera (es suya: vive en el navegador de la persona), sus instrucciones y las herramientas que ofrece el negocio.
-2. erplora.com prepara la conversación: sus instrucciones son las únicas del sistema, se quedan los últimos 100 mensajes, se quita la respuesta de una herramienta que nadie pidió y los adjuntos se convierten en lo que el modelo puede leer.
+2. erplora.com prepara la conversación: sus instrucciones son las únicas del sistema; la petición en curso y la anterior (cada mensaje de la persona con lo que lo contestó) van enteras; de las más antiguas, lo que devolvieron sus herramientas va como una nota corta, que el modelo sabe que puede volver a pedir, y solo van las más recientes que caben en unos 16.000 tokens; se quita la respuesta de una herramienta que nadie pidió y los adjuntos se convierten en lo que el modelo puede leer.
 3. Toma un mensaje del cupo del negocio y manda el turno al modelo que contesta (o a su reserva, si su proveedor falla antes de contestar nada).
 4. Devuelve la respuesta en directo, trozo a trozo, y cada herramienta del negocio que el modelo pide; al final, la respuesta entera con su consumo, lo que le queda al negocio del cupo y el cierre.
 5. Si el modelo pidió herramientas del negocio, el turno acaba ahí con un pase de continuación: el Hub las ejecuta y vuelve a mandar la conversación con sus resultados y ese pase, y esa vuelta no gasta otro mensaje.
 Entra: el negocio, la conversación, las instrucciones, las herramientas del negocio y, si contesta a unas herramientas, su pase de continuación.
-Sale: el texto según llega, las herramientas que el negocio tiene que ejecutar, el consumo del turno y el cupo que queda (`assistant.message.claimed`; lo gastado, `assistant.usage.recorded`).
+Sale: el texto según llega, las herramientas que el negocio tiene que ejecutar, el consumo del turno y el cupo que queda (`assistant.message.claimed`; lo gastado, `assistant.usage.recorded`). En el registro de erplora.com queda una línea por cada llamada al modelo (`assistant.turn.model_call`) con quién la pidió, el proveedor y el modelo que contestó, cuántas herramientas llevaba, los caracteres de sus especificaciones, de las instrucciones, de la conversación y de los resultados de las herramientas, y los tokens de entrada (toda la entrada), los leídos y escritos en la caché del proveedor y los de salida; sirve para medir lo que ahorra cada cambio en lo que se le manda al modelo.
 Si falla: lo que se sabe antes de llamar al modelo es un rechazo y no gasta ningún mensaje (ver ASSISTANT-F15); si el proveedor falla después de empezar, el turno acaba con un aviso de fallo que dice si vale la pena repetir; si el turno no llegó a contestar nada, su mensaje se devuelve al cupo, también si el Hub corta la conexión a medias. Un pase de continuación usado, caducado (15 minutos), de otro negocio o de otras herramientas no vale: esa vuelta gasta un mensaje.
 Implicados: ASSISTANT-F06, ASSISTANT-F13, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F17, ASSISTANT-F18, ASSISTANT-F19
 
@@ -372,9 +378,9 @@ Pantalla: ninguna
 Pasos:
 1. En cada turno, el modelo puede usar las herramientas del negocio (las que manda el Hub: buscar un cliente, crear una cita…) y las de erplora.com: la fecha, la hora y el día de la semana de hoy; a cómo está una moneda frente a otra, con el tipo de referencia del Banco Central Europeo y su fecha; y, si erplora.com tiene la clave del buscador, buscar en la web en el idioma de la persona (en español, en España). Buscar en la web es solo del chat, del Hub y del panel: una automatización no busca (ver ASSISTANT-F13).
 2. Si el modelo pide una herramienta de erplora.com, erplora.com la ejecuta y le devuelve el resultado sin que el Hub vea nada.
-3. Si pide una del negocio, el turno se la pasa al Hub para que la ejecute (ver ASSISTANT-F12).
+3. Si pide una del negocio, el turno se la pasa al Hub para que la ejecute (ver ASSISTANT-F12); si pide varias en la misma respuesta (contar los productos y los clientes), se las pasa todas a la vez. Si en la misma respuesta mezcla herramientas de erplora.com con las del negocio, erplora.com ejecuta las suyas y le dice al modelo que las del negocio no se hicieron, para que las vuelva a pedir solas: ninguna se pierde.
 4. El modelo se vuelve a llamar como mucho cinco veces en un turno; en la última ya no se le ofrecen las herramientas de erplora.com y tiene que contestar.
-5. Una respuesta con lo que dieron el tipo de cambio o la búsqueda dice de dónde sale: si el modelo no nombra la fuente, erplora.com escribe su dirección debajo de la respuesta.
+5. Una respuesta con lo que dieron el tipo de cambio o la búsqueda dice de dónde sale: si el modelo no nombra la fuente, erplora.com escribe su dirección debajo de la respuesta. El modelo solo da las direcciones web que una herramienta devolvió en el turno, y erplora.com le dice al Hub y a su panel cuáles consultaron sus herramientas, para que el chat avise de una dirección que no salga de ahí.
 Entra: las herramientas del negocio y las preguntas del modelo.
 Sale: el resultado de cada herramienta de erplora.com para el modelo; su consumo se suma al del turno y no gasta otro mensaje.
 Si falla: una herramienta de erplora.com que falla da al modelo el motivo para que conteste con él, nunca un turno fallido; un servicio caído, que tarda demasiado o que responde algo inservible, una moneda sin tipo publicado, una búsqueda sin resultados o demasiadas consultas de un negocio: el modelo recibe el motivo y ninguna cifra, para decirlo sin inventarla; una herramienta del negocio con el nombre de una de erplora.com la ejecuta erplora.com; sin la clave del buscador, la búsqueda no se ofrece y lo demás funciona igual; en una automatización tampoco, y si el modelo la pide no se hace. El tipo de cambio es una referencia para informar: no cambia el importe de ningún cobro ni factura.
@@ -412,7 +418,7 @@ Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. La conversación de cada turno llega con la petición, se usa para llamar al modelo y se olvida al terminar.
-2. erplora.com solo apunta lo que se gastó: los mensajes, los tokens y el coste del negocio en el mes.
+2. erplora.com solo apunta lo que se gastó: los mensajes, los tokens y el coste del negocio en el mes y, en su registro, las cifras de cada llamada al modelo (cuántas herramientas, cuántos caracteres de cada parte y cuántos tokens), sin una palabra de lo que se le mandó.
 3. Si el proveedor falla, el registro de erplora.com solo apunta el estado de la respuesta del proveedor, nunca sus palabras (pueden citar la conversación).
 Entra: la conversación del turno.
 Sale: la respuesta para el Hub y lo gastado; ni la base de datos, ni los registros, ni el registro de auditoría guardan una palabra de la conversación, de sus adjuntos, de sus dictados, de lo leído en voz alta ni de lo buscado en la web; lo que devuelve una búsqueda solo llega al modelo, en ese turno, y no se guarda ni su título ni su dirección.
@@ -508,11 +514,11 @@ Actor: personal de ERPlora
 Pantalla: Admin: Registros de uso del asistente
 Pasos:
 1. En el admin de erplora.com, abre «Registros de uso del asistente».
-2. Busca el negocio por su nombre o su dirección (la demo por su dirección, la cuenta por su correo), o filtra «Por tipo» («Negocios», «Demos» o «Cuentas») y por mes.
-3. Lee su fila del mes: «Mensajes» del cupo, «Tokens de entrada», «Tokens de salida», «Tokens de huellas», «Dictados», «Caracteres leídos en voz alta» y «Coste (USD)» (con los precios del modelo que contestó cada turno).
+2. Busca el negocio por su nombre o su dirección (la demo por su dirección, la cuenta por su correo), o filtra «Por tipo» («Negocios», «Demos» o «Cuentas»), por mes y por modelo.
+3. Lee sus filas del mes, una por modelo: «Modelo», los «Mensajes» del cupo que se le pidieron, «Coste (USD)» (con los precios de ese modelo: lo leído de la caché del proveedor y lo escrito en ella, a los suyos, y lo demás de la entrada, al de entrada), «Tokens de entrada» (toda la entrada), «Tokens leídos de la caché» y «Tokens escritos en la caché» (de la entrada, lo que el proveedor leyó de su caché y lo que escribió en ella), «Tokens de salida», «Tokens de huellas», «Dictados» y «Caracteres leídos en voz alta». El cupo del mes cuenta los mensajes de todos sus modelos; si contestó el modelo de reserva, el mensaje sigue en la fila del modelo al que se le pidió y los tokens y el coste van a la de la reserva.
 4. Abre la fila para verla entera, con cuándo se creó y cuándo se cambió.
 Entra: el negocio, la demo o la cuenta y el mes.
-Sale: lo gastado por el negocio (o la cuenta) en el mes, sin poder cambiarlo.
+Sale: lo gastado por el negocio (o la cuenta) en el mes con cada modelo, sin poder cambiarlo.
 Si falla: nadie puede añadir, cambiar ni borrar una fila, ni siquiera un superusuario (borrar la del mes devolvía al negocio todo su cupo); alguien del equipo sin el permiso para verlo no entra.
 Implicados: ASSISTANT-F18, ASSISTANT-F20, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F26
 
@@ -523,14 +529,14 @@ Pantalla: Panel: Asistente
 Pasos:
 1. La persona, con su sesión abierta en el panel de erplora.com, pulsa «Asistente» al final de la barra y se abre el panel del asistente: junto a la pantalla desde 768 px, encima en el móvil. Sin conversación, ve «Pregúntame por tus negocios, tus facturas o tu cuenta.» con tres atajos.
 2. Escribe al asistente, le dicta (ver ASSISTANT-F21) o pulsa un atajo («¿Qué negocios tengo?», «¿Cuánto pago al mes?», «¿Cómo creo un negocio?»); hasta la primera palabra de la respuesta ve la burbuja de «El asistente está escribiendo».
-3. erplora.com le ofrece al modelo las herramientas del panel que esa cuenta puede usar (sus negocios y su gente, los planes, sus facturas y suscripciones, su cuenta, el catálogo de apps), primero las de lo que ha preguntado, y siempre la lista de sus negocios.
+3. erplora.com le ofrece al modelo las herramientas del panel que esa cuenta puede usar (sus negocios y su gente, los planes, sus facturas y suscripciones, su cuenta, el catálogo de apps), primero las de lo que ha preguntado, y siempre la lista de sus negocios; al final, la búsqueda de las demás, la misma del asistente del Hub. Si ninguna de las que se le ofrecen hace lo que se ha pedido («todo brilla muchísimo por la noche, ¿me oscureces la pantalla?» no nombra el tema), el modelo busca la tarea entre todas las de la cuenta y en la vuelta siguiente se le ofrece lo que encontró; nunca encuentra una que la cuenta no puede usar ni, donde no se vende, las de la Tienda.
 4. Una consulta que el modelo pide se ejecuta sola, como la propia persona: nunca ve un negocio que no es suyo.
 5. Un cambio que el modelo pide se para en la tarjeta «¿Ejecutar esta acción?», que dice qué va a hacer, dónde (la pantalla del panel: «Negocios», «Facturación», «Cuenta» o «Tienda») y con qué datos, nombrando el negocio por su nombre y el país por el suyo en su idioma («País: España»); solo se hace si la persona pulsa «Ejecutar», y «Cancelar» no cambia nada. Crear, borrar o cambiar la dirección de un negocio, ofrecerlo a otro o cancelar su plan piden además escribir «CONFIRMAR». Al cancelar el plan, la tarjeta enseña antes lo que dice el diálogo «Cancelar el plan» de Facturación (BILLING-F13): el plan en que sigue y hasta qué día está pagado (el día del negocio), que después pasa a Gratis, qué módulos se desactivan ese día, cuántas personas y dispositivos caben en Gratis frente a las personas que tiene ahora y, si la hay, la factura sin pagar, que sigue pendiente. Cambiar de plan no se hace desde el chat, sino en la Tienda (BILLING-F11), que enseña antes lo que se cobra: el asistente dice que se hace allí y la enlaza.
-6. Con lo que han devuelto las herramientas, el modelo contesta en directo, trozo a trozo, en el idioma de la persona. La tarjeta es la única pregunta de un cambio: el modelo no pregunta en su texto si lo hace ni escribe un resumen para que se apruebe, y solo pide un dato que el cambio necesita, que ninguna herramienta da y que la persona no ha dicho. Enlaza la pantalla del panel donde se hace lo que no puede hacer él («Ir a Negocios»…); para lo que pasa dentro de un negocio (ventas, productos, la gente de la caja) dice que se abra el negocio y se pregunte a su asistente. Bajo la respuesta queda lo que se hizo de cada cambio («Hecho: Crear negocio en Negocios», «No se hizo, cancelado: …»). Si la respuesta da por hecho un cambio que no se hizo (tras «Cancelar», «Creado Café Triana» o «Ya debería verse más oscura»), debajo sale además «El asistente ha dicho que hizo un cambio, pero no se ejecutó ninguna acción. No se ha modificado nada.»; decir que no se hizo, o cuándo se creó algo, no lo saca. En la cuenta que se abre desde la app, donde no se vende ni se cobra, a lo que pregunte de planes, precios, módulos, códigos promocionales, pagos o la tarjeta contesta, sin enlace, «Para cambiar de plan o añadir módulos, entra en erplora.com desde el navegador.» (con una factura sin pagar, «Para pagarla, entra en erplora.com desde el navegador.»), aunque la documentación lo explique; consultar facturas y suscripciones y editar los datos fiscales sí se hace ahí.
+6. Con lo que han devuelto las herramientas, el modelo contesta en directo, trozo a trozo, en el idioma de la persona. La tarjeta es la única pregunta de un cambio: el modelo no pregunta en su texto si lo hace ni escribe un resumen para que se apruebe, y solo pide un dato que el cambio necesita, que ninguna herramienta da y que la persona no ha dicho. Enlaza la pantalla del panel donde se hace lo que no puede hacer él, después de buscarlo («Ir a Negocios»…); para lo que pasa dentro de un negocio (ventas, productos, la gente de la caja) dice que se abra el negocio y se pregunte a su asistente. Bajo la respuesta queda lo que se hizo de cada cambio («Hecho: Crear negocio en Negocios», «No se hizo, cancelado: …»). Si la respuesta da por hecho un cambio que no se hizo (tras «Cancelar», «Creado Café Triana» o «Ya debería verse más oscura»), debajo sale además «El asistente ha dicho que hizo un cambio, pero no se ejecutó ninguna acción. No se ha modificado nada.»; decir que no se hizo, o cuándo se creó algo, no lo saca. En la cuenta que se abre desde la app, donde no se vende ni se cobra, a lo que pregunte de planes, precios, módulos, códigos promocionales, pagos o la tarjeta contesta, sin enlace, «Para cambiar de plan o añadir módulos, entra en erplora.com desde el navegador.» (con una factura sin pagar, «Para pagarla, entra en erplora.com desde el navegador.»), aunque la documentación lo explique; consultar facturas y suscripciones y editar los datos fiscales sí se hace ahí.
 7. Desde el 80 % de los mensajes del mes, el pie del panel dice cuántos quedan y cuándo vuelven (ver ASSISTANT-F26). Con teclado y ratón se abre con el cursor en la caja de escribir (en una pantalla táctil no, para que el teclado no tape la pantalla). El panel se cierra con ×, Escape, el velo o el mismo botón, y si el foco estaba dentro vuelve al botón; el dispositivo recuerda si se dejó abierto, y la conversación se olvida al cerrar la sesión.
 Entra: la conversación (vive en el navegador de la persona), las herramientas que el modelo pidió y la respuesta de la persona a su tarjeta.
 Sale: lo que se ha hecho y su resultado, la tarjeta del cambio que espera, el texto según llega, el cupo que queda y el cierre; lo que hace cada herramienta deja su propio rastro (`hubs.business.created`…), nunca la conversación.
-Si falla: sin sesión, el panel lleva a entrar y no hay botón «Asistente», y una sesión que termina a media conversación pide volver a entrar; con el cupo del mes gastado, el primer aviso es el cupo agotado, con cuántos se han usado y cuándo vuelven, y que cada negocio tiene su propio asistente, sin «Mejorar plan» (ver ASSISTANT-F26); con demasiados turnos seguidos, avisa de que hay que esperar un momento; sin un modelo que conteste, de que el asistente no puede contestar ahora, con «Reintentar»; sin conexión, el pie lo dice. Una herramienta que la cuenta no tiene, o que no es del chat (descargar un fichero, crear una clave de API, abrir el pago, entrar en un negocio), no se ejecuta nunca. Sin la palabra escrita o con un «no», el cambio no se hace y el modelo lo dice, sin mandar a confirmar una tarjeta que ya se cerró; ese «no» vale hasta que la persona vuelva a escribir: si el modelo pide otra vez el mismo cambio, no sale otra tarjeta ni otro «No se hizo». Unos datos que el cambio no acepta (un país que no es de los que sirve ERPlora, un valor fuera de su lista) o un cambio que no se puede hacer (cancelar el plan de un negocio en Gratis, o el de uno que paga otra cuenta) no llegan a la tarjeta: vuelven al modelo, que los corrige en la misma pregunta, y la persona confirma una sola vez. Un negocio nuevo que no se puede crear (la cuenta ya tiene su negocio gratuito, es del personal de ERPlora o no hay plan Gratis) tampoco llega a la tarjeta: el modelo dice por qué y, si es el negocio gratuito, que se cambie el plan del que ya tiene (HUBS-F01). Donde no se vende (la cuenta abierta desde la aplicación instalada), no se ofrecen la Tienda ni sus cambios de plan. Pasadas seis rondas de herramientas en una misma pregunta, se para.
+Si falla: sin sesión, el panel lleva a entrar y no hay botón «Asistente», y una sesión que termina a media conversación pide volver a entrar; con el cupo del mes gastado, el primer aviso es el cupo agotado, con cuántos se han usado y cuándo vuelven, y que cada negocio tiene su propio asistente, sin «Mejorar plan» (ver ASSISTANT-F26); con demasiados turnos seguidos, avisa de que hay que esperar un momento; sin un modelo que conteste, de que el asistente no puede contestar ahora, con «Reintentar»; sin conexión, el pie lo dice. Una herramienta que la cuenta no tiene, o que no es del chat (descargar un fichero, crear una clave de API, abrir el pago, entrar en un negocio), no se ejecuta nunca. Sin la palabra escrita o con un «no», el cambio no se hace y el modelo lo dice, sin mandar a confirmar una tarjeta que ya se cerró; ese «no» vale hasta que la persona vuelva a escribir: si el modelo pide otra vez el mismo cambio, no sale otra tarjeta ni otro «No se hizo». Unos datos que el cambio no acepta (un país que no es de los que sirve ERPlora, un valor fuera de su lista) o un cambio que no se puede hacer (cancelar el plan de un negocio en Gratis, o el de uno que paga otra cuenta) no llegan a la tarjeta: vuelven al modelo, que los corrige en la misma pregunta, y la persona confirma una sola vez. Un negocio nuevo que no se puede crear (la cuenta ya tiene su negocio gratuito, es del personal de ERPlora o no hay plan Gratis) tampoco llega a la tarjeta: el modelo dice por qué y, si es el negocio gratuito, que se cambie el plan del que ya tiene (HUBS-F01). Donde no se vende (la cuenta abierta desde la aplicación instalada), no se ofrecen la Tienda ni sus cambios de plan. Pasadas veinte rondas de herramientas en una misma pregunta, las mismas que admite el asistente del Hub, se para: es un freno contra los bucles, no un cupo.
 Implicados: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F19, ASSISTANT-F21, ASSISTANT-F23, ASSISTANT-F26, ASSISTANT-F29, HUBS-F01, HUBS-F09, BILLING-F11, BILLING-F13
 
 ### ASSISTANT-F26 Contar los mensajes de una cuenta con el asistente del panel
@@ -616,15 +622,20 @@ Implicados: ASSISTANT-F25, ASSISTANT-F26, ACCOUNTS-F23
   `ROTATED_FIELD_CLASSES` (`services.encryption.encrypted_columns`, derivada de los modelos: hoy el token y el PIN de
   WhatsApp): rota cada token tal cual (`crypto.rotate`, por `UPDATE` sin pasar por `save`) y nunca
   escribe uno ilegible. Un test falla si aparece un campo cifrado que la rotación no conoce. Los documentos fiscales usan su propia clave (`FISCAL_DOCUMENTS_KEY`) y no entran aquí.
-- Clientes (`assistant/providers/`): `httpx` contra cada API (sin SDK ni LiteLLM), sin caché, uno por llamada;
+- Clientes (`assistant/providers/`): `httpx` contra cada API (sin SDK ni LiteLLM), un cliente HTTP por llamada; el de
+  Anthropic marca la caché del proveedor con `cache_control` tras la última herramienta, en las instrucciones (un bloque
+  de `system`) y en la petición entera (la caché automática, que avanza hasta el último mensaje), y su uso suma a
+  `input_tokens` lo que la caché leyó (`cache_read_input_tokens`) y escribió (`cache_creation_input_tokens`), que da
+  aparte (`test_prompt_cache.py`: la segunda llamada de una petición empieza byte a byte como la primera);
   todos terminan con un solo `finish` y un fallo es un `error` con `retriable`, nunca una excepción. Se prueban contra
   `assistant/tests/fake_provider.py` (servidor HTTP en `127.0.0.1` que habla el formato de cada proveedor).
 - Trampas cubiertas por tests: una clave guardada en una tabla (`test_models.py`), una clave de verdad del entorno de
   quien corre la suite (`config/tests/test_settings.py`) y el nombre de la app sin traducir en el admin (`test_apps.py`).
 
 - El turno pide su ruta con `assistant.route.resolve` como la plataforma (`services.platform_actor.platform_context()`)
-  y la recorre con `assistant.routing.stream`; el coste sale de `models.estimate_cost` con los precios del modelo que
-  contestó. No hay siembra de proveedores: los da el admin. La migración `0010_haiku_answers` puso, donde ya contestaba un
+  y la recorre con `assistant.routing.stream`; el coste sale de `usage_cost.cost` con los precios del modelo que
+  contestó (los de su caché, si los tiene; si no, el de entrada). La migración `0012_prompt_cache` puso a Claude Haiku 5.5
+  de Anthropic los precios de su caché (leer 0,01 y escribir 0,125 USD por millón). No hay siembra de proveedores: los da el admin. La migración `0010_haiku_answers` puso, donde ya contestaba un
   modelo, Claude Haiku 5.5 a contestar con Qwen 3.7 Plus de reserva; en una base de datos nueva no crea nada.
 
 ### Las puertas del Hub (`assistant/internal.py`, ASSISTANT-F11…F23, F28)
@@ -651,7 +662,9 @@ propio texto por `code`.
 
 - **Frames del turno en directo** (`data: <json>`): `text_delta {text}`, `function_call {name, call_id, arguments}`
   (una herramienta del Hub), `web` (una vez, en cuanto una búsqueda trae páginas, aunque el turno falle después: el
-  llamante lo guarda con la respuesta y lo devuelve en su denuncia; el panel lo cierra en `done.web`), `response
+  llamante lo guarda con la respuesta y lo devuelve en su denuncia; el panel lo cierra en `done.web`), `sources {sources}` (las direcciones web que consultó una herramienta de
+  erplora.com, en cuanto responde; una que falla no lo manda; el Hub y el panel las juntan en `done.sources`, contra
+  las que el chat comprueba las direcciones de la respuesta), `response
   {output, usage, continuation}` (si no falló), `error {code, message, retriable}` (fallo del proveedor tras
   empezar), `usage {used, limit, resets_at, demo}` y `[DONE]`. Lo que se
   decide antes del modelo es un estado HTTP sin stream: 413/422, 503 `assistant.no_model` o
@@ -661,10 +674,14 @@ propio texto por `code`.
   15 min, un solo uso por la caché, atado al negocio y a los `call_id`). El Hub vuelve a mandar la conversación con
   los resultados y ese token: no toma mensaje. Sin token (o caducado, usado, de otro negocio o de otras llamadas),
   la vuelta cuenta, así que el último mensaje del mes no deja seguir gratis.
-- **El cupo lo cuenta erplora.com** (`assistant.message.claim`: un `UPDATE … WHERE messages < limit`;
-  `assistant.message.release` si el turno no contestó nada, al mes en que se tomó; `assistant.usage.record` para
-  tokens, huellas, dictados, caracteres y coste), en `AssistantUsage` (una fila por negocio y mes; una demo, una en
-  su vida, y las de más de un día se olvidan al nacer otra). El límite es `Plan.assistant_messages_per_month` del
+- **El cupo lo cuenta erplora.com** (`assistant.message.claim`: bloquea las filas del mes de todos los modelos y hace
+  un `UPDATE … WHERE messages < limit - los mensajes de los otros modelos` en la fila del modelo al que se pregunta,
+  sin crearla si el mensaje no cabe; `assistant.message.release` si el turno no contestó nada, al mes y al modelo en
+  que se tomó; `assistant.usage.record` para tokens, huellas, dictados, caracteres y coste, en la fila del modelo que
+  los gastó: el que contestó cada vuelta del turno, `text-embedding-3-small` las huellas y `whisper-1` los dictados),
+  en `AssistantUsage` (una fila por negocio, mes y modelo; una demo, una por modelo en su vida, y las de más de un día
+  se olvidan al nacer otra). La migración `0011_usage_per_model` deja las filas de antes con el modelo vacío y, al
+  volver atrás, junta las de cada mes en una sumando sus cifras. El límite es `Plan.assistant_messages_per_month` del
   plan efectivo (`hubs.queries.plan_catalog.effective_plan`); una demo, `ASSISTANT_DEMO_MESSAGES` (10). El Hub no cuenta: enseña
   lo que dicen `usage` y el frame `usage` (aviso al 80 % y bloqueo al 100 % con esas cifras).
 - **Herramientas de erplora.com** (`assistant/server_tools.py`): `current_datetime`, `currency_rate` y `web_search`;
@@ -689,7 +706,8 @@ propio texto por `code`.
   `turn.prepare` añade `server_tools.rules()` a las instrucciones del llamante, que
   rechazan lo que no sea su tema: solo la pasarela sabe qué se ofrece, y así ni el Hub ni el panel cambian. `turn.run`
   escribe la fuente con `source_line` si el modelo no la nombró, en texto: el Markdown del chat quita la dirección de un
-  enlace a otro sitio, y es a propósito. Los avisos de la burbuja no ven estos resultados.
+  enlace a otro sitio, y es a propósito. Los avisos de la burbuja no ven estos resultados, solo las direcciones que consultaron (`sources`); las reglas
+  piden además no escribir una dirección web que ninguna herramienta haya devuelto en el turno.
 - **Adjuntos** (`assistant/attachments.py`): `image_url` con `data:` de imagen, `input_file` con `filename`,
   `mime_type` y `data`; `MAX_ATTACHMENT_BYTES` (12 MB de base64) por adjunto, `MAX_ATTACHMENTS` (20) por
   conversación, `MAX_EXTRACTED_CHARS` por documento, zip comprobado antes de abrirlo; nada a disco (un test lo vigila
@@ -709,7 +727,9 @@ propio texto por `code`.
   Un motor que entre ocupa ese sitio:
   `(texto, idioma, voz)` a un mp3, con la voz vacía para la suya del idioma, y `MediaFailed` si falla.
 - **Privacidad**: ni la conversación, ni los adjuntos, ni el audio, ni el texto leído van a la BD, a un log o al
-  auditlog; del fallo de un proveedor el log solo lleva el estado (`test_privacy.py`). Ninguna variable `key`,
+  auditlog; del fallo de un proveedor el log solo lleva el estado (`test_privacy.py`). La línea de cada llamada al modelo
+  (`assistant/call_log.py`) solo lleva cifras y nombra el modelo por su id de erplora.com, porque el formateador del log
+  tapa un nombre largo con fecha como si fuera una credencial (`test_call_log.py`). Ninguna variable `key`,
   `token` ni `api_key` en una llamada al logger (`test_guardrails.py`).
 - **Ajustes nuevos** (`config/settings/assistant.py`, con valor seguro por defecto): `ASSISTANT_*_RATELIMIT`,
   `ASSISTANT_DEMO_MESSAGES` y `ASSISTANT_SERVICE_PROVIDER`.
@@ -735,7 +755,10 @@ propio texto por `code`.
 - **Herramientas**: toda operación del SaaS declara `ai=` (`live.E017`): `AI(description=…, risk=…)` o `INTERNAL` con
   su motivo en un comentario. `catalog(ctx)` = las `AI` que la cuenta puede usar, en todas las apps (son de
   plataforma); en la superficie de la cuenta (`base.surface`) sin las de la pantalla Tienda (`navigation.WEB_ONLY`).
-  `relevant` con `ALWAYS = ("hubs.business.list", "assistant.docs.search")` y las palabras de las pantallas del menú. La tarjeta
+  `relevant` con `ALWAYS = ("hubs.business.list", "assistant.docs.search")` y las palabras de las pantallas del menú, en
+  `PLACES` (19) puestos y con la búsqueda `base.assistant.find_tools` la última (`live.assistant.offered`, la del Hub): lo
+  que el modelo buscó desde el penúltimo mensaje de la persona va justo detrás de `ALWAYS`; la búsqueda no es una
+  herramienta del catálogo (`is_tool`) y la ejecuta el turno como una más. La tarjeta
   (`PanelWords`) nombra el negocio por `hubs.business.list` de la cuenta y la pantalla del panel; sus datos salen por
   `AssistantFieldOut` con todas las marcas de `live.assistant.field` (`titled`, `signed`, `named`, `money`), así que una
   lista que el servidor dijo elemento a elemento llega con `named` y la tarjeta de `@erplora/ui` dice sus elementos (hoy
@@ -767,16 +790,17 @@ propio texto por `code`.
   anfitrión con voces se las da con `AssistantConfig.voices`, y sin ellas `speak` se pide con la voz vacía. e2e:
   `tests/e2e/panel/assistant-voice.spec.ts` (sin voz: sin elección ni petición; con la marca encendida en el borde del
   navegador: la petición, su 503 y la lectura del dispositivo).
-- **Cupo por cuenta**: `Caller(user_id=…)`, una fila `AssistantUsage(user, month)` (check «negocio, demo o cuenta»,
-  única por cuenta y mes; migración `0003_account_usage`, que al volver atrás borra las filas de cuentas),
+- **Cupo por cuenta**: `Caller(user_id=…)`, una fila `AssistantUsage(user, month, model)` (check «negocio, demo o
+  cuenta», única por cuenta, mes y modelo; migración `0003_account_usage`, que al volver atrás borra las filas de cuentas),
   `ASSISTANT_ACCOUNT_MESSAGES` (30).
 - **El aviso por correo de los mensajes** (ASSISTANT-F29): `assistant/emails.py` (`send_messages_near` y
   `send_messages_spent`, con `branded_message`; un correo que no sale se registra como `assistant.mail.not_sent` y
-  devuelve `False`, nunca lanza). Las marcas son dos columnas nulas de la fila de la cuenta, `near_warned_at` y
-  `spent_warned_at` (migración `0006_account_quota_mails`, que al volver atrás solo las quita). `message_claim`, solo
-  con `data.user_id` y también cuando `claimed` es falso (para que el reintento alcance al último), llama a
-  `_warn_the_account`: `_warning_due` da `spent` con el cupo gastado y `near` desde `NEAR_FROM` (4/5, el `NOTE_FROM` de
-  `usageNote` de `@erplora/ui`), coge la marca con `UPDATE … WHERE <marca> IS NULL` (dos turnos a la vez: uno la
+  devuelve `False`, nunca lanza). Las marcas son dos columnas nulas de las filas de la cuenta, `near_warned_at` y
+  `spent_warned_at` (migración `0006_account_quota_mails`, que al volver atrás solo las quita); la de cualquiera de sus
+  filas del mes vale para todos sus modelos. `message_claim`, solo con `data.caller.user_id` y también cuando `claimed`
+  es falso (para que el reintento alcance al último), llama a `_warn_the_account`: `_warning_due` da `spent` con el
+  cupo gastado y `near` desde `NEAR_FROM` (4/5, el `NOTE_FROM` de `usageNote` de `@erplora/ui`), y si ninguna fila del
+  mes tiene la marca la pone en la del modelo (las filas siguen bloqueadas por la reserva: dos turnos a la vez, uno la
   coge), escribe `assistant.usage.warned` en la misma transacción y manda el correo con
   `transaction.on_commit(partial(_mail_the_warning, …), robust=True)`, que suelta su propia marca si no sale. El e2e
   fija `ASSISTANT_ACCOUNT_MESSAGES=2`: ahí solo sale el del 100 %, a la carpeta de correos del e2e, y

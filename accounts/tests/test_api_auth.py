@@ -41,6 +41,7 @@ PROBES = {
     "hubs.probe.touch": (probe_services.touch, "command", True),
     "billing.probe.list": (probe_queries.who, "query", True),
     "hubs.probe.secret": (probe_queries.who, "query", False),
+    "hubs.probe.hide": (probe_services.touch, "command", False),
     "hubs.probe.public": (probe_queries.who, "query", True),
 }
 
@@ -83,6 +84,18 @@ def _probe_api(ops):
     async def secret(request):
         return await run_operation(request, ops["hubs.probe.secret"])
 
+    @bind(router, "hubs.probe.hide", "/secret")
+    async def hide(request):
+        return await run_operation(request, ops["hubs.probe.hide"])
+
+    @router.get("/plain")
+    async def plain(request):
+        return {"email": request.user.email}
+
+    @router.get("/unknown", operation_id="hubs.probe.nobody")
+    async def unknown(request):
+        return {"email": request.user.email}
+
     @bind(router, "hubs.probe.public", "/public", auth=None)
     async def public(request):
         return await run_operation(request, ops["hubs.probe.public"])
@@ -118,6 +131,15 @@ def _call(method, url, *, secret=None, header="bearer", client=None, **extra):
     if method == "get":
         return client.get(url, HTTP_HOST=HOST, **extra)
     return client.post(url, {}, content_type="application/json", HTTP_HOST=HOST, **extra)
+
+
+def _callbacks(api):
+    return {
+        (path, *route.methods): list(route.auth_callbacks)
+        for bound_router in api._get_bound_routers()
+        for path, path_view in bound_router.path_operations.items()
+        for route in path_view.operations
+    }
 
 
 class TestWithoutAKey:
@@ -209,6 +231,26 @@ class TestScopesBoundTheKey:
 
         assert (response.status_code, response.json()["error"]["code"]) == (403, "api_key_not_allowed")
 
+    def test_every_method_of_a_path_has_its_own_check(self, probe, ana):
+        """A read and a write on one path: the write refuses a key as the read does."""
+        _, secret = _key(ana, scopes=["hubs.read", "hubs.write"])
+
+        response = _call("post", "/api/secret", secret=secret)
+
+        assert (response.status_code, response.json()["error"]["code"]) == (403, "api_key_not_allowed")
+
+    @pytest.mark.parametrize("url", ["/api/plain", "/api/unknown"])
+    def test_a_route_that_is_no_operation_refuses_every_key_and_keeps_its_session(self, probe, ana, url):
+        _, secret = _key(ana, scopes=["hubs.read", "hubs.write", "billing.read"])
+        client = Client()
+        client.force_login(ana)
+
+        refused = _call("get", url, secret=secret)
+
+        assert (refused.status_code, refused.json()["error"]["code"]) == (403, "api_key_not_allowed")
+        assert _call("get", url, client=client).json() == {"email": "ana@example.com"}
+        assert _call("get", url).status_code == 401
+
     def test_a_public_route_ignores_the_key(self, probe, ana):
         _, secret = _key(ana)
 
@@ -220,6 +262,44 @@ class TestScopesBoundTheKey:
         response = _call("get", "/api/hubs", secret=secret, HTTP_ACCEPT_LANGUAGE="es")
 
         assert response.json()["error"]["message"] == "A esta clave de API le falta el permiso que pide esta operación: hubs.read."
+
+
+class TestWhichIdentityAnswers:
+    @pytest.fixture
+    def bo(self):
+        return get_user_model().objects.create_user(email="bo@example.com", password=None)
+
+    @pytest.fixture
+    def signed_in_as_bo(self, bo):
+        client = Client()
+        client.force_login(bo)
+        return client
+
+    @pytest.mark.parametrize("header", ["bearer", "x-api-key"])
+    def test_the_key_goes_before_the_session(self, probe, ana, signed_in_as_bo, header):
+        _, secret = _key(ana)
+
+        response = _call("get", "/api/hubs", secret=secret, header=header, client=signed_in_as_bo)
+
+        assert response.json() == {"email": "ana@example.com"}
+
+    def test_the_bearer_goes_before_the_header(self, probe, ana, bo):
+        _, ana_secret = _key(ana)
+        _, bo_secret = _key(bo)
+
+        response = _call("get", "/api/hubs", secret=ana_secret, HTTP_X_API_KEY=bo_secret)
+
+        assert response.json() == {"email": "ana@example.com"}
+
+    def test_a_key_is_refused_before_the_session_is_read(self, probe, ana, signed_in_as_bo):
+        _, secret = _key(ana)
+
+        response = _call("get", "/api/secret", secret=secret, client=signed_in_as_bo)
+
+        assert (response.status_code, response.json()["error"]["code"]) == (403, "api_key_not_allowed")
+
+    def test_without_a_key_the_session_answers_a_route_not_exposed(self, probe, signed_in_as_bo):
+        assert _call("get", "/api/secret", client=signed_in_as_bo).json() == {"email": "bo@example.com"}
 
 
 class TestUse:
@@ -305,6 +385,12 @@ class TestInstalling:
     def test_it_returns_the_exposed_operations(self, probe):
         assert sorted(probe.exposed) == ["billing.probe.list", "hubs.probe.list", "hubs.probe.touch"]
 
+    def test_installing_it_again_changes_nothing(self, probe):
+        before = _callbacks(probe.api)
+
+        assert api_auth.install_api_key_auth(probe.api) == []
+        assert _callbacks(probe.api) == before
+
     def test_the_openapi_names_both_headers_on_the_exposed_operations_only(self, probe, client):
         schema = client.get("/api/openapi.json", HTTP_HOST=HOST).json()
 
@@ -329,7 +415,13 @@ class TestInstalling:
             api = build_api(urls_namespace=f"accounts-api-auth-{uuid.uuid4().hex}")
             api.add_router("", router)
 
-            with pytest.raises(ImproperlyConfigured, match="accounts.read"):
+            with pytest.raises(ImproperlyConfigured) as refused:
                 api_auth.install_api_key_auth(api)
+            assert str(refused.value) == (
+                "accounts.probe.list is exposed to API keys, but no key can carry 'accounts.read': add it to "
+                "accounts.models.API_KEY_SCOPES (with its label) or do not expose the operation."
+            )
+            ((_, [session]),) = _callbacks(api).items()
+            assert not isinstance(session, api_auth.ApiKeyBearer)
         finally:
             registry.pop("accounts.probe.list", None)

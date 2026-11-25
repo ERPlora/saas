@@ -18,7 +18,8 @@ from hubs.models import Hub
 def hub_id_for(ref: str) -> UUID | None:
     """The id of the business ``ref`` names, by its slug or its UUID (lowercase, with hyphens, as the Hub
     sends it); ``None`` if it is unknown or purged. A business deleted within its retention is still known:
-    the records it already issued still have to reach the AEAT."""
+    the records it already issued still have to reach the AEAT. ERPlora's own is not known here: it presents
+    through ERPlora's seal, by its name (``settings.PLATFORM_HUB_SLUGS``)."""
     try:
         key = UUID(ref)
     except ValueError:
@@ -26,7 +27,7 @@ def hub_id_for(ref: str) -> UUID | None:
     # 32 hex digits are a valid slug too: only the UUID's own spelling names it by id.
     named = Q(id=key) if key is not None and str(key) == ref else Q(slug=ref)
     return (
-        Hub.objects.filter(named)
+        Hub.objects.filter(named, is_platform=False)
         .exclude(status=Hub.Status.DELETED)
         .values_list("id", flat=True)
         .first()

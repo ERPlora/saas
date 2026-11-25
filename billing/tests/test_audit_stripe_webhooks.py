@@ -7,26 +7,22 @@ so is our route without an enabled endpoint. The events of our endpoint are comp
 named. Without a usable Stripe key there is nothing to audit: it says so and exits 0. Stripe is the double: no network.
 """
 
-import ast
-import inspect
+from typing import get_args
 
 import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from stripe.params import WebhookEndpointCreateParams
 
-from billing.services import (
-    checkout_webhooks,
-    invoice_recording,
-    invoice_webhooks,
-    rectifying_invoices,
-    subscription_webhooks,
-    webhook_dispatch,
-)
+from billing.services import webhook_dispatch
 from billing.tests.stripe_double import connection_error, listing
+from billing.tests.test_webhook_dispatch import HANDLERS
 
 pytestmark = pytest.mark.django_db
 
 OURS = "https://erplora.com/webhooks/stripe/"
+#: Every event an endpoint can be sent, as Stripe's SDK lists them.
+STRIPE_EVENTS = get_args(get_args(WebhookEndpointCreateParams.__annotations__["enabled_events"])[0])
 
 
 @pytest.fixture(autouse=True)
@@ -59,19 +55,13 @@ def refused(*args) -> str:
 
 
 class TestTheOneList:
-    HANDLERS = (
-        (checkout_webhooks, ("checkout_completed", "checkout_closed")),
-        (invoice_webhooks, ("invoice_paid", "invoice_payment_failed")),
-        (invoice_recording, ("invoice_voided",)),
-        (rectifying_invoices, ("credit_note_created", "credit_note_voided", "charge_refunded")),
-        (subscription_webhooks, ("subscription_updated", "subscription_deleted", "customer_updated")),
-    )
-
-    def test_every_event_of_the_list_reaches_a_handler(self, monkeypatch):
-        for module, names in self.HANDLERS:
+    @pytest.fixture(autouse=True)
+    def _handlers(self, monkeypatch):
+        for module, names in HANDLERS:
             for name in names:
                 monkeypatch.setattr(module, name, lambda *args, **kwargs: "handled")
 
+    def test_every_event_of_the_list_reaches_a_handler(self):
         for event_type in webhook_dispatch.STRIPE_WEBHOOK_EVENTS:
             assert webhook_dispatch.process_stripe_event({"type": event_type, "data": {"object": {}}}) == "handled", event_type
         assert webhook_dispatch.process_stripe_event({"type": "payment_intent.created", "data": {"object": {}}}) == "ignored"
@@ -80,9 +70,9 @@ class TestTheOneList:
         """The other direction: an event handled but off the list passes the audit with the endpoint not sending it.
         ``invoice.payment_succeeded`` is the one handled on purpose without being subscribed (see the list)."""
         handled = {
-            node.value.value
-            for node in ast.walk(ast.parse(inspect.getsource(webhook_dispatch.process_stripe_event)))
-            if isinstance(node, ast.MatchValue)
+            event_type
+            for event_type in STRIPE_EVENTS
+            if webhook_dispatch.process_stripe_event({"type": event_type, "data": {"object": {}}}) == "handled"
         }
 
         assert handled - {"invoice.payment_succeeded"} == set(webhook_dispatch.STRIPE_WEBHOOK_EVENTS)
@@ -152,6 +142,80 @@ class TestTheOtherEndpoints:
         )
 
         assert audit().rstrip().endswith("events the webhook handles.")
+
+
+class TestWhatItSays:
+    """Each problem names its endpoint and what to do, in one order: the endpoints that are not ours as Stripe lists
+    them, how many deliver to our route, and the events of each of ours."""
+
+    PRE = "https://pre.erplora.com/webhooks/stripe/"
+    WRONG = "https://erplora.com/modules/webhooks/stripe/"
+    OLD = "https://old.example.com/hook/"
+
+    def test_the_problems_come_in_one_order(self, stripe_double):
+        events = [e for e in webhook_dispatch.STRIPE_WEBHOOK_EVENTS if not e.startswith("invoice.")]
+        short = sorted(set(webhook_dispatch.STRIPE_WEBHOOK_EVENTS) - set(events))
+        assert len(short) > 1
+        stripe_double.answer(
+            "webhook_endpoints.list",
+            listing(
+                [
+                    endpoint(self.PRE, endpoint_id="we_pre", events=["payout.paid"]),
+                    endpoint(endpoint_id="we_short", events=["payout.paid", "account.updated", *events]),
+                    endpoint(self.WRONG, endpoint_id="we_wrong", events=[]),
+                    endpoint(endpoint_id="we_all", events=["*"]),
+                    endpoint(self.OLD, endpoint_id="we_old"),
+                ]
+            ),
+        )
+
+        pre, wrong, old, several, short_of, every = refused().split("\n")
+
+        assert pre.startswith(f"Stripe endpoint we_pre delivers to {self.PRE}, another environment than erplora.com:")
+        assert wrong.startswith(f"Stripe endpoint we_wrong delivers to {self.WRONG}, a route this SaaS does not serve:")
+        assert wrong.endswith(f"Point it at {OURS}.")
+        assert old.startswith(f"Stripe endpoint we_old delivers to {self.OLD}, another environment than erplora.com:")
+        assert several.startswith(f"2 enabled Stripe endpoints deliver to {OURS} (we_short, we_all):")
+        assert short_of.startswith("Stripe endpoint we_short does not send the events the webhook handles")
+        assert short_of.endswith(f"(missing: {', '.join(short)}; extra: account.updated, payout.paid).")
+        assert every.startswith("Stripe endpoint we_all subscribes to every event (*):")
+        assert f"exactly to the {len(webhook_dispatch.STRIPE_WEBHOOK_EVENTS)} of" in every
+
+    def test_none_to_our_route_is_said_after_the_others(self, stripe_double):
+        stripe_double.answer("webhook_endpoints.list", listing([endpoint(self.PRE, endpoint_id="we_pre")]))
+
+        other, none = refused().split("\n")
+
+        assert other.startswith("Stripe endpoint we_pre")
+        assert none.startswith(f"No enabled Stripe endpoint delivers to {OURS}:")
+
+    def test_only_missing_events_are_said(self, stripe_double):
+        events = [e for e in webhook_dispatch.STRIPE_WEBHOOK_EVENTS if e != "charge.refunded"]
+        stripe_double.answer("webhook_endpoints.list", listing([endpoint(events=events)]))
+
+        assert refused().endswith("(missing: charge.refunded).")
+
+    def test_only_extra_events_are_said(self, stripe_double):
+        events = [*webhook_dispatch.STRIPE_WEBHOOK_EVENTS, "payout.paid"]
+        stripe_double.answer("webhook_endpoints.list", listing([endpoint(events=events)]))
+
+        assert refused().endswith("(extra: payout.paid).")
+
+    def test_every_event_and_one_more_is_every_event(self, stripe_double):
+        stripe_double.answer("webhook_endpoints.list", listing([endpoint(events=["*", "charge.refunded"])]))
+
+        assert "every event (*)" in refused()
+
+    def test_an_endpoint_without_events_is_missing_them_all(self, stripe_double):
+        stripe_double.answer("webhook_endpoints.list", listing([{**endpoint(), "enabled_events": None}]))
+
+        assert refused().endswith(f"(missing: {', '.join(sorted(webhook_dispatch.STRIPE_WEBHOOK_EVENTS))}).")
+
+    def test_an_endpoint_that_does_not_say_it_is_enabled_does_not_count(self, stripe_double):
+        unsaid = {key: value for key, value in endpoint().items() if key != "status"}
+        stripe_double.answer("webhook_endpoints.list", listing([unsaid]))
+
+        assert refused().startswith(f"No enabled Stripe endpoint delivers to {OURS}")
 
 
 class TestReadingStripe:

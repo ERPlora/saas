@@ -23,6 +23,9 @@ class Hub(models.Model):
     lifecycle call the Hub still owes an answer to (``put`` the registry, ``delete``, ``restore``):
     set in the command's transaction, cleared when the Hub acknowledges it, retried by
     ``reconcile_hub_states`` meanwhile.
+
+    ERPlora's own business (``is_platform``) is kept only for its people: it has no plan nor payer, and the Hub gets
+    nothing of it but who they are (``services.platform_business``).
     """
 
     class Status(models.TextChoices):
@@ -73,6 +76,9 @@ class Hub(models.Model):
     provision_requested_at = models.DateTimeField(_("provisioning asked at"), null=True, blank=True)
     #: The Hub's real platform-wide provisioning pause from its signed status poll; ``None`` when there is none.
     maintenance = models.JSONField(_("provisioning maintenance"), null=True, blank=True, default=None)
+    #: When the Hub starts moving the business to another server, in its night (a few minutes of maintenance), from
+    #: its signed status poll (``services.scheduled_moves``); ``None`` without one, once started or cancelled.
+    move_scheduled_for = models.DateTimeField(_("maintenance scheduled for"), null=True, blank=True)
     deletion_requested_at = models.DateTimeField(_("deletion asked at"), null=True, blank=True)
     can_buy_internal_plans = models.BooleanField(
         _("internal plans"),
@@ -80,6 +86,13 @@ class Hub(models.Model):
         # In the table too: the code of the previous deploy keeps creating businesses while this one rolls out.
         db_default=False,
         help_text=_("Its owner sees the internal plans in the Store and may buy them. Only for ERPlora's own businesses."),
+    )
+    is_platform = models.BooleanField(
+        _("ERPlora's own business"),
+        default=False,
+        # In the table too, as ``can_buy_internal_plans``.
+        db_default=False,
+        help_text=_("Kept only for its people: no plan, no payer, and nobody renames, moves or deletes it."),
     )
     #: The clock of a business suspended for an unpaid plan (HUBS-F20): set when it is suspended, cleared when it
     #: pays; the notices of day 30 and 150 go out once each, and on day 180 it is deleted (``services.suspensions.age_suspended``).
@@ -115,15 +128,25 @@ class Hub(models.Model):
             models.CheckConstraint(
                 condition=Q(pushed_state_version__lte=F("state_version")),
                 name="hubs_hub_pushed_not_ahead_of_state",
-            )
+            ),
+            models.UniqueConstraint(
+                fields=["is_platform"], condition=Q(is_platform=True), name="hubs_hub_one_platform"
+            ),
+            models.CheckConstraint(
+                condition=Q(is_platform=False)
+                | Q(status="active", pending_hub_call="", billing_profile__isnull=True),
+                name="hubs_hub_platform_only_its_people",
+            ),
         ]
 
     def __str__(self):
         return f"{self.name} ({self.slug})"
 
     def save(self, *args, **kwargs):
-        """Whatever path writes a business, its address is one the Hub and the jump accept."""
-        hub_slug_validator(self.slug)
+        """Whatever path writes a business, its address is one the Hub and the jump accept: of the reserved names,
+        ERPlora's own business bears its own and no other business any."""
+        if not (self.is_platform and self.slug == settings.PLATFORM_HUB_SLUG):
+            hub_slug_validator(self.slug)
         super().save(*args, **kwargs)
 
     @property

@@ -13,7 +13,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import billingRoutes from '../../billing/frontend/routes';
 import hubRoutes from '../../hubs/frontend/routes';
 import accountRoutes from './routes';
-import { ACCOUNT, BILLING, BUSINESSES, LAUNCHER, PANEL, REPORT_PROBLEM, STORE } from './paths';
+import { ACCOUNT, BILLING, BUSINESSES, LAUNCHER, letGoPage, PANEL, REPORT_PROBLEM, STORE } from './paths';
 
 // The real `readdirSync` and `readFileSync`, watched: the guardrails search the frontends read once (see `beforeAll`).
 vi.mock('node:fs', async (importOriginal) => {
@@ -130,5 +130,15 @@ describe('PANEL', () => {
 
   it('is the only way the code names a page of the panel outside the routes files', () => {
     expect(spelledIn(PANEL_SPELLED)).toEqual([]);
+  });
+});
+
+describe('letGoPage', () => {
+  it('is a business’s Settings, where it is transferred or deleted', () => {
+    expect(letGoPage({ id: 'b1', is_platform: false })).toBe('/dashboard/businesses/b1/settings');
+  });
+
+  it('is the Members of ERPlora’s own, which is only transferred', () => {
+    expect(letGoPage({ id: 'erp', is_platform: true })).toBe('/dashboard/businesses/erp/members');
   });
 });

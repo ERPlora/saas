@@ -72,6 +72,11 @@ def test_maintenance_re_runs_the_list_and_the_page():
     assert {"hubs.business.list", "hubs.business.get"} <= live_registry.affected([events.BUSINESS_MAINTENANCE_CHANGED])
 
 
+def test_the_maintenance_scheduled_for_its_night_re_runs_the_list_and_the_page():
+    """It is said, and stops being said, without reloading."""
+    assert {"hubs.business.list", "hubs.business.get"} <= live_registry.affected([events.BUSINESS_MOVE_SCHEDULED_CHANGED])
+
+
 def test_an_invitation_re_runs_the_members_not_the_businesses_of_who_invited():
     affected = live_registry.affected([events.MEMBER_INVITED])
 

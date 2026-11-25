@@ -10,7 +10,8 @@ from decimal import Decimal
 import pytest
 
 from billing import queries
-from billing.vat import resolve_vat, vat_rate_for
+from billing.tests.vat_sales import charged
+from billing.vat import vat_rate_for
 from billing.vat_breakdown import add_vat, split_gross
 
 pytestmark = pytest.mark.django_db
@@ -52,12 +53,12 @@ class TestStripesQuotaRulesEvenWhenZero:
         policy.intra_eu_reverse_charge = True
         policy.save()
 
-        vat = resolve_vat(
-            Decimal("100.00"),
-            customer_country="FR",
-            customer_tax_id="FR12345678901",
-            customer_tax_id_type="eu_vat",
-            customer_tax_id_verified=True,
+        vat = charged(
+            "100.00",
+            country="FR",
+            tax_id="FR12345678901",
+            tax_id_type="eu_vat",
+            tax_id_verified=True,
             tax_cents=0,
             tax_included=False,
         )
@@ -69,8 +70,8 @@ class TestStripesQuotaRulesEvenWhenZero:
     def test_a_SUBJECT_sale_without_a_stripe_quota_is_reconciled(self):
         """The reverse: a subject sale at 21 % cannot leave the invoice at 0 % — a Spanish
         domestic sale at 0 % does not exist. What was charged becomes VAT-inclusive; the total stays."""
-        vat = resolve_vat(
-            Decimal("100.00"), customer_country="ES", tax_cents=0, tax_included=False
+        vat = charged(
+            "100.00", country="ES", tax_cents=0, tax_included=False
         )
 
         assert vat.treatment == "domestic"
@@ -80,8 +81,8 @@ class TestStripesQuotaRulesEvenWhenZero:
         assert vat.base + vat.tax == Decimal("100.00")
 
     def test_with_a_net_price_the_quota_there_is_respected(self):
-        vat = resolve_vat(
-            Decimal("121.00"), customer_country="ES", tax_cents=2100, tax_included=False
+        vat = charged(
+            "121.00", country="ES", tax_cents=2100, tax_included=False
         )
 
         assert vat.base == Decimal("100.00")
@@ -90,7 +91,7 @@ class TestStripesQuotaRulesEvenWhenZero:
 
     def test_with_a_gross_price_it_still_splits_as_always(self):
         """Modules are still sold VAT-inclusive: their breakdown does not change."""
-        vat = resolve_vat(Decimal("121.00"), customer_country="ES", tax_cents=0)
+        vat = charged("121.00", country="ES", tax_cents=0)
 
         assert vat.base == Decimal("100.00")
         assert vat.tax == Decimal("21.00")

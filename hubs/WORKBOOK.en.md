@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:d7defb2d02eb59c629279e185ef4010b5339d1c25add838659d7cc0c5596bfba -->
+<!-- generated from WORKBOOK.md sha256:ec8e9320a8d00771051f1669f88a8d0bff392e66461b24d5b33fd78832c7b6b0 -->
 
 ## What it is for and who it is for
 
@@ -191,6 +191,8 @@ last access, with a search by business or by email and a filter by role; it is o
 | HUBS-F35 | Recognise the businesses' service when it calls erplora.com | done |
 | HUBS-F36 | Keep the sectors and the business types in the admin | done |
 | HUBS-F37 | Read the sectors and the business types | done |
+| HUBS-F38 | Enter as support the app of a business that allows it | done |
+| HUBS-F39 | Add ERPlora's own business and manage its people | done |
 
 ### HUBS-F01 Create the free business with a single question
 Status: done
@@ -303,9 +305,9 @@ Actor: owner, administrator, manager, employee, accountant
 Screen: Businesses
 Steps:
 1. In the menu, "Businesses" opens the list of the account's businesses, the last opened first; the old addresses of the businesses panel lead here.
-2. Each row shows the business (a link to its page), its web address, its "Status" ("Active", "Preparing", "Payment due", "Suspended", "Being deleted"), with the reason and the date when it matters ("Deleted. You can recover it until …"), its "Plan", the person's "Role" and its "Last used".
+2. Each row shows the business (a link to its page), its web address, its "Status" ("Active", "Preparing", "Payment due", "Suspended", "Being deleted"), with the reason and the date when it matters ("Deleted. You can recover it until …"; an active business with a maintenance scheduled for its night, "Scheduled maintenance: the business will be unavailable while it lasts, from …", with the day and the hour in the business's time zone), its "Plan", the person's "Role" and its "Last used".
 3. They search by name or web address and open the row's action: "Open", "Manage" (owner and administrators) or "Recover" (the owner, a deleted business within its 90 days).
-4. The list changes by itself when a business becomes ready, changes plan or people, without reloading.
+4. The list changes by itself when a business becomes ready, changes plan or people, without reloading. The notice of the scheduled maintenance arrives at most a quarter of an hour after ERPlora's team schedules it, and goes away when it starts or when they cancel it.
 In: the businesses the person is a member of with the invitation accepted.
 Out: nothing; the list keeps itself up to date.
 If it fails: without businesses, "Create your first business" with the sign-up form; a search without results, "Nothing matches the search" with "Show all"; offline, the error with "Retry", never an empty list. A purged business no longer shows.
@@ -428,9 +430,9 @@ Steps:
 3. The page says "It will be erased for good on …", that once erased only its fiscal documents are kept, for 6 years, and "Recover business"; below, "Download the data": each full copy of its data with its date, "When it was deleted" and its size, and "Download". The owner gets the email with that date, which says the same of its fiscal documents, and "Download a full copy of its data: …", which leads to that page; when the copy is ready, another email: "The copy of the data of … is ready".
 4. An integration with the account's session does the same, with the name typed; an API key does not delete.
 In: the name typed again; the owner's session.
-Out: the business deleted, which stops opening at once for everyone and after 90 days is erased for good, except its fiscal documents, which the business keeps for 6 years in its fiscal archive (BASE-F109); its plan goes back to Free and what Stripe was charging is cancelled in the next pass; the business receives the deletion after saving. Records `hubs.business.deleted`.
+Out: the business deleted, which stops opening at once for everyone and after 90 days is erased for good, except its fiscal documents, which the business keeps for 6 years in its fiscal archive (BASE-F109); its plan goes back to Free and what Stripe was charging is cancelled in the next pass, with no final invoice; until then, Billing › Subscriptions shows it "Being deleted", with no next invoice (BILLING-F23); the business receives the deletion after saving. Records `hubs.business.deleted`.
 If it fails: a name that does not match deletes nothing (case and spaces around do not matter); deleting it twice, "This business was deleted.". Only the owner deletes it and downloads its data. With no copy yet, "The copy is not ready yet. We will let you know by email when it is."; a business that never had its own database, "This business has no copy of its data.", with no notice, and its deletion email does not lead to the copy; a copy no longer kept, "This copy of the data is no longer kept."; if it cannot be downloaded now, "The copy cannot be downloaded right now. Try again in a moment.". To stop paying without deleting it, the plan is cancelled from Billing (BILLING-F13).
-Involved: billing (cancels what was being charged), the business (stops opening, keeps it 90 days and then erases it, except its fiscal documents: BASE-F109)
+Involved: billing (cancels what was being charged; BILLING-F23 shows it being deleted), the business (stops opening, keeps it 90 days and then erases it, except its fiscal documents: BASE-F109)
 
 ### HUBS-F19 Recover a deleted business
 Status: done
@@ -440,7 +442,7 @@ Steps:
 1. In **Businesses** (the row says until when it can be recovered) or on the deleted business's page, the owner presses "Recover business".
 2. "Business recovered: …" appears and the business opens again as it was, on the Free plan; to go back to a paid plan, it is changed in the Store (BILLING-F08).
 In: the business deleted less than 90 days ago; the owner's session.
-Out: the business active again (or being prepared, if it never got ready), on Free, and the business told after saving. Records `hubs.business.restored`.
+Out: the business active again (or being prepared, if it never got ready), on Free, and the business told after saving; Billing › Subscriptions stops showing it, because on Free nothing is charged for it (BILLING-F23). Records `hubs.business.restored`.
 If it fails: after the 90 days, "This business was erased for good and cannot be recovered."; a business that is not deleted, "This business is not deleted.". If the account already has its free business, it does not come back: first the other one moves to a paid plan. Only the owner recovers it.
 Involved: the business (opens it again)
 
@@ -463,7 +465,7 @@ Status: done
 Actor: owner, administrator
 Screen: Business summary
 Steps:
-1. On the business's page, the header says its status ("Active", "Preparing", "Payment due", "Suspended" or deleted) and the Summary, its plan with the devices, the apps it can have turned on at once and the people against the seats. It is what the business's own plan covers, also an internal plan that is not on sale, such as "Payment Test (internal)" (BILLING-F27).
+1. On the business's page, the header says its status ("Active", "Preparing", "Payment due", "Suspended" or deleted), with the notice of the maintenance scheduled for its night while it has not started (HUBS-F09), and the Summary, its plan with the devices, the apps it can have turned on at once and the people against the seats. It is what the business's own plan covers, also an internal plan that is not on sale, such as "Payment Test (internal)" (BILLING-F27).
 2. The "Usage" card ("How your business is doing in ERPlora") shows the "Storage" used of its plan's space, with a warning when it nears the limit, and the people "Active yesterday" and over the "Last 30 days", with "Yesterday's data: updated every night.".
 3. This card does not show each day's requests, the peak connections or the requests with no room: those are for ERPlora's team, in its admin (HUBS-F22), and for whoever runs the business, in System · Resources of its hub (BASE-F40).
 In: the business and what it measured last night.
@@ -483,7 +485,7 @@ Steps:
 5. At the end, even if the service did not answer, it deletes the days older than 400 days (about 13 months), of every business: enough stay to compare a day with the same one the year before.
 In: the night's measurement, page by page.
 Out: the usage of each business and day, for 400 days. Records `hubs.business.usage_collected` and, when it deletes days, `hubs.usage.pruned`.
-If it fails: if the service does not answer or refuses, the pass ends with an error and alerts; a broken row does not stop the others; a business erplora.com did not sell is noted without an error. Two passes at once do not step on each other. A figure the service did not measure, or does not send yet, is kept without a figure and the admin says "—", never a 0. If it cannot delete the old days, what it collected stays and the pass ends with an error and alerts; it deletes them the next night.
+If it fails: if the service does not answer or refuses, the pass ends with an error and alerts; a broken row does not stop the others; a business erplora.com did not sell, or ERPlora's own (HUBS-F39), is noted without an error and without keeping its usage. Two passes at once do not step on each other. A figure the service did not measure, or does not send yet, is kept without a figure and the admin says "—", never a 0. If it cannot delete the old days, what it collected stays and the pass ends with an error and alerts; it deletes them the next night.
 Involved: the business (BASE-F40: measures its usage and serves it)
 
 ### HUBS-F23 ERPlora's staff acting on a business from the admin
@@ -686,3 +688,32 @@ In: the language of whoever asks and, if they want, a sector.
 Out: both lists; nothing is stored.
 If it fails: a sector that does not exist gives an empty list; a deactivated sector or type is not in its list. An API key of the account reads them too.
 Involved: public (the pages of each sector), accounts (the business sign-up at the Entrance)
+
+### HUBS-F38 Enter as support the app of a business that allows it
+Status: done
+Actor: ERPlora's staff
+Screen: admin › Businesses (the record of the business), admin › Businesses › Hubs, the business
+Steps:
+1. A business asks ERPlora's support for help setting it up and, in its app, turns on support access (BASE-F126 of the Hub).
+2. The person of support enters erplora.com's admin with their own account and presses "Enter as support" on the record of the business or on its row of "Hubs".
+3. The business sends them to erplora.com with the mark of that browser, as in any entry (ACCOUNTS-F28), and erplora.com, which checks that they are ERPlora's staff, sends them back to the business with a single-use pass that says they come in as support, with their name and their email.
+4. With the access on, they appear inside the business's app as an administrator, without showing in its team, and the business notes the entry (BASE-F126).
+In: the staff account (a superuser or one of the support group) and the business of the record.
+Out: a pass that lasts one minute, works only once and only for that business, and a line in erplora.com's log with the account and the business. On erplora.com nobody is added to the business and no seat of its plan is taken.
+If it fails: support does not enter ERPlora's own business: neither its record nor its row offers it and it gets no pass (HUBS-F39). With the access off, the business opens no session and shows "This business does not let support in" with "Try again". An account without a platform role (a customer who is no member, staff without a role or a deactivated account) gets no pass: "You don't have access to this hub". Whoever is a member of the business enters with their member's role. With two-step verification turned on in the platform, it first asks for the code of the authenticator app. The support pass does not open the Hub admin, nor the Hub admin's the business's app.
+Involved: accounts (the pass of the entry, ACCOUNTS-F28), the business (BASE-F126 of the Hub: the support access and its refusal page), HUBS-F23
+
+### HUBS-F39 Add ERPlora's own business and manage its people
+Status: done
+Actor: ERPlora's staff, owner, administrator
+Screen: none to add it; afterwards, Businesses, Summary and Members
+Steps:
+1. The business ERPlora invoices with already exists in the businesses' service, at the reserved address `erp`. The staff adds it to erplora.com once, with the identifier it has there and the account that will own it. erplora.com first asks the businesses' service about that identifier and only goes on if it is ERPlora's own business, ready, at its address and not a demo.
+2. It is born active, with no plan, no subscription and nobody who pays; its owner is already in it. It shows in **Businesses** as any other, and its page has only "Summary", without plan or usage, and "Members".
+3. In "Members", the owner and the administrators invite, change the role, remove and transfer as in any business (HUBS-F24 to HUBS-F29), with no cap of seats; what it explains there says nothing of a plan, of payments or of deleting it.
+4. Every change of its accepted people sends it its snapshot, which here carries only its people and a version number that only grows; if it does not receive it, it is retried (HUBS-F08), and every night it receives it again.
+5. Each accepted person opens it and enters `erp.erplora.com` with their role (HUBS-F11).
+In: the identifier of the business and the email of an active account, with its address confirmed, that is not the staff's.
+Out: its row on erplora.com, only one. The businesses' service is sent only its people; it is never registered, deleted or recovered there. Records `hubs.business.created`.
+If it fails: if the businesses' service does not answer or says something else, nothing is stored; adding it again changes nothing, and with another identifier it is refused. Nobody else can use the address `erp`, and whoever is not an accepted member does not enter, nor does ERPlora's staff as support (HUBS-F38): "You don't have access to this hub". Changing its name, its address, its country, its language or its time zone, connecting a domain to it, saying who pays for it, buying it or changing a plan or a module, deleting it or recovering it is refused with "ERPlora's own business has no plan or payments, and it cannot be changed, deleted or recovered here.", from the panel's assistant too; the admin says the same in its plan and test clock actions. It is not in the Store nor in the filter of Invoices, no check of payments touches it and its usage is not collected (HUBS-F22). Without a plan it has no assistant messages nor WhatsApp: erplora.com answers the businesses' service that it does not know it, as before it was added, and its fiscal records still go with ERPlora's seal. Its owner cannot delete their account until they transfer it: **Account › Profile** only asks them to transfer it and leads to "Members" (ACCOUNTS-F27).
+Involved: accounts (the entry pass and its owner's account), billing (refuses the payments), assistant, whatsapp and fiscal (do not know it), the business (receives its people)

@@ -47,6 +47,28 @@ function putOnPlan(name: string, slug: string, cancelling = false): void {
   );
 }
 
+/** Takes the Stripe prices off the plan `slug`, as a plan the admin has not priced yet; the call it returns puts them back. */
+function withoutStripePrices(slug: string): () => void {
+  const saved = djangoPrint(
+    [
+      'import json',
+      'from hubs.models import Plan',
+      `plan = Plan.objects.get(slug="${slug}")`,
+      'print(json.dumps([plan.stripe_price_id, plan.stripe_price_id_annual]))',
+      'Plan.objects.filter(pk=plan.pk).update(stripe_price_id="", stripe_price_id_annual="")',
+    ].join('\n'),
+  );
+  const [month, year] = JSON.parse(saved) as [string, string];
+  return () => {
+    djangoPrint(
+      [
+        'from hubs.models import Plan',
+        `Plan.objects.filter(slug="${slug}").update(stripe_price_id=${JSON.stringify(month)}, stripe_price_id_annual=${JSON.stringify(year)})`,
+      ].join('\n'),
+    );
+  };
+}
+
 /** The sideways scroll of the page on screen, read where Ionic scrolls (the one measure, `overflowingBoxes`). */
 async function sidewaysScroll(page: Page): Promise<string[]> {
   return overflowingBoxes(page, 1);
@@ -251,6 +273,28 @@ test.describe('store', () => {
     await expect(page.getByTestId('plan-switch').locator('button')).toBeDisabled();
     await expect(page.getByTestId('plan-starter').getByTestId('plan-hint')).toHaveText('Pay the pending invoice first.');
     await page.screenshot({ path: join(SHOTS_DIR, 'store-unpaid-1440.png'), fullPage: true });
+  });
+
+  // The admin has not pasted Standard's Stripe price yet: its card does not sell it and says why, instead of
+  // «This cannot be bought right now. Contact support.» once pressed.
+  test('a plan without its Stripe price is shown but not sold: its button is disabled and says why', async ({ page }) => {
+    const errors = watchPageErrors(page);
+    const cafe = await businessIdOf(page.request, 'Café Central');
+    const restore = withoutStripePrices('standard');
+    try {
+      for (const size of VIEWPORTS) {
+        await page.setViewportSize(size);
+        await page.goto(`/dashboard/store/plans?business=${cafe}`);
+        const standard = page.getByTestId('plan-standard');
+        await expect(standard.getByTestId('plan-upgrade').locator('button')).toBeDisabled();
+        await expect(standard.getByTestId('plan-hint')).toHaveText('Not on sale right now');
+        await expect(page.getByTestId('plan-starter').getByTestId('plan-upgrade').locator('button')).toBeEnabled();
+        await planShot(page, `store-not-on-sale-${size.width}.png`);
+      }
+    } finally {
+      restore();
+    }
+    expect(errors).toEqual([]);
   });
 
   test('inside the apps and on the account surface it does not sell: no prices, no Stripe, no link out', async ({ page }) => {

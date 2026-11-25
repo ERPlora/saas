@@ -15,10 +15,13 @@ from pydantic import ValidationError
 
 from assistant import continuation, queries, services
 from assistant.models import AssistantUsage
-from assistant.schemas import Caller, MessageReleaseIn, UsageRecordIn
+from assistant.schemas import Caller, ClaimIn, MessageReleaseIn, UsageRecordIn
 from assistant.services.platform_actor import platform_context
 
 pytestmark = pytest.mark.django_db
+
+#: The model every turn of these tests asks.
+MODEL = "gpt-test"
 
 
 def account_of(user) -> Caller:
@@ -26,7 +29,7 @@ def account_of(user) -> Caller:
 
 
 def claim(caller):
-    return services.turn_usage.message_claim(platform_context(), caller)
+    return services.turn_usage.message_claim(platform_context(), ClaimIn(caller=caller, model=MODEL))
 
 
 def this_month() -> date:
@@ -132,7 +135,7 @@ class TestGivingBackAndRecording:
         claimed = claim(account_of(account))
 
         shown = services.turn_usage.message_release(
-            platform_context(), MessageReleaseIn(caller=account_of(account), month=claimed.month)
+            platform_context(), MessageReleaseIn(caller=account_of(account), month=claimed.month, model=MODEL)
         )
 
         assert shown.used == 0
@@ -146,7 +149,7 @@ class TestGivingBackAndRecording:
         AssistantUsage.objects.create(user=account, month=last_month, messages=5)
         claimed = claim(account_of(account))
 
-        services.turn_usage.message_release(platform_context(), MessageReleaseIn(caller=account_of(account), month=claimed.month))
+        services.turn_usage.message_release(platform_context(), MessageReleaseIn(caller=account_of(account), month=claimed.month, model=MODEL))
 
         assert AssistantUsage.objects.get(user=account, month=this_month()).messages == 0
         assert AssistantUsage.objects.get(user=account, month=last_month).messages == 5
@@ -155,7 +158,7 @@ class TestGivingBackAndRecording:
 
     def test_the_tokens_and_the_cost_go_to_the_accounts_month(self, account):
         record = UsageRecordIn(
-            caller=account_of(account), tokens_input=1000, tokens_output=200, cost_usd=Decimal("0.0036")
+            caller=account_of(account), model=MODEL, tokens_input=1000, tokens_output=200, cost_usd=Decimal("0.0036")
         )
         services.turn_usage.usage_record(platform_context(), record)
 

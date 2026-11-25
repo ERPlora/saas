@@ -9,11 +9,16 @@ checked against the business's own messages, and what is not a picture, a sound 
 erplora.com's origin (downloaded, sandboxed).
 """
 
+import logging
+from contextlib import contextmanager
+from types import SimpleNamespace
+
 import httpx
 import pytest
 import respx
 from django.utils import timezone
 
+from whatsapp import media
 from whatsapp.models import Delivery, PhoneNumber
 from whatsapp.tests.conftest import GRAPH
 
@@ -40,12 +45,12 @@ def attachment(hub, *, media_id=MEDIA_ID, mime="image/jpeg", filename=""):
     )
 
 
-def meta_has_it(mime="image/jpeg", content=JPEG, url=LOOKASIDE, size=None):
+def meta_has_it(mime="image/jpeg", content=JPEG, url=LOOKASIDE, **said):
     info = respx.get(f"{GRAPH}/{MEDIA_ID}").mock(
         return_value=httpx.Response(
             200,
-            json={"url": url, "mime_type": mime, "sha256": "abc", "file_size": size or len(content), "id": MEDIA_ID,
-                  "messaging_product": "whatsapp"},
+            json={"url": url, "mime_type": mime, "sha256": "abc", "file_size": len(content), "id": MEDIA_ID,
+                  "messaging_product": "whatsapp", **said},
         )
     )
     download = respx.get(url).mock(return_value=httpx.Response(200, content=content, headers={"Content-Type": mime}))
@@ -141,7 +146,7 @@ def test_an_unknown_attachment_is_404(client, number, business, owner, ref):
 
     response = open_media(client, ref)
 
-    assert response.status_code == 404
+    assert (response.status_code, error_code(response)) == (404, "whatsapp.media_not_found")
 
 
 def test_a_message_without_an_attachment_is_404(client, number, business, owner):
@@ -156,7 +161,8 @@ def test_a_message_without_an_attachment_is_404(client, number, business, owner)
 
 
 @respx.mock
-def test_an_attachment_meta_no_longer_has_is_404(client, number, business, owner):
+def test_an_attachment_meta_no_longer_has_is_404(client, number, business, owner, caplog):
+    caplog.set_level(logging.INFO, "whatsapp.media")
     respx.get(f"{GRAPH}/{MEDIA_ID}").mock(
         return_value=httpx.Response(
             400, json={"error": {"message": "Unsupported get request.", "type": "GraphMethodException", "code": 100}}
@@ -168,10 +174,11 @@ def test_an_attachment_meta_no_longer_has_is_404(client, number, business, owner
     response = open_media(client, row)
 
     assert (response.status_code, error_code(response)) == (404, "whatsapp.media_not_found")
+    assert "whatsapp.media.refused meta_status=400 meta_code=100" in caplog.text
 
 
 @respx.mock
-def test_a_link_that_is_not_metas_is_never_followed(client, number, business, owner):
+def test_a_link_that_is_not_metas_is_never_followed(client, number, business, owner, caplog):
     _, download = meta_has_it(url="https://evil.example.com/a.jpg")
     row = attachment(business)
     client.force_login(owner)
@@ -180,6 +187,18 @@ def test_a_link_that_is_not_metas_is_never_followed(client, number, business, ow
 
     assert (response.status_code, error_code(response)) == (502, "whatsapp.media_unavailable")
     assert not download.called
+    assert "whatsapp.media.unavailable error=The attachment's link is not Meta's." in caplog.text
+
+
+@respx.mock
+def test_meta_giving_no_link_is_502(client, number, business, owner):
+    respx.get(f"{GRAPH}/{MEDIA_ID}").mock(return_value=httpx.Response(200, json={"id": MEDIA_ID}))
+    row = attachment(business)
+    client.force_login(owner)
+
+    response = open_media(client, row)
+
+    assert (response.status_code, error_code(response)) == (502, "whatsapp.media_unavailable")
 
 
 @respx.mock
@@ -273,7 +292,7 @@ def test_an_expired_permission_at_the_download_is_409_and_marks_the_number_to_re
     ],
 )
 @respx.mock
-def test_any_other_refusal_of_the_download_is_502_and_marks_nothing(client, number, business, owner, answer):
+def test_any_other_refusal_of_the_download_is_502_and_marks_nothing(client, number, business, owner, caplog, answer):
     _, download = meta_has_it()
     download.mock(return_value=answer)
     row = attachment(business)
@@ -284,6 +303,7 @@ def test_any_other_refusal_of_the_download_is_502_and_marks_nothing(client, numb
     assert (response.status_code, error_code(response)) == (502, "whatsapp.media_unavailable")
     number.refresh_from_db()
     assert number.needs_reconnect is False
+    assert f"whatsapp.media.download_refused meta_status={answer.status_code} meta_code=" in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -307,9 +327,70 @@ def test_what_is_not_a_picture_a_sound_or_a_video_is_downloaded_never_shown(
 
     assert response.status_code == 200
     assert response["Content-Type"] == served
-    assert response["Content-Disposition"].startswith("attachment")
-    assert "sandbox" in response["Content-Security-Policy"]
+    assert response["Content-Disposition"] == 'attachment; filename="factura.pdf"'
+    assert response["Content-Security-Policy"] == "default-src 'none'; sandbox"
     body(response)
+
+
+@respx.mock
+def test_a_file_without_a_name_is_downloaded_under_a_plain_one(client, number, business, owner):
+    meta_has_it(mime="application/pdf")
+    row = attachment(business, mime="application/pdf")
+    client.force_login(owner)
+
+    response = open_media(client, row)
+
+    assert response["Content-Disposition"] == 'attachment; filename="attachment"'
+    body(response)
+
+
+@pytest.mark.parametrize(("said", "served"), [("image/png", "image/png"), ("", "image/jpeg"), (None, "image/jpeg")])
+@respx.mock
+def test_metas_type_now_wins_over_the_one_the_message_came_with(client, number, business, owner, said, served):
+    meta_has_it(mime_type=said)
+    row = attachment(business, mime="image/jpeg")
+    client.force_login(owner)
+
+    response = open_media(client, row)
+
+    assert response["Content-Type"] == served
+    body(response)
+
+
+@pytest.mark.parametrize(("size", "length"), [(0, "0"), (12, "12"), (-1, None), ("12", None), (None, None)])
+@respx.mock
+def test_the_length_is_said_only_when_meta_gives_one(client, number, business, owner, size, length):
+    meta_has_it(file_size=size)
+    row = attachment(business)
+    client.force_login(owner)
+
+    response = open_media(client, row)
+
+    assert response.headers.get("Content-Length") == length
+    body(response)
+
+
+@respx.mock
+def test_the_download_is_closed_with_the_response_even_if_it_was_never_read(
+    client, number, business, owner, monkeypatch
+):
+    meta_has_it()
+    closed = []
+
+    @contextmanager
+    def download(url, *, token):
+        yield SimpleNamespace(iter_bytes=lambda size: iter([JPEG]))
+        closed.append(url)
+
+    monkeypatch.setattr(media.meta, "download", download)
+    row = attachment(business)
+    client.force_login(owner)
+
+    response = open_media(client, row)
+
+    assert closed == []
+    response.close()
+    assert closed == [LOOKASIDE]
 
 
 @pytest.mark.parametrize("mime", ["audio/ogg", "video/mp4", "image/webp"])

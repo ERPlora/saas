@@ -10,6 +10,8 @@ import PlanCard from './PlanCard.vue';
 defineProps<{
   plans: PlanOut[];
   period: BillingInterval;
+  /** The billings Stripe sells each plan with, by slug (`billing.store.catalog`'s `sold_intervals`); none listed: none. */
+  sold: Record<string, BillingInterval[]>;
   subscription: StoreSubscriptionOut | null;
   block: Block | null;
   scheduledPlanName?: string;
@@ -37,6 +39,7 @@ const expanded = shallowRef(false);
       v-model:expanded="expanded"
       :plan="plan"
       :period="period"
+      :sold="sold[plan.slug] ?? []"
       :subscription="subscription"
       :block="block"
       :scheduled-plan-name="scheduledPlanName"

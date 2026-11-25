@@ -176,13 +176,14 @@ class TestWhoMaySendAgain:
 
 
 class TestSendTheMailAgain:
-    def test_it_sends_the_mail_of_an_issued_invoice_even_if_sent_before(self, staff_client, invoice):
+    def test_it_sends_the_mail_of_an_issued_invoice_even_if_sent_before(self, staff_client, invoice, hub_double):
         from django.core import mail
         from django.utils import timezone
 
         Invoice.objects.filter(pk=invoice.pk).update(
             fiscal_status="accepted", payer_email="pagos@example.com", emailed_at=timezone.now()
         )
+        hub_double.answer("GET", r"/pdf$", 200, {"pdf": "the platform hub's"})
 
         response = staff_client.post(
             "/admin/billing/invoice/",
@@ -191,7 +192,23 @@ class TestSendTheMailAgain:
         )
 
         assert [message.to for message in mail.outbox] == [["pagos@example.com"]]
+        assert [attachment.filename for attachment in mail.outbox[0].attachments] == ["ERP-2026-00001.pdf"]
         assert "ERP-2026-00001" in response.content.decode()
+
+    def test_without_its_pdf_it_says_the_mail_could_not_leave(self, staff_client, invoice, hub_double):
+        from django.core import mail
+
+        Invoice.objects.filter(pk=invoice.pk).update(fiscal_status="accepted", payer_email="pagos@example.com")
+        hub_double.answer("GET", r"/pdf$", 503, {})
+
+        response = staff_client.post(
+            "/admin/billing/invoice/",
+            {"action": "send_mail_again", "_selected_action": [str(invoice.pk)]},
+            follow=True,
+        )
+
+        assert mail.outbox == []
+        assert "ERP-2026-00001: the mail could not leave; it is sent again later." in response.content.decode()
 
     def test_one_not_issued_has_no_mail_yet(self, staff_client, invoice):
         from django.core import mail

@@ -37,7 +37,7 @@ class BusinessListIn(PageIn):
 class BusinessRowCanOut(Schema):
     """What the row's buttons do for this account, computed by the server (the page never deduces it from
     the role): ``open`` (it serves now), ``manage`` (owner and administrators, not deleted), ``restore``
-    (the owner, deleted and within its 90 days) and ``delete`` (the owner, not deleted)."""
+    (the owner, deleted and within its 90 days) and ``delete`` (the owner, not deleted; never ERPlora's own)."""
 
     open: bool
     manage: bool
@@ -54,6 +54,8 @@ class BusinessRowOut(Schema):
     host: str
     status: str
     status_label: str
+    #: ERPlora's own business: it has no plan nor payments, and only its people are managed here.
+    is_platform: bool
     plan: PlanRefOut | None
     role: Role
     role_label: str
@@ -64,6 +66,10 @@ class BusinessRowOut(Schema):
     #: The Hub's last refusal of this business (its error code), until a call succeeds; else None.
     hub_error: str | None
     maintenance: HubMaintenanceOut | None
+    #: When the maintenance scheduled for its night starts, while it is still ahead; else None.
+    move_scheduled_for: datetime | None
+    #: The business's time zone: that moment is said on its clock.
+    timezone: str
     deletion_requested_at: datetime | None
     purge_after: datetime | None
     created_at: datetime
@@ -120,6 +126,8 @@ class BusinessDetailOut(Schema):
     slug: str
     name: str
     host: str
+    #: As in ``BusinessRowOut``.
+    is_platform: bool
     country: str
     #: The country no longer changes: the business is ready, and may invoice (``hubs.country_locked``).
     country_locked: bool
@@ -130,6 +138,8 @@ class BusinessDetailOut(Schema):
     status_label: str
     hub_error: str | None
     maintenance: HubMaintenanceOut | None
+    #: As in ``BusinessRowOut``.
+    move_scheduled_for: datetime | None
     ready_at: datetime | None
     created_at: datetime
     deletion_requested_at: datetime | None

@@ -208,6 +208,8 @@ con buscador por negocio o por correo y filtro por rol; solo se consulta.
 | HUBS-F35 | Reconocer al servicio de los negocios cuando llama a erplora.com | hecho |
 | HUBS-F36 | Mantener los sectores y los tipos de negocio en el admin | hecho |
 | HUBS-F37 | Leer los sectores y los tipos de negocio | hecho |
+| HUBS-F38 | Entrar como soporte en la app de un negocio que lo permite | hecho |
+| HUBS-F39 | Dar de alta el negocio propio de ERPlora y llevar a sus personas | hecho |
 
 ### HUBS-F01 Crear el negocio gratuito con una sola pregunta
 Estado: hecho
@@ -320,9 +322,9 @@ Actor: propietario, administrador, encargado, empleado, gestoría
 Pantalla: Negocios
 Pasos:
 1. En el menú, «Negocios» abre la lista de los negocios de la cuenta, el último abierto primero; las direcciones viejas del panel de negocios llevan aquí.
-2. Cada fila enseña el negocio (enlace a su página), su dirección web, su «Estado» («Activo», «Preparando», «Pago pendiente», «Suspendido», «En eliminación»), con el porqué y la fecha cuando importa («Eliminado. Puedes recuperarlo hasta el …»), su «Plan», el «Rol» de la persona y su «Último uso».
+2. Cada fila enseña el negocio (enlace a su página), su dirección web, su «Estado» («Activo», «Preparando», «Pago pendiente», «Suspendido», «En eliminación»), con el porqué y la fecha cuando importa («Eliminado. Puedes recuperarlo hasta el …»; un negocio activo con un mantenimiento programado para su madrugada, «Mantenimiento programado: el negocio no estará disponible mientras dure, a partir del …», con el día y la hora en la zona horaria del negocio), su «Plan», el «Rol» de la persona y su «Último uso».
 3. Busca por nombre o dirección web y abre la acción de la fila: «Abrir», «Gestionar» (propietario y administradores) o «Recuperar» (el propietario, un negocio eliminado dentro de sus 90 días).
-4. La lista cambia sola cuando un negocio pasa a estar listo, cambia de plan o de personas, sin recargar.
+4. La lista cambia sola cuando un negocio pasa a estar listo, cambia de plan o de personas, sin recargar. El aviso del mantenimiento programado llega como mucho un cuarto de hora después de que el equipo de ERPlora lo programe, y se va cuando empieza o cuando lo cancela.
 Entra: los negocios de los que la persona es miembro con la invitación aceptada.
 Sale: nada; la lista se mantiene al día sola.
 Si falla: sin negocios, «Crea tu primer negocio» con el formulario del alta; una búsqueda sin resultados, «Nada coincide con la búsqueda» con «Mostrar todo»; sin conexión, el error con «Reintentar», nunca una lista vacía. Un negocio purgado ya no sale.
@@ -445,9 +447,9 @@ Pasos:
 3. La página dice «Se eliminará para siempre el …», que una vez borrado solo se guardan sus documentos fiscales, durante 6 años, y «Recuperar negocio»; debajo, «Descargar los datos»: cada copia completa de sus datos con su fecha, «Al eliminarlo» y su tamaño, y «Descargar». Al propietario le llega el correo con esa fecha, que dice lo mismo de sus documentos fiscales, y «Descarga una copia completa de sus datos: …», que lleva a esa página; cuando la copia está lista, otro correo: «La copia de los datos de … está lista».
 4. Una integración con la sesión de la cuenta hace lo mismo, con el nombre escrito; una clave de API no elimina.
 Entra: el nombre escrito otra vez; la sesión del propietario.
-Sale: el negocio eliminado, que deja de abrirse al momento para todos y a los 90 días se borra para siempre, salvo sus documentos fiscales, que el negocio guarda 6 años en su archivo fiscal (BASE-F109); su plan vuelve a Gratis y lo que se cobraba en Stripe se cancela en la pasada siguiente; el negocio recibe la baja tras guardar. Anota `hubs.business.deleted`.
+Sale: el negocio eliminado, que deja de abrirse al momento para todos y a los 90 días se borra para siempre, salvo sus documentos fiscales, que el negocio guarda 6 años en su archivo fiscal (BASE-F109); su plan vuelve a Gratis y lo que se cobraba en Stripe se cancela en la pasada siguiente, sin factura final; hasta entonces, Facturación › Suscripciones lo enseña «En eliminación», sin próxima factura (BILLING-F23); el negocio recibe la baja tras guardar. Anota `hubs.business.deleted`.
 Si falla: un nombre que no coincide no elimina nada (da igual en mayúsculas o con espacios alrededor); eliminarlo dos veces, «Este negocio se ha eliminado.». Solo el propietario lo elimina y descarga sus datos. Sin copia todavía, «La copia todavía no está lista. Te avisaremos por correo cuando lo esté.»; un negocio que nunca tuvo base de datos propia, «Este negocio no tiene copia de datos.», sin aviso, y su correo de la baja no lleva a la copia; una copia que ya no se guarda, «Esta copia de los datos ya no se conserva.»; si ahora no se puede bajar, «La copia no se puede descargar ahora mismo. Vuelve a intentarlo en un momento.». Para dejar de pagar sin eliminarlo, se cancela el plan desde Facturación (BILLING-F13).
-Implicados: billing (cancela lo que se cobraba), el negocio (deja de abrirse, lo guarda 90 días y después lo borra, salvo sus documentos fiscales: BASE-F109)
+Implicados: billing (cancela lo que se cobraba; BILLING-F23 lo enseña en eliminación), el negocio (deja de abrirse, lo guarda 90 días y después lo borra, salvo sus documentos fiscales: BASE-F109)
 
 ### HUBS-F19 Recuperar un negocio eliminado
 Estado: hecho
@@ -457,7 +459,7 @@ Pasos:
 1. En **Negocios** (la fila dice hasta cuándo se puede recuperar) o en la página del negocio eliminado, el propietario pulsa «Recuperar negocio».
 2. Sale «Negocio recuperado: …» y el negocio vuelve a abrirse como estaba, en el plan Gratis; para volver a un plan de pago, se cambia en la Tienda (BILLING-F08).
 Entra: el negocio eliminado hace menos de 90 días; la sesión del propietario.
-Sale: el negocio activo otra vez (o preparándose, si nunca llegó a estar listo), en Gratis, y el negocio avisado tras guardar. Anota `hubs.business.restored`.
+Sale: el negocio activo otra vez (o preparándose, si nunca llegó a estar listo), en Gratis, y el negocio avisado tras guardar; Facturación › Suscripciones deja de enseñarlo, porque en Gratis no se le cobra nada (BILLING-F23). Anota `hubs.business.restored`.
 Si falla: pasados los 90 días, «Este negocio se borró para siempre y no se puede recuperar.»; un negocio que no está eliminado, «Este negocio no está eliminado.». Si la cuenta ya tiene su negocio gratuito, no vuelve: primero el otro pasa a un plan de pago. Solo el propietario lo recupera.
 Implicados: el negocio (lo vuelve a abrir)
 
@@ -480,7 +482,7 @@ Estado: hecho
 Actor: propietario, administrador
 Pantalla: Resumen del negocio
 Pasos:
-1. En la página del negocio, la cabecera dice su estado («Activo», «Preparando», «Pago pendiente», «Suspendido» o eliminado) y el Resumen, su plan con los dispositivos, las apps que puede tener activadas a la vez y las personas frente a las plazas. Es lo que cubre el plan que tiene el negocio, también un plan interno que no está a la venta, como «Prueba de pago (interno)» (BILLING-F27).
+1. En la página del negocio, la cabecera dice su estado («Activo», «Preparando», «Pago pendiente», «Suspendido» o eliminado), con el aviso del mantenimiento programado para su madrugada mientras no ha empezado (HUBS-F09), y el Resumen, su plan con los dispositivos, las apps que puede tener activadas a la vez y las personas frente a las plazas. Es lo que cubre el plan que tiene el negocio, también un plan interno que no está a la venta, como «Prueba de pago (interno)» (BILLING-F27).
 2. La tarjeta «Uso» («Cómo va tu negocio en ERPlora») enseña el «Almacenamiento» usado del espacio de su plan, con aviso al acercarse al tope, y las personas «Activos ayer» y de los «Últimos 30 días», con «Datos de ayer: se actualizan cada noche.».
 3. Esta tarjeta no enseña las peticiones de cada día, el pico de conexiones ni las peticiones sin hueco: son para el equipo de ERPlora, en su admin (HUBS-F22), y para quien lleva el negocio, en Sistema · Recursos de su hub (BASE-F40).
 Entra: el negocio y lo que midió la última noche.
@@ -500,7 +502,7 @@ Pasos:
 5. Al terminar, aunque el servicio no haya contestado, borra los días de más de 400 días (unos 13 meses), de todos los negocios: siguen los suficientes para comparar un día con el mismo del año anterior.
 Entra: la medición de la noche, página a página.
 Sale: el uso de cada negocio y día, durante 400 días. Anota `hubs.business.usage_collected` y, si borra días, `hubs.usage.pruned`.
-Si falla: si el servicio no contesta o se niega, la pasada termina con error y avisa; una fila rota no para las demás; un negocio que erplora.com no vendió se apunta sin error. Dos pasadas a la vez no se pisan. Una cifra que el servicio no midió, o que aún no manda, se guarda sin cifra y el admin dice «—», nunca un 0. Si no puede borrar los días viejos, lo recogido se queda y la pasada termina con error y avisa; los borra la noche siguiente.
+Si falla: si el servicio no contesta o se niega, la pasada termina con error y avisa; una fila rota no para las demás; un negocio que erplora.com no vendió, o el propio de ERPlora (HUBS-F39), se apunta sin error y sin guardar su uso. Dos pasadas a la vez no se pisan. Una cifra que el servicio no midió, o que aún no manda, se guarda sin cifra y el admin dice «—», nunca un 0. Si no puede borrar los días viejos, lo recogido se queda y la pasada termina con error y avisa; los borra la noche siguiente.
 Implicados: el negocio (BASE-F40: mide su uso y lo sirve)
 
 ### HUBS-F23 Actuar el personal de ERPlora sobre un negocio desde el admin
@@ -704,6 +706,35 @@ Sale: las dos listas; nada se guarda.
 Si falla: un sector que no existe da una lista vacía; un sector o un tipo desactivado no sale en su lista. Una clave de API de la cuenta también las lee.
 Implicados: public (las páginas de cada sector), accounts (el alta del negocio en la Entrada)
 
+### HUBS-F38 Entrar como soporte en la app de un negocio que lo permite
+Estado: hecho
+Actor: personal de ERPlora
+Pantalla: admin › Negocios (la ficha del negocio), admin › Negocios › Hubs, el negocio
+Pasos:
+1. Un negocio pide ayuda a soporte de ERPlora para configurarlo y, en su app, enciende el acceso de soporte (BASE-F126 del Hub).
+2. La persona de soporte entra en el admin de erplora.com con su propia cuenta y pulsa «Entrar como soporte» en la ficha del negocio o en su fila de «Hubs».
+3. El negocio la manda a erplora.com con la marca de ese navegador, como en cualquier entrada (ACCOUNTS-F28), y erplora.com, que comprueba que es del personal de ERPlora, la devuelve al negocio con un pase de un solo uso que dice que entra como soporte, con su nombre y su correo.
+4. Con el acceso encendido, aparece dentro de la app del negocio como un administrador, sin salir en su equipo, y el negocio apunta la entrada (BASE-F126).
+Entra: la cuenta del personal (un superusuario o una del grupo de soporte) y el negocio de la ficha.
+Sale: un pase que vale un minuto, sirve una sola vez y solo para ese negocio, y una línea en el registro de erplora.com con la cuenta y el negocio. En erplora.com no se añade nadie al negocio ni se ocupa una plaza de su plan.
+Si falla: en el negocio propio de ERPlora no entra soporte: ni su ficha ni su fila lo ofrecen y no recibe pase (HUBS-F39). Con el acceso apagado, el negocio no abre sesión y enseña «Este negocio no deja entrar a soporte» con «Volver a intentarlo». Una cuenta sin rol de plataforma (un cliente que no es miembro, el personal sin rol o una cuenta desactivada) no recibe pase: «No tienes acceso a este hub». Quien es miembro del negocio entra con su rol de miembro. Con la verificación en dos pasos encendida en la plataforma, antes pide el código de la app autenticadora. El pase de soporte no abre el admin del Hub, ni el del admin del Hub la app del negocio.
+Implicados: accounts (el pase de la entrada, ACCOUNTS-F28), el negocio (BASE-F126 del Hub: el acceso de soporte y su página de rechazo), HUBS-F23
+
+### HUBS-F39 Dar de alta el negocio propio de ERPlora y llevar a sus personas
+Estado: hecho
+Actor: personal de ERPlora, propietario, administrador
+Pantalla: ninguna para darlo de alta; después, Negocios, Resumen y Miembros
+Pasos:
+1. El negocio con el que ERPlora factura ya existe en el servicio de los negocios, con la dirección reservada `erp`. El personal lo da de alta en erplora.com una sola vez, con el identificador que tiene allí y la cuenta que será su propietaria. erplora.com pregunta antes por ese identificador al servicio de los negocios y solo sigue si es el negocio propio de ERPlora, listo, con su dirección y sin ser una demo.
+2. Nace activo, sin plan, sin suscripción y sin quien pague; su propietario ya está dentro. Aparece en **Negocios** como uno más y su página tiene solo «Resumen», sin plan ni uso, y «Miembros».
+3. En «Miembros», el propietario y los administradores invitan, cambian el rol, quitan y traspasan como en cualquier negocio (HUBS-F24 a HUBS-F29), sin tope de plazas; lo que se explica ahí no habla de plan, de pagos ni de eliminarlo.
+4. Cada cambio de sus personas aceptadas le manda su foto, que aquí lleva solo a sus personas y un número de versión que solo crece; si no la recibe, se le reintenta (HUBS-F08), y cada noche la recibe otra vez.
+5. Cada persona aceptada lo abre y entra en `erp.erplora.com` con su rol (HUBS-F11).
+Entra: el identificador del negocio y el correo de una cuenta activa, con su dirección confirmada, que no sea del personal.
+Sale: su fila en erplora.com, una sola. Al servicio de los negocios solo se le mandan sus personas; nunca se le registra, se le elimina ni se le recupera. Anota `hubs.business.created`.
+Si falla: si el servicio de los negocios no contesta o dice otra cosa, no se guarda nada; darlo de alta otra vez no cambia nada, y con otro identificador se rechaza. Nadie más puede usar la dirección `erp`, y quien no es miembro aceptado no entra, tampoco el personal de ERPlora como soporte (HUBS-F38): «No tienes acceso a este hub». Cambiar su nombre, su dirección, su país, su idioma o su zona horaria, ponerle un dominio, decir quién lo paga, comprarle o cambiarle un plan o un módulo, eliminarlo o recuperarlo se rechaza con «El negocio propio de ERPlora no tiene plan ni pagos, y aquí no se puede cambiar, eliminar ni recuperar.», también desde el asistente del panel; el admin dice lo mismo en sus acciones de planes y de reloj de prueba. No sale en la Tienda ni en el filtro de Facturas, ningún repaso de cobros lo toca y su uso no se recoge (HUBS-F22). Sin plan no tiene mensajes del asistente ni WhatsApp: erplora.com contesta al servicio de los negocios que no lo conoce, como antes de darlo de alta, y sus registros fiscales siguen yendo con el sello de ERPlora. Su propietario no puede eliminar su cuenta hasta traspasarlo: **Cuenta › Perfil** solo le pide que lo transfiera y lo lleva a «Miembros» (ACCOUNTS-F27).
+Implicados: accounts (el pase de entrada y la cuenta de su propietario), billing (rechaza los cobros), assistant, whatsapp y fiscal (no lo conocen), el negocio (recibe a sus personas)
+
 ## Para quien lo mantiene
 
 - Anatomía, operaciones y decisiones: `hubs/README.md` (negocios, salto al Hub, foto y registro empujados al Hub,
@@ -714,10 +745,33 @@ Implicados: public (las páginas de cada sector), accounts (el alta del negocio 
   conexión o rechazado escribe la línea ERROR `saas.worker.pass_failed task=reconcile_hub_states left work owed: …`,
   que es lo que avisa la alarma. En el worker la pasada tiene 50 s y oye la
   parada entre dos negocios (`go_on`): lo que no entra queda pendiente para la pasada siguiente (`cut_short=1`).
+- El mantenimiento programado (F09, F21) es el traslado del negocio a otro servidor que el personal de ERPlora pide
+  en el admin del Hub para su madrugada. El Hub no avisa: en cada vuelta del `saas-worker` (cada 15 minutos, con su
+  propio cerrojo y sus 50 s), `services.scheduled_moves.check_scheduled_moves_exclusively` pregunta por cada negocio
+  activo, con el pago pendiente o suspendido (`GET /internal/hubs/{id}`, el mismo sondeo firmado del alta) y guarda
+  `move_scheduled_for` en `Hub.move_scheduled_for` con `hubs.business.record_scheduled_move`, que emite
+  `hubs.business.move_scheduled_changed` en el canal del propietario sin tocar `state_version`. Nunca se pregunta al
+  Hub por la petición de una persona. La lista y la página solo lo dicen mientras ese instante está por llegar
+  (`access_control.scheduled_move_of`); la frase sale de `reasonKey` (`hubs.reason.moveScheduled`), en la zona
+  horaria del negocio. Un Hub que aún no manda el campo cuenta como sin mantenimiento; uno que no contesta deja lo
+  guardado y la línea `saas.worker.pass_failed task=check_scheduled_moves`.
 - Alta (F01–F03): `hubs.business.create` (una transacción: `BillingProfile`, `Hub`, `HubMember` propietario y
   `Subscription` Gratis) y el empuje tras el COMMIT (`services.hub_push.sync_hub`). El pago es de `billing`
   (`billing.checkout.start`). El país sugerido sale de `navigator.languages` (`regions.suggestedCountry`, con
   `Intl.Locale.maximize`): la primera región que ERPlora vende; si no, España.
+- Negocio propio de ERPlora (F39): `manage.py create_platform_business <id> --owner <correo> [--execute]` (ensayo sin
+  `--execute`) corre `hubs.platform_business.create` (`services/platform_business.py`), que comprueba el identificador con
+  `GET /internal/hubs/{id}` antes de escribir. La fila lleva `Hub.is_platform`: la base admite una sola, siempre activa,
+  sin llamada pendiente y sin pagador (`hubs_hub_one_platform`, `hubs_hub_platform_only_its_people`), y `Hub.save` deja el
+  nombre reservado `settings.PLATFORM_HUB_SLUG` solo a ella. Las puertas la rechazan con
+  `services.refusals.refuse_platform_business` o `refuse_to_change`, que rechaza también un negocio eliminado (409
+  `hubs.platform_business`), `hub_sync.hub_snapshot` manda solo `members`, `plan_catalog.effective_plan` da `None` y
+  `Plan.objects.offered_to`, ningún plan. El salto acepta el nombre (`hub_jump.is_hub_slug`) y quién entra lo
+  decide `membership._who_enters`, que bajo ese nombre solo admite la fila `is_platform`. Soporte no recibe pase para él
+  (`hub_jump.takes_support`, que leen también el botón de su ficha y el de «Hubs»). Las puertas que el Hub llama
+  (`assistant.caller.resolve`, `whatsapp.queries.known_hub`, `fiscal.representation.submit`,
+  `fiscal_gateway.queries.hub_id_for`) la dejan fuera. Tests: `hubs/tests/test_platform_business*.py`,
+  `hubs/tests/test_create_platform_business.py` y `billing/tests/test_platform_business_pays_nothing.py`.
 - Listo (F04, F07): `POST /internal/hubs/{id}/ready` (`hubs/internal.py`) → `hubs.business.mark_ready`; el correo
   `emails.send_ready` sale tras el COMMIT y solo cuando esa llamada pasa el negocio de `preparing` a `active`.
 - F06 lo sirve el Hub (`base/middleware.py`, plantilla `base/hub_preparing.html`, 503 con `Retry-After`; tests

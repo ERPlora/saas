@@ -13,15 +13,16 @@ from datetime import timedelta
 
 import pytest
 from django.utils import timezone
-from live.errors import NotFound, OperationError, PermissionDenied
+from live.errors import Conflict, NotFound, OperationError, PermissionDenied
 
 from apps.icons import FALLBACK_ICON_SVG
 from apps.tests.factories import CUBE_SVG, make_app
 from billing import queries
 from billing.models import PlanChangeSchedule
 from billing.schemas.store import StoreCatalogIn
+from billing.services import stripe_sales
 from billing.tests.conftest import ctx_for, pay
-from hubs.models import Hub, HubMember, Plan, SubscriptionItem
+from hubs.models import Hub, HubMember, Plan, Subscription, SubscriptionItem
 from hubs.tests.conftest import add_member, create_business
 
 pytestmark = pytest.mark.django_db
@@ -171,6 +172,50 @@ class TestWhichPlansAreOffered:
         assert "free" not in offered
 
 
+class TestTheBillingsEachPlanIsSoldWith:
+    """A plan is sold with a billing only once the admin pasted its Stripe price for it
+    (``Plan.stripe_price_id`` / ``stripe_price_id_annual``); without one, buying it is refused with
+    ``billing.not_on_sale``, so the Store says so on the card instead of offering a button that fails."""
+
+    def test_a_plan_with_both_prices_is_sold_monthly_and_annually(self, shop, owner):
+        assert catalog(owner, shop)["sold_intervals"] == {
+            "starter": ["month", "year"],
+            "standard": ["month", "year"],
+        }
+
+    def test_a_plan_without_the_price_of_one_billing_is_not_sold_with_it(self, shop, owner):
+        Plan.objects.filter(slug="standard").update(stripe_price_id="")
+        Plan.objects.filter(slug="starter").update(stripe_price_id_annual="")
+
+        assert catalog(owner, shop)["sold_intervals"] == {
+            "starter": ["month"],
+            "standard": ["year"],
+        }
+
+    def test_a_plan_without_any_stripe_price_is_offered_but_sold_with_none(self, shop, owner):
+        out = catalog(owner, pay(shop))
+
+        assert "enterprise" in out["offered_plans"]
+        assert out["sold_intervals"]["enterprise"] == []
+
+    def test_the_internal_plan_is_sold_by_the_month_only(self, marked, owner):
+        assert catalog(owner, marked)["sold_intervals"]["payment-test"] == ["month"]
+
+    def test_what_the_store_says_is_sold_is_what_the_checkout_sells(self, shop, owner):
+        Plan.objects.filter(slug="standard").update(stripe_price_id="")
+        paid = pay(shop)
+        sold = catalog(owner, paid)["sold_intervals"]
+
+        for slug, intervals in sold.items():
+            for interval in ("month", "year"):
+                if interval in intervals:
+                    assert stripe_sales.plan_sale(paid, slug, interval).price_id
+                    continue
+                with pytest.raises(Conflict) as refused:
+                    stripe_sales.plan_sale(paid, slug, interval)
+                assert refused.value.code == "billing.not_on_sale"
+
+
 class TestTheInternalPlans:
     """An internal plan (``payment-test``, 1 € + VAT) is offered only to the owner of a business ERPlora's staff
     marked in the admin. ``hubs.plan.list`` lists only the public plans, so the Store gets its card here."""
@@ -200,6 +245,19 @@ class TestTheInternalPlans:
         assert "payment-test" not in answer["offered_plans"]
         assert answer["internal_plans"] == []
 
+    def test_the_one_it_has_and_is_still_offered_comes_once(self, marked, owner):
+        paid = pay(marked, plan="payment-test")
+
+        answer = catalog(owner, paid)
+
+        assert "payment-test" in answer["offered_plans"]
+        assert [card["slug"] for card in answer["internal_plans"]] == ["payment-test"]
+
+    def test_their_card_is_in_the_persons_language(self, marked, owner):
+        answer = queries.store_catalog(ctx_for(owner, language="es"), StoreCatalogIn(hub_id=marked.id))
+
+        assert [card.name for card in answer.internal_plans] == ["Prueba de pago (interno)"]
+
     def test_a_business_on_an_internal_plan_keeps_its_card_once_unmarked(self, marked, owner):
         paid = pay(marked, plan="payment-test")
         Hub.objects.filter(pk=paid.pk).update(can_buy_internal_plans=False)
@@ -222,7 +280,41 @@ class TestWhatTheBusinessHas:
         assert subscription["billing_interval"] == "year"
         assert subscription["paying"] is True
         assert subscription["status"] == "active"
-        assert subscription["current_period_end"] is not None
+        renews = Subscription.objects.get(hub=paid).current_period_end
+        assert subscription["current_period_end"] == renews.isoformat().replace("+00:00", "Z")
+
+    def test_an_unpaid_plan_says_so(self, shop, owner, inventory):
+        unpaid = pay(shop, status="past_due")
+
+        assert catalog(owner, unpaid)["subscription"]["status"] == "past_due"
+
+    def test_a_plan_on_trial_says_which_and_until_when(self, shop, owner, inventory):
+        ends = timezone.now() + timedelta(days=15)
+        Subscription.objects.filter(hub=shop).update(trial_plan=Plan.objects.get(slug="standard"), trial_end=ends)
+
+        subscription = catalog(owner, shop)["subscription"]
+
+        assert (subscription["plan"], subscription["trial_plan"]) == ("free", "standard")
+        assert subscription["trial_end"] == ends.isoformat().replace("+00:00", "Z")
+
+    def test_what_another_business_of_the_account_has_is_its_own(self, shop, owner, inventory):
+        pay(shop, plan="standard", modules=["inventory"])
+        other = create_business(owner, name="Bar Norte")
+
+        answer = catalog(owner, other)
+
+        assert answer["subscription"]["plan"] == "free"
+        assert [module["owned"] for module in answer["modules"]] == [False]
+
+    def test_a_business_without_a_subscription_has_nothing_and_is_sold_everything(self, shop, owner, inventory):
+        Subscription.objects.filter(hub=shop).delete()
+
+        answer = catalog(owner, shop)
+
+        assert answer["subscription"] is None
+        assert [(module["slug"], module["owned"]) for module in answer["modules"]] == [("inventory", False)]
+        assert answer["offered_plans"] == ["starter", "standard"]
+        assert answer["internal_plans"] == []
 
     def test_a_bought_module_is_owned(self, shop, owner, inventory):
         paid = pay(shop, modules=["inventory"])

@@ -45,8 +45,9 @@ def working(hub: Hub | None) -> Hub:
 )
 def caller_resolve(ctx: OperationContext, data: CallerIn) -> dict:
     """The business (or the demo) a call of the Hub names in ``hub`` (the platform only): a business by its address
-    or its id (the UUID's own spelling), a demo by its ``demo-…`` address. 404 ``hub_unknown`` (unknown or purged),
-    403 ``hub_inactive`` (preparing, suspended or being deleted: its people cannot be in it)."""
+    or its id (the UUID's own spelling), a demo by its ``demo-…`` address. 404 ``hub_unknown`` (unknown or purged; and
+    ERPlora's own, which has no plan and so no messages), 403 ``hub_inactive`` (preparing, suspended or being deleted:
+    its people cannot be in it)."""
     platform_only(ctx)
     ref = data.hub.strip()
     if is_demo_slug(ref):
@@ -60,5 +61,5 @@ def caller_resolve(ctx: OperationContext, data: CallerIn) -> dict:
     except ValueError:
         key = None
     named = Q(id=key) if key is not None and str(key) == ref else Q(slug=ref)
-    hub = working(Hub.objects.filter(named).exclude(status=Hub.Status.DELETED).first())
+    hub = working(Hub.objects.filter(named, is_platform=False).exclude(status=Hub.Status.DELETED).first())
     return {"hub_id": hub.id, "demo": "", "slug": hub.slug}

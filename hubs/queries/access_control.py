@@ -80,6 +80,12 @@ def maintenance_of(hub: Hub) -> dict[str, Any] | None:
     return hub.maintenance if hub.status == Hub.Status.PREPARING and hub.ready_at is None else None
 
 
+def scheduled_move_of(hub: Hub, now: datetime) -> datetime | None:
+    """When the maintenance scheduled for the business's night starts, while it is still ahead; from then the move
+    is under way and the next poll says it is over."""
+    return hub.move_scheduled_for if hub.move_scheduled_for is not None and hub.move_scheduled_for > now else None
+
+
 def is_writable(hub: Hub) -> bool:
     """Whether the business takes changes: a deleted one answers every write with 409 until recovered."""
     return hub.status not in (Hub.Status.DELETING, Hub.Status.DELETED)
@@ -97,21 +103,23 @@ def is_restorable(hub: Hub, now: datetime) -> bool:
 def can(member: HubMember, now: datetime | None = None) -> dict[str, bool]:
     """What ``member`` may do on its business, by role and status, computed here so no page
     deduces it: the owner everything, an admin the team and the settings, a manager or an employee only
-    «Open». «Open» while it serves; a deleted business takes no change, only «Recover» by its owner."""
+    «Open». «Open» while it serves; a deleted business takes no change, only «Recover» by its owner. Of ERPlora's
+    own business, only its people are managed."""
     hub = member.hub
     now = now or timezone.now()
     is_owner = member.role == Role.OWNER
     manages_it = RANK[member.role] <= RANK[Role.ADMIN] and is_writable(hub)
+    customer = not hub.is_platform
     return {
         "open": hub.status not in OPEN_BLOCKED,
         "manage": manages_it,
         "manage_members": manages_it,
-        "manage_settings": manages_it,
-        "manage_billing": is_owner,
+        "manage_settings": manages_it and customer,
+        "manage_billing": is_owner and customer,
         "transfer": is_owner and is_writable(hub),
         "restore": is_owner and is_restorable(hub, now),
-        "delete": is_owner and is_writable(hub),
-        "change_address": is_owner and is_writable(hub),
+        "delete": is_owner and is_writable(hub) and customer,
+        "change_address": is_owner and is_writable(hub) and customer,
         "download_data": is_owner,
     }
 

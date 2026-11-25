@@ -14,10 +14,10 @@ from django_ratelimit.core import is_ratelimited
 from live.context import OperationContext
 from live.errors import OperationError
 
-from assistant import queries, routing, services
-from assistant.models import estimate_cost
+from assistant import queries, routing, services, usage_cost
 from assistant.providers.base import ToolSpec, TurnRequest
 from assistant.schemas import ModelTryIn, RouteCandidate, RouteIn
+from assistant.usage_cost import Tokens
 
 #: What trying a model needs: the permission that chooses which model answers (a try spends ERPlora's key).
 TRY_PERMISSIONS = ("assistant.change_airoutingpolicy",)
@@ -101,14 +101,13 @@ def prepare_try(request, ctx: OperationContext) -> tuple[RouteCandidate, TurnReq
 async def try_events(candidate: RouteCandidate, turn: TurnRequest):
     """The events of the model's answer, then its ``metrics`` (tokens, milliseconds and USD) and ``done``."""
     started = time.monotonic()
-    usage = {"input_tokens": 0, "output_tokens": 0}
+    tokens = Tokens()
     async for event in routing.stream([candidate], lambda _candidate: turn):
         if event.type == "usage":
-            usage = {"input_tokens": event.payload["input_tokens"], "output_tokens": event.payload["output_tokens"]}
+            tokens = Tokens.of(event.payload)
         yield sse(event.type, event.payload)
-    cost = estimate_cost(
-        candidate.price_input_per_1m, candidate.price_output_per_1m, usage["input_tokens"], usage["output_tokens"]
-    )
+    cost = usage_cost.cost(candidate, tokens)
     latency_ms = int((time.monotonic() - started) * 1000)
-    yield sse("metrics", {"latency_ms": latency_ms, **usage, "cost_usd": format(cost.normalize(), "f")})
+    metrics = {"input_tokens": tokens.input, "output_tokens": tokens.output, "cost_usd": format(cost.normalize(), "f")}
+    yield sse("metrics", {"latency_ms": latency_ms, **metrics})
     yield sse("done")

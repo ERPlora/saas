@@ -41,6 +41,7 @@
       "suspended": "Suspendido por una factura sin pagar. Tus datos están a salvo: paga la factura y vuelve a funcionar al momento.",
       "suspendedApp": "Suspendido por una factura sin pagar. Tus datos están a salvo. Para pagarla, entra en erplora.com desde el navegador.",
       "deleting": "Eliminado. Puedes recuperarlo hasta el {date}.",
+      "moveScheduled": "Mantenimiento programado: el negocio no estará disponible mientras dure, a partir del {date}.",
       "preparingSoon": "Listo en unos segundos",
       "pastDueUntil": "Hay una factura sin pagar. Págala antes del {date} o el negocio se suspende.",
       "pastDueUntilApp": "Hay una factura sin pagar: sigue funcionando hasta el {date}. Para pagarla, entra en erplora.com desde el navegador.",
@@ -400,6 +401,10 @@
       "rolesAdmin": "Administrador: equipo, módulos y ajustes.",
       "rolesStaff": "Encargado y empleado: trabajan dentro del negocio. Los empleados que solo usan un PIN en la caja se gestionan dentro del negocio.",
       "rolesAccountant": "Gestoría: la asesoría que lleva las cuentas. Solo lee las ventas y las facturas, con sus impuestos, y descarga las facturas; no ocupa plaza del plan.",
+      "platform": {
+        "rolesOwner": "Propietario: todo, también transferir el negocio.",
+        "rolesAccountant": "Gestoría: la asesoría que lleva las cuentas. Solo lee las ventas y las facturas, con sus impuestos, y descarga las facturas."
+      },
       "pendingTransfer": {
         "heading": "Propiedad ofrecida a {email}",
         "body": "Tiene hasta el {date} para aceptarla. Mientras tanto sigues siendo el propietario.",

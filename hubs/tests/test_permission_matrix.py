@@ -174,6 +174,8 @@ def test_every_operation_on_a_business_has_its_row():
         "hubs.business.mark_ready",
         "hubs.business.record_hub_error",
         "hubs.business.record_maintenance",
+        # The platform's (the worker's question about each night): ``test_scheduled_moves.py``.
+        "hubs.business.record_scheduled_move",
         "hubs.business.notify_people",
         # The platform's (billing writes what Stripe says): ``test_subscription_apply.py``.
         "hubs.subscription.apply",
@@ -182,6 +184,8 @@ def test_every_operation_on_a_business_has_its_row():
         "hubs.usage.prune",
         # The platform's (the hourly check): ``test_check_custom_domains.py``.
         "hubs.custom_domain.record",
+        # The platform's (its command): ``test_platform_business.py``.
+        "hubs.platform_business.create",
         # The platform's (the clock of a suspended business): ``test_suspended_lifecycle.py``.
         "hubs.business.age_suspension",
         "hubs.address.propose",

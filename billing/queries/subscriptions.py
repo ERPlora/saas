@@ -19,9 +19,10 @@ from apps.models import Module
 from billing import discount_terms, stripe_payments, stripe_service, vat
 from billing.models import Invoice, PaymentFailure, PlanChangeSchedule, PromoRedemption
 from billing.money import from_cents, to_cents
+from billing.payer import Payer
 from billing.queries.invoices import CARD_CACHE_SECONDS, _billing_account, _owned_hub_ids
 from billing.queries.promo_codes import discount_out
-from billing.queries.tax import Payer, _vat_status_on_file, payer_of
+from billing.queries.tax import _vat_status_on_file, payer_of
 from billing.schemas.common import HubIn
 from billing.schemas.payment_methods import PaymentMethodIn, PaymentMethodOut
 from billing.schemas.subscription_changes import PlanCancelPreviewOut
@@ -38,6 +39,8 @@ logger = logging.getLogger("billing.queries")
 
 #: A Stripe subscription that ended bills nothing: the business is back on Free.
 ENDED_SUBSCRIPTIONS = ("canceled", "incomplete_expired")
+#: The buttons of a row in the order it shows them, the ones the account may use.
+ROW_ACTIONS = ("view_invoice", "take_over", "keep_plan", "change_plan", "cancel_plan", "view_invoices")
 
 
 def _module_price(module: Module | None, interval: str) -> int | None:
@@ -55,18 +58,10 @@ def _with_vat_cents(parts: list[tuple[int, str]], payer: Payer) -> int | None:
     prices them; ``None`` while the payer's place is unknown or has no rule."""
     if not payer.has_location:
         return None
-    verified = _vat_status_on_file(payer.tax_id, payer.country) == "verified"
+    payer = payer.cleared(_vat_status_on_file(payer.tax_id, payer.country) == "verified")
     total = 0
     for cents, category in parts:
-        quote = vat.quote_vat(
-            from_cents(cents),
-            customer_country=payer.country,
-            customer_postal_code=payer.postal_code,
-            customer_tax_id=payer.tax_id,
-            customer_tax_id_type=payer.tax_id_type,
-            customer_tax_id_verified=verified,
-            category_key=category,
-        )
+        quote = vat.quote_vat(from_cents(cents), payer, category_key=category)
         if quote is None:
             return None
         total += to_cents(quote.base + quote.tax)
@@ -94,55 +89,90 @@ def scheduled_change_of(hub_id) -> dict | None:
     return {"plan": pending.plan_slug, "interval": pending.interval, "starts_at": pending.starts_at}
 
 
-def _subscription_row(  # noqa: PLR0913, PLR0917
-    subscription: Subscription, user, owned: set, unpaid: dict, modules: dict, scheduled: dict, next_plans: dict
-) -> dict:
+def _next_invoice(
+    subscription: Subscription, scheduled_change: dict | None, next_plans: dict, renewing: list
+) -> dict | None:
+    """The row's next invoice: none while its plan ends at the end of the period, nor once the business was deleted
+    (deleting it cancelled its plan at once, and billing's next sweep ends it in Stripe, which bills nothing more)."""
+    if subscription.cancel_at_period_end or subscription.hub.status == Hub.Status.DELETING:
+        return None
+    # A downgrade that waits starts on that very date: Stripe's next phase bills the new items.
+    next_plan, next_interval = (
+        (next_plans.get(scheduled_change["plan"]), scheduled_change["interval"])
+        if scheduled_change
+        else (subscription.plan, subscription.billing_interval)
+    )
+    return {
+        "date": subscription.current_period_end,
+        "total_cents": _next_invoice_cents(next_plan, next_interval, renewing, payer_of(subscription.hub)),
+        "currency": "EUR",
+    }
+
+
+def _status_of(subscription: Subscription) -> tuple[str, str]:
+    """The row's status and its label: Stripe's, or the business's once it was deleted, as its own page says it."""
+    hub = subscription.hub
+    if hub.status == Hub.Status.DELETING:
+        return hub.status, access_control.status_label(hub.status)
+    return subscription.status, str(Subscription.Status(subscription.status).label)
+
+
+def _what_it_pays(subscription: Subscription, modules: dict, scheduled_change: dict | None, next_plans: dict) -> dict:
+    """What the row says to everybody who sees it: the plan and modules of the business, what it pays next and
+    whether that goes on."""
     hub = subscription.hub
     plan = subscription.plan
     interval = subscription.billing_interval
-    plan_cents = _plan_price(plan, interval)
-    items = []
-    renewing = []
     now = timezone.now()
-    for item in subscription.items.all():
-        if not item.is_live(now):
-            # A cancelled module whose period ended is gone, as in the Hub's snapshot and in the store.
-            continue
-        module = modules.get(item.module_slug)
-        items.append(
+    # A cancelled module whose period ended is gone, as in the Hub's snapshot and in the store.
+    items = [item for item in subscription.items.all() if item.is_live(now)]
+    renewing = [
+        modules.get(item.module_slug) for item in items if item.source == "purchase" and item.valid_until is None
+    ]
+    next_invoice = _next_invoice(subscription, scheduled_change, next_plans, renewing)
+    status, status_label = _status_of(subscription)
+    cancelling = subscription.cancel_at_period_end
+    return {
+        "business": {"id": hub.id, "name": hub.name},
+        "plan": {
+            "slug": plan.slug,
+            "name": plan.translated("name"),
+            "interval": interval,
+            "price_cents": _plan_price(plan, interval),
+        },
+        "modules": [
             {
                 "slug": item.module_slug,
                 "interval": interval,
-                "price_cents": _module_price(module, interval),
+                "price_cents": _module_price(modules.get(item.module_slug), interval),
                 "source": item.source,
                 "valid_until": item.valid_until,
             }
-        )
-        if item.source == "purchase" and item.valid_until is None:
-            renewing.append(module)
-    cancelling = subscription.cancel_at_period_end
-    scheduled_change = scheduled.get(hub.id)
-    next_invoice = None
-    if not cancelling:
-        # A downgrade that waits starts on that very date: Stripe's next phase bills the new items.
-        next_plan, next_interval = (
-            (next_plans.get(scheduled_change["plan"]), scheduled_change["interval"])
-            if scheduled_change
-            else (plan, interval)
-        )
-        next_invoice = {
-            "date": subscription.current_period_end,
-            "total_cents": _next_invoice_cents(next_plan, next_interval, renewing, payer_of(hub)),
-            "currency": "EUR",
-        }
+            for item in items
+        ],
+        "next_invoice": next_invoice,
+        "status": status,
+        "status_label": status_label,
+        "cancelling": cancelling,
+        "ends_at": subscription.current_period_end if cancelling else None,
+        "cancel_requested": subscription.cancel_requested_at is not None,
+        "scheduled_change": scheduled_change,
+    }
+
+
+def _what_the_account_may_do(
+    subscription: Subscription, user, owned: set, unpaid_id, scheduled_change: dict | None
+) -> dict:
+    """What the row says to this account: the invoice the business owes, whose card pays and the buttons."""
+    hub = subscription.hub
     profile = hub.billing_profile
     # Charged to the card of another account: the payer before a hand-over.
     elsewhere = profile is None or profile.owner_id != user.pk or subscription.stripe_customer_id != profile.stripe_customer_id
     writable = hub.id in owned and access_control.is_writable(hub)
     manages = writable and not elsewhere
-    unpaid_id = unpaid.get(hub.id)
+    cancelling = subscription.cancel_at_period_end
     # A cancellation, or a downgrade that waits for the end of the period, is undone with «Keep the plan» until
-    # that date: it leads the row.
+    # that date.
     undoable = cancelling or scheduled_change is not None
     can = {
         "take_over": writable and elsewhere,
@@ -152,23 +182,10 @@ def _subscription_row(  # noqa: PLR0913, PLR0917
         "view_invoice": unpaid_id is not None,
         "view_invoices": True,
     }
-    order = ["view_invoice", "take_over",
-             *(["keep_plan", "change_plan", "cancel_plan"] if undoable else ["change_plan", "cancel_plan"]),
-             "view_invoices"]
     return {
-        "business": {"id": hub.id, "name": hub.name},
-        "plan": {"slug": plan.slug, "name": plan.translated("name"), "interval": interval, "price_cents": plan_cents},
-        "modules": items,
-        "next_invoice": next_invoice,
-        "status": subscription.status,
-        "status_label": str(Subscription.Status(subscription.status).label),
-        "cancelling": cancelling,
-        "ends_at": subscription.current_period_end if cancelling else None,
-        "cancel_requested": subscription.cancel_requested_at is not None,
         "unpaid_invoice_id": unpaid_id,
-        "scheduled_change": scheduled_change,
         "paid_by_another_account": elsewhere and hub.id in owned,
-        "actions": [action for action in order if can[action]],
+        "actions": [action for action in ROW_ACTIONS if can[action]],
         "can": can,
     }
 
@@ -202,12 +219,15 @@ def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
         .exclude(stripe_subscription_id="")
         .exclude(status__in=ENDED_SUBSCRIPTIONS)
         .exclude(hub__status=Hub.Status.DELETED)
+        # Recovered before the sweep ended what deleting it asked of Stripe: it is on Free and bills nothing.
+        .exclude(Q(cancel_requested_at__isnull=False) & ~Q(hub__status=Hub.Status.DELETING))
         .order_by("hub__name", "hub_id")
     )
     if data.hub_id is not None:
         subscriptions = subscriptions.filter(hub_id=data.hub_id)
     if data.status is not None:
-        subscriptions = subscriptions.filter(status=data.status)
+        # A deleted business's row carries the business's status, none of Stripe's.
+        subscriptions = subscriptions.filter(status=data.status).exclude(hub__status=Hub.Status.DELETING)
     total = subscriptions.count()
     page = list(subscriptions[data.offset : data.offset + data.limit])
     unpaid = {}
@@ -227,10 +247,14 @@ def subscription_list(ctx: OperationContext, data: SubscriptionListIn) -> dict:
             for change in PlanChangeSchedule.objects.filter(hub_id__in=[s.hub_id for s in page])
         }
         next_plans = Plan.objects.in_bulk({change["plan"] for change in scheduled.values()}, field_name="slug")
-        rows = with_discount(
-            [_subscription_row(subscription, user, owned, unpaid, modules, scheduled, next_plans) for subscription in page],
-            page,
-        )
+        rows = []
+        for subscription in page:
+            change = scheduled.get(subscription.hub_id)
+            rows.append(
+                _what_it_pays(subscription, modules, change, next_plans)
+                | _what_the_account_may_do(subscription, user, owned, unpaid.get(subscription.hub_id), change)
+            )
+        rows = with_discount(rows, page)
     return {"rows": rows, "total": total, "limit": data.limit, "offset": data.offset}
 
 
@@ -376,8 +400,7 @@ def _cancellable(ctx: OperationContext, hub_id) -> tuple[Hub, Subscription]:
     that cannot be done reaches the model as the refusal, never as a card. Read without locking: nothing is written."""
     user = access_control.account_of(ctx)
     member = access_control.access(user, hub_id, HubMember.Role.OWNER)
-    if not access_control.is_writable(member.hub):
-        raise refusals.business_deleted()
+    refusals.refuse_to_change(member.hub)
     hub = Hub.objects.select_related("billing_profile").get(pk=member.hub_id)
     subscription = Subscription.objects.select_related("plan", "trial_plan").filter(hub=hub).first()
     profile = hub.billing_profile

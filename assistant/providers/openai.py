@@ -1,8 +1,8 @@
 """The client of OpenAI's Chat Completions API, and the base of every API compatible with it
 (DeepSeek, a proxy): ``POST {base}/chat/completions`` streamed, ``GET {base}/models`` to list.
 
-One tool per answer (``parallel_tool_calls: false``) and at most ``max_tokens`` of output: the models released after
-September 2024 (``o1``, ``o3``, ``o4``, ``gpt-5``…) take it as ``max_completion_tokens`` and refuse a ``temperature``.
+An answer may ask for several tools, and gives at most ``max_tokens`` of output: the models released after September
+2024 (``o1``, ``o3``, ``o4``, ``gpt-5``…) take it as ``max_completion_tokens`` and refuse a ``temperature``.
 """
 
 from __future__ import annotations
@@ -32,8 +32,6 @@ NEWER_MODELS = ("o1", "o3", "o4", "gpt-5")
 
 class OpenAIProvider(Provider):
     kind = "openai"
-    #: Whether the API takes ``parallel_tool_calls``.
-    parallel_tool_calls_flag = True
 
     def headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
@@ -64,8 +62,6 @@ class OpenAIProvider(Provider):
                 {"type": "function", "function": {"name": t.name, "description": t.description, "parameters": t.parameters}}
                 for t in req.tools
             ]
-            if self.parallel_tool_calls_flag:
-                body["parallel_tool_calls"] = False
         return f"{self.base_url}/chat/completions", self.headers(), body
 
     async def parse_stream(self, response: httpx.Response, req: TurnRequest) -> AsyncIterator[ProviderEvent]:  # noqa: C901

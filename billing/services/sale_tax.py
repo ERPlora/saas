@@ -18,6 +18,7 @@ from live.errors import Conflict
 
 from billing import queries, vat, vat_breakdown, vat_countries
 from billing.money import to_cents
+from billing.payer import Payer
 from billing.services.vat_clearance import clear_tax_id_for_stripe
 from billing.stripe_tax_rates import TaxRateSpec, tax_rate_specs_for
 
@@ -73,7 +74,7 @@ def require_billing_location(
     )
 
 
-def require_sold_to(hub, payer: queries.Payer, what: Sold = "sale") -> None:
+def require_sold_to(hub, payer: Payer, what: Sold = "sale") -> None:
     """Refuse a new sale to a payer ERPlora does not sell to: another country (409 ``billing.country_not_sold``),
     or a consumer in the Canary Islands, Ceuta or Melilla (409 ``billing.business_required``)."""
     if not vat_countries.sells_to(payer.country):
@@ -135,11 +136,7 @@ def sale_quote(
         )
     quote = vat.quote_vat(
         price if price is not None else Decimal("0"),
-        customer_country=payer.country,
-        customer_postal_code=payer.postal_code,
-        customer_tax_id=payer.tax_id,
-        customer_tax_id_type=payer.tax_id_type,
-        customer_tax_id_verified=reverse_charge_cleared(payer.tax_id, payer.country),
+        payer.cleared(reverse_charge_cleared(payer.tax_id, payer.country)),
         category_key=category_key,
     )
     if quote is None:

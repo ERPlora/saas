@@ -23,6 +23,8 @@ const props = defineProps<{
   plan: PlanOut;
   /** The billing the switch above shows. */
   period: BillingInterval;
+  /** The billings Stripe sells the plan with: the ones its Stripe price is pasted for (`sold_intervals`). */
+  sold: BillingInterval[];
   /** The chosen business's plan (`billing.store.catalog`); none = Free. */
   subscription: StoreSubscriptionOut | null;
   /** An unpaid invoice of the business: nothing that charges. */
@@ -65,14 +67,21 @@ const trying = computed(() => {
   return Date.parse(subscription.trial_end) > Date.now();
 });
 
-/** A paid plan without an annual price (the internal one) is sold by the month only, as a module without one is. */
+/** A paid plan without an annual price (the internal one) shows its monthly price under «Annual». */
 const monthlyOnly = computed(() => !free.value && Number(props.plan.price_annual) === 0);
 
 type PlanAction = { kind: Action; disabled: boolean; hint: string };
 
 const unpaid = computed(() => (props.block ? t('billing.plans.payFirst') : ''));
-/** Why nothing that charges works now: an unpaid invoice, or the annual billing of a plan sold by the month only. */
-const payFirst = computed(() => unpaid.value || (props.period === 'year' && monthlyOnly.value ? t('billing.modules.monthlyOnly') : ''));
+/** Why the plan is not bought with the billing the switch says: Stripe has no price for it (checkout would refuse it). */
+const notSold = computed(() => {
+  if (props.sold.includes(props.period)) return '';
+  if (props.sold.includes('month')) return t('billing.modules.monthlyOnly');
+  if (props.sold.includes('year')) return t('billing.plans.annualOnly');
+  return t('billing.plans.notOnSale');
+});
+/** Why nothing that charges works now: an unpaid invoice, or a billing the plan is not sold with. */
+const payFirst = computed(() => unpaid.value || notSold.value);
 
 function charging(kind: Action): PlanAction {
   return { kind, disabled: !!payFirst.value, hint: payFirst.value };

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:8502ec14f353f6db73ed5b198eb649d9ab3b14aabc6ef86e042cef01901ee40f -->
+<!-- generated from WORKBOOK.md sha256:b445ca5f34603f4f97c5970bb914de179ffd9adee8a7f3e15ff07c5628d4e579 -->
 
 ## What it is for and who uses it
 
@@ -21,7 +21,7 @@ Who uses it:
 - The **Hub's assistant** of each business (and of each demo): it sends erplora.com each turn, its attachments, the
   questions about how something is done in ERPlora (ASSISTANT-F28) and the dictations, and shows the person what is
   left of the allowance.
-- **ERPlora's staff**, in "Assistant usage records", see what each business spends and what it costs.
+- **ERPlora's staff**, in "Assistant usage records", see what each business spends with each model and what it costs.
 - The **person with an account** at erplora.com, in the panel: opens the assistant with the "Assistant" button of the
   bar and asks or dictates to it (ASSISTANT-F21) about their businesses, what they pay and their account
   (ASSISTANT-F25), with 30 messages a month (ASSISTANT-F26).
@@ -97,7 +97,9 @@ The list of conversation models the provider's API gives, with a "Keep" checkbox
 their name and context, and the "Save the choice" and "Back to the provider" buttons.
 
 ### Admin: AI models
-Every model of every provider, with its price, its context and whether it is available, to correct them.
+Every model of every provider, with its price, its context and whether it is available, to correct them. Each one's
+page has, besides the "Input price" and the "Output price", the provider's "Cache read price" and "Cache write price"
+(empty: the input price).
 
 ### Admin: Model that answers
 One page (its list opens it): "Model that answers" and "Fallback model", each with the models that can answer
@@ -110,12 +112,14 @@ that answers, the text as it arrives, the tools it asks for and a table with "In
 and "Cost" (in dollars).
 
 ### Admin: Assistant usage records
-One row per business and month (a demo, a single one in its whole life; an account, one per month with the panel's
-assistant) with "Business, demo or account" (an account's, its email), "Month", "Messages", "Input tokens", "Output
-tokens", "Embedding tokens", "Dictations", "Characters read aloud" and "Cost (USD)". On top, the search box (by the
-business's name or address, by the demo's address or by the account's email) and the months; on the right, the "By
-kind" filter ("Businesses", "Demos" or "Accounts") and the month's. Each row opens to see it whole, without being able
-to change it.
+One row per business, month and model (a demo, one per model in its whole life; an account, one per month and model
+with the panel's assistant) with "Business, demo or account" (an account's, its email), "Month", "Model" (the name its
+provider gives it; "Not recorded" in the rows from before it was kept), "Messages", "Cost (USD)", "Input tokens",
+"Cache read tokens", "Cache write tokens", "Output tokens", "Embedding tokens", "Dictations" and "Characters read
+aloud". On top, the search box (by the
+business's name or address, by the demo's address, by the account's email or by the model) and the months; on the
+right, the "By kind" filter ("Businesses", "Demos" or "Accounts"), the month's and the model's. Each row opens to see
+it whole, without being able to change it.
 
 ### Panel: Assistant
 On every screen of erplora.com's panel with the session open, at the end of the top bar, the "Assistant" button (the
@@ -207,8 +211,8 @@ Actor: system
 Screen: none
 Steps:
 1. When a model has to be called (an assistant turn, an admin trial or a provider's list of models), erplora.com prepares the call in the shape the provider's API asks: OpenAI (and those compatible with it), Anthropic, Google Gemini or DeepSeek, with the provider's key and address.
-2. It sends the conversation with its instructions, its images, the tools offered (only one per answer) and the output maximum, and receives the answer live, piece by piece.
-3. It translates what each provider answers into the same for all: the text as it arrives, each tool the model asks for with its complete data, the input and output consumption and how it ended (normally, because it asked for a tool, for length or by the content filter).
+2. It sends the conversation with its instructions, its images, the tools offered (only one per answer) and the output maximum, and receives the answer live, piece by piece. It asks Anthropic to keep what it sends in its cache, in the order Anthropic reads it: the tools, the instructions and the conversation up to its last message. The next call of the same request starts the same way and Anthropic reads that start from its cache instead of processing it again; if only the instructions change, it still reads the tools. OpenAI, Gemini and DeepSeek keep by themselves what repeats at the start.
+3. It translates what each provider answers into the same for all: the text as it arrives, each tool the model asks for with its complete data, the input consumption (all of it, and of it what the provider's cache read and wrote, when it says so) and the output consumption, and how it ended (normally, because it asked for a tool, for length or by the content filter).
 4. For the list of models, it asks the provider for its conversation models, page by page, and leaves out those that do not converse (voice, images, text fingerprints).
 In: the provider's API, address and key (the one of its variable of the environment); the model, the conversation, the instructions and the tools.
 Out: the text, the tools asked for, the consumption and the end of the turn, the same whatever the provider; or the list of conversation models.
@@ -264,7 +268,7 @@ Steps:
 1. On "Model that answers", click "Try a model".
 2. Choose the "Model", write the "Message" and, to see how it asks for tools, write in "Tools" a list of tools with their name, as in the example.
 3. Click "Send": "Sending…" shows, then the model that answers and its answer as it arrives, with the tools it asks for.
-4. At the end, "Done." and the table with "Input tokens", "Output tokens", "Time" and "Cost" (with the model's prices).
+4. At the end, "Done." and the table with "Input tokens" (all of the input, also what the provider's cache read or wrote), "Output tokens", "Time" and "Cost" (with the model's prices, the cache's too).
 In: the model, the message and the tools.
 Out: the model's answer with its usage, its time and its cost; the try stays in the audit trail with who made it, how long the message was and how many tools it had, never the message (`assistant.model.tried`). No business, quota nor conversation is touched.
 If it fails: without a model of the list, "Choose the model to try from the list."; without a message, "Write the message to send."; badly written tools, "The tools are not well written: write a list of tools as in the example, each with its name."; a model that is off or of a provider that is off, "This model is off or its provider is: turn them on to use it."; a provider without its key in the environment, "No model can answer: the providers of the chosen models have no active key."; if the provider fails, "The model did not answer: …" with its reason, never the key; more than 10 tries in a minute, "Too many tries in a minute: wait a moment and try again."; without network, "The try could not be sent: check the connection and try again.". Only whoever may change the model that answers tries one (each try spends ERPlora's key); without that permission, the admin does not let in.
@@ -330,12 +334,12 @@ Actor: the Hub's assistant of a business
 Screen: none
 Steps:
 1. The person writes to the Hub's assistant; the Hub sends erplora.com the whole conversation (it is its own: it lives in the person's browser), its instructions and the tools the business offers.
-2. erplora.com prepares the conversation: its instructions are the only system ones, the last 100 messages stay, the answer of a tool nobody asked for goes and the attachments become what the model can read.
+2. erplora.com prepares the conversation: its instructions are the only system ones; the request in progress and the one before (each message of the person with what answered it) go whole; of the older ones, what their tools returned goes as a short note, which the model knows it can ask for again, and only the newest that fit in about 16,000 tokens go; the answer of a tool nobody asked for goes and the attachments become what the model can read.
 3. It takes a message from the business's allowance and sends the turn to the model that answers (or to its fallback, if its provider fails before answering anything).
 4. It sends the answer back live, piece by piece, and each tool of the business the model asks for; at the end, the whole answer with its consumption, what the business has left of its allowance and the close.
 5. If the model asked for tools of the business, the turn ends there with a continuation pass: the Hub runs them and sends the conversation back with their results and that pass, and that return spends no other message.
 In: the business, the conversation, the instructions, the business's tools and, when answering some tools, its continuation pass.
-Out: the text as it arrives, the tools the business has to run, the turn's consumption and the allowance left (`assistant.message.claimed`; what it spent, `assistant.usage.recorded`).
+Out: the text as it arrives, the tools the business has to run, the turn's consumption and the allowance left (`assistant.message.claimed`; what it spent, `assistant.usage.recorded`). erplora.com's log keeps one line for each call to the model (`assistant.turn.model_call`) with who asked for it, the provider and the model that answered, how many tools it carried, the characters of their specifications, of the instructions, of the conversation and of the tools' results, and the input tokens (all the input), those read from and written to the provider's cache and the output ones; it serves to measure what each change to what the model is sent saves.
 If it fails: what is known before calling the model is a refusal and spends no message (see ASSISTANT-F15); if the provider fails after starting, the turn ends with a failure notice that says whether it is worth repeating; if the turn did not answer anything, its message goes back to the allowance, also if the Hub cuts the connection halfway. A continuation pass already used, expired (15 minutes), of another business or of other tools is not valid: that return spends a message.
 Involved: ASSISTANT-F06, ASSISTANT-F13, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F17, ASSISTANT-F18, ASSISTANT-F19
 
@@ -359,9 +363,9 @@ Screen: none
 Steps:
 1. In each turn, the model can use the business's tools (those the Hub sends: find a customer, create an appointment…) and erplora.com's: today's date, time and weekday; what one currency is worth in another, at the European Central Bank's reference rate and its date; and, if erplora.com has the search engine's key, searching the web in the person's language (in Spanish, in Spain). Searching the web belongs only to the chat, the Hub's and the panel's: an automation does not search (see ASSISTANT-F13).
 2. If the model asks for a tool of erplora.com, erplora.com runs it and gives it the result without the Hub seeing anything.
-3. If it asks for one of the business, the turn passes it to the Hub to run it (see ASSISTANT-F12).
+3. If it asks for one of the business, the turn passes it to the Hub to run it (see ASSISTANT-F12); if it asks for several in the same answer (count the products and the customers), it passes them all at once. If the same answer mixes tools of erplora.com with the business's, erplora.com runs its own and tells the model the business's were not done, for it to ask for them again on their own: none is lost.
 4. The model is asked again at most five times in a turn; in the last one erplora.com's tools are no longer offered and it has to answer.
-5. An answer with what the exchange rate or the search gave says where it comes from: if the model names no source, erplora.com writes its address below the answer.
+5. An answer with what the exchange rate or the search gave says where it comes from: if the model names no source, erplora.com writes its address below the answer. The model only gives the web addresses a tool returned in the turn, and erplora.com tells the Hub and its panel which ones its tools looked up, so that the chat flags an address that does not come from there.
 In: the business's tools and the model's questions.
 Out: the result of each tool of erplora.com for the model; its consumption adds up to the turn's and spends no other message.
 If it fails: a tool of erplora.com that fails gives the model the reason to answer with, never a failed turn; a service that is down, takes too long or answers something unusable, a currency with no published rate, a search with no results or too many requests from a business: the model gets the reason and no figure, to say so without inventing one; a tool of the business named as one of erplora.com's is run by erplora.com; without the search engine's key, the search is not offered and the rest works the same; in an automation it is not offered either, and if the model asks for it, it is not done. The exchange rate is a reference to inform: it changes the amount of no charge or invoice.
@@ -399,7 +403,7 @@ Actor: system
 Screen: none
 Steps:
 1. Each turn's conversation arrives with the request, is used to call the model and is forgotten at the end.
-2. erplora.com only notes what was spent: the business's messages, tokens and cost in the month.
+2. erplora.com only notes what was spent: the business's messages, tokens and cost in the month and, in its log, the figures of each call to the model (how many tools, how many characters of each part and how many tokens), without a word of what it was sent.
 3. If the provider fails, erplora.com's log only notes the status of the provider's answer, never its words (they may quote the conversation).
 In: the turn's conversation.
 Out: the answer for the Hub and what was spent; neither the database, nor the logs, nor the audit log keep a word of the conversation, its attachments, its dictations nor what is read aloud or what was searched on the web; what a search returns only reaches the model, in that turn, and neither its title nor its address is kept.
@@ -495,11 +499,11 @@ Actor: ERPlora's staff
 Screen: Admin: Assistant usage records
 Steps:
 1. In erplora.com's admin, open "Assistant usage records".
-2. Search the business by its name or its address (the demo by its address, the account by its email), or filter "By kind" ("Businesses", "Demos" or "Accounts") and by month.
-3. Read its row of the month: "Messages" of the allowance, "Input tokens", "Output tokens", "Embedding tokens", "Dictations", "Characters read aloud" and "Cost (USD)" (with the prices of the model that answered each turn).
+2. Search the business by its name or its address (the demo by its address, the account by its email), or filter "By kind" ("Businesses", "Demos" or "Accounts"), by month and by model.
+3. Read its rows of the month, one per model: "Model", the "Messages" of the allowance asked of it, "Cost (USD)" (with that model's prices: what was read from the provider's cache and written to it, at its own, and the rest of the input at the input's), "Input tokens" (all of the input), "Cache read tokens" and "Cache write tokens" (of the input, what the provider read from its cache and what it wrote to it), "Output tokens", "Embedding tokens", "Dictations" and "Characters read aloud". The month's allowance counts the messages of all its models; when the fallback model answered, the message stays in the row of the model it was asked of and the tokens and the cost go to the fallback's.
 4. Open the row to see it whole, with when it was created and when it changed.
 In: the business, the demo or the account and the month.
-Out: what the business (or the account) spent in the month, without being able to change it.
+Out: what the business (or the account) spent in the month with each model, without being able to change it.
 If it fails: nobody can add, change nor delete a row, not even a superuser (deleting the month's row gave the business its whole allowance back); a team member without the permission to see it does not enter.
 Involved: ASSISTANT-F18, ASSISTANT-F20, ASSISTANT-F21, ASSISTANT-F22, ASSISTANT-F26
 
@@ -510,14 +514,14 @@ Screen: Panel: Assistant
 Steps:
 1. The person, signed in to erplora.com's panel, presses "Assistant" at the end of the bar and the assistant's panel opens: beside the screen from 768 px, on top of it on a phone. Without a conversation, they see "Ask me about your businesses, your invoices or your account." with three shortcuts.
 2. They write to the assistant, dictate to it (see ASSISTANT-F21) or press a shortcut ("Which businesses do I have?", "How much do I pay a month?", "How do I create a business?"); until the first word of the answer they see the bubble "The assistant is writing".
-3. erplora.com offers the model the panel's tools this account may use (its businesses and their people, the plans, its invoices and subscriptions, its account, the catalogue of apps), first those of what was asked, and always the list of its businesses.
+3. erplora.com offers the model the panel's tools this account may use (its businesses and their people, the plans, its invoices and subscriptions, its account, the catalogue of apps), first those of what was asked, and always the list of its businesses; last, the search of the rest, the same as the Hub's assistant's. If none of the tools it is offered does what was asked ("everything's way too bright at night, can you darken this screen?" names no theme), the model searches for the task among all the account's and the next round offers it what it found; it never finds one the account may not use nor, where nothing is sold, the Store's.
 4. A read the model asks for runs on its own, as the person themselves: it never sees a business that is not theirs.
 5. A change the model asks for stops at the card "Run this action?", which says what it will do, where (the panel's screen: "Businesses", "Billing", "Account" or "Store") and with which data, naming the business by its name and the country by its own in their language ("Country: Spain"); it is only done if the person presses "Run it", and "Cancel" changes nothing. Creating, deleting or changing the address of a business, offering it to someone else or cancelling its plan also ask to type "CONFIRM". When cancelling the plan, the card first shows what Billing's "Cancel the plan" dialog says (BILLING-F13): the plan it stays on and until which day it is paid (the business's own day), that it then moves to Free, which modules turn off that day, how many people and devices Free covers against the people it has now and, if there is one, the unpaid invoice, which stays owed. Changing plan is not done from the chat but in the Store (BILLING-F11), which shows first what will be charged: the assistant says it is done there and links it.
-6. With what the tools returned, the model answers live, piece by piece, in the person's language. The card is a change's only question: the model does not ask in its text whether to make it nor writes a summary for it to be approved, and only asks for a datum the change needs, that no tool gives and the person has not said. It links the panel's screen where what it cannot do is done ("Go to Businesses"…); for what happens inside a business (sales, products, the people at the till) it says to open the business and ask its assistant. Under the answer stays what was done of each change ("Done: Create business in Businesses", "Not done, cancelled: …"). If the answer tells as done a change that was not made (after "Cancel", "Created Café Triana" or "Your screen should now be darker"), under it also comes "The assistant said it made a change, but no action was run. Nothing was changed."; saying it was not done, or when something was created, does not bring it. In the account opened from the app, where nothing is sold or charged, to what the person asks about plans, prices, modules, promo codes, payments or the card it answers, without a link, "To change your plan or add modules, go to erplora.com in your browser." (with an unpaid invoice, "To pay it, go to erplora.com in your browser."), even if the documentation explains it; looking at invoices and subscriptions and editing the fiscal details are done there.
+6. With what the tools returned, the model answers live, piece by piece, in the person's language. The card is a change's only question: the model does not ask in its text whether to make it nor writes a summary for it to be approved, and only asks for a datum the change needs, that no tool gives and the person has not said. It links the panel's screen where what it cannot do is done, after searching for it ("Go to Businesses"…); for what happens inside a business (sales, products, the people at the till) it says to open the business and ask its assistant. Under the answer stays what was done of each change ("Done: Create business in Businesses", "Not done, cancelled: …"). If the answer tells as done a change that was not made (after "Cancel", "Created Café Triana" or "Your screen should now be darker"), under it also comes "The assistant said it made a change, but no action was run. Nothing was changed."; saying it was not done, or when something was created, does not bring it. In the account opened from the app, where nothing is sold or charged, to what the person asks about plans, prices, modules, promo codes, payments or the card it answers, without a link, "To change your plan or add modules, go to erplora.com in your browser." (with an unpaid invoice, "To pay it, go to erplora.com in your browser."), even if the documentation explains it; looking at invoices and subscriptions and editing the fiscal details are done there.
 7. From 80 % of the month's messages, the panel's foot says how many are left and when they come back (see ASSISTANT-F26). With a keyboard and a mouse it opens with the cursor in the box (not on a touch screen, so the keyboard does not cover the screen). The panel closes with ×, Escape, the veil or the same button, and a focus that was inside goes back to the button; the device remembers whether it was left open, and the conversation is forgotten when the session is closed.
 In: the conversation (it lives in the person's browser), the tools the model asked for and the person's answer to its card.
 Out: what was done and its result, the card of the change that waits, the text as it arrives, the allowance left and the close; what each tool does leaves its own trace (`hubs.business.created`…), never the conversation.
-If it fails: without a session, the panel sends to sign in and there is no "Assistant" button, and a session that ends mid-conversation asks to sign in again; with the month's allowance spent, the first notice is the allowance spent, with how many were used and when they come back, and that each business has its own assistant, without "Upgrade plan" (see ASSISTANT-F26); with too many turns in a row, it says to wait a moment; without a model that answers, that the assistant cannot answer now, with "Try again"; without a connection, the foot says so. A tool the account does not have, or that is not for the chat (downloading a file, creating an API key, opening the payment, entering a business), never runs. Without the word typed or with a "no", the change is not made and the model says so, without sending the person to confirm a card that is already closed; that "no" stands until the person writes again: if the model asks for the same change again, no other card and no other "Not done" come. Data the change does not take (a country ERPlora does not serve, a value outside its list) or a change that cannot be made (cancelling the plan of a business on Free, or of one another account pays for) never reach the card: they go back to the model, which corrects them within the same question, and the person confirms only once. A new business that cannot be created (the account already has its free business, belongs to ERPlora's staff or there is no Free plan) does not reach the card either: the model says why and, if it is the free business, to change the plan of the one it has (HUBS-F01). Where nothing is sold (the account opened from the installed app), neither the Store nor its plan changes are offered. Past six rounds of tools in a single question, it stops.
+If it fails: without a session, the panel sends to sign in and there is no "Assistant" button, and a session that ends mid-conversation asks to sign in again; with the month's allowance spent, the first notice is the allowance spent, with how many were used and when they come back, and that each business has its own assistant, without "Upgrade plan" (see ASSISTANT-F26); with too many turns in a row, it says to wait a moment; without a model that answers, that the assistant cannot answer now, with "Try again"; without a connection, the foot says so. A tool the account does not have, or that is not for the chat (downloading a file, creating an API key, opening the payment, entering a business), never runs. Without the word typed or with a "no", the change is not made and the model says so, without sending the person to confirm a card that is already closed; that "no" stands until the person writes again: if the model asks for the same change again, no other card and no other "Not done" come. Data the change does not take (a country ERPlora does not serve, a value outside its list) or a change that cannot be made (cancelling the plan of a business on Free, or of one another account pays for) never reach the card: they go back to the model, which corrects them within the same question, and the person confirms only once. A new business that cannot be created (the account already has its free business, belongs to ERPlora's staff or there is no Free plan) does not reach the card either: the model says why and, if it is the free business, to change the plan of the one it has (HUBS-F01). Where nothing is sold (the account opened from the installed app), neither the Store nor its plan changes are offered. Past twenty rounds of tools in a single question, as many as the Hub's assistant allows, it stops: it is a brake against loops, not an allowance.
 Involved: ASSISTANT-F12, ASSISTANT-F14, ASSISTANT-F15, ASSISTANT-F16, ASSISTANT-F17, ASSISTANT-F19, ASSISTANT-F21, ASSISTANT-F23, ASSISTANT-F26, ASSISTANT-F29, HUBS-F01, HUBS-F09, BILLING-F11, BILLING-F13
 
 ### ASSISTANT-F26 Count an account's messages with the panel's assistant

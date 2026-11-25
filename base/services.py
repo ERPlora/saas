@@ -15,6 +15,7 @@ from django.utils.translation import gettext
 from live.context import OperationContext
 from live.errors import OperationError, Unauthorized
 from live.operations import INTERNAL, operation
+from live.operations import get as get_operation
 
 from assistant import media as gateway_media
 from assistant import services as gateway_services
@@ -44,18 +45,12 @@ NOT_CONFIRMED = (
     "The person said no on the card and the card is closed: nothing was done. Say it was not done, and do not tell them "
     "to confirm it."
 )
-STOPPED = "The person stopped this request: nothing more was done."
 ASKED_AGAIN = (
     "The person already said no to this and has not written since: nothing was done. Do not ask again: say it was not "
     "done, and they will write if they want something else."
 )
 NOT_AVAILABLE = "This tool is not available to this person here: nothing was done."
 NOT_FROM_THE_CHAT = "This cannot be done from the chat (it names no record): nothing was done. Say where it is done."
-
-
-def _refused(outcome: str, code: str, message: str) -> assistant.ToolOutcome:
-    """A tool that did not run, told to the model in the same envelope as an operation's error."""
-    return assistant.ToolOutcome(outcome, code, assistant.shared.error_content(code, message))
 
 
 def _words(content) -> str:
@@ -72,6 +67,13 @@ def _asked(messages: list[dict]) -> list[str]:
     """What the person wrote, message by message. A file alone says nothing: the words written before it still count."""
     said = (_words(m.get("content")) for m in messages if m.get("role") == "user")
     return [words for words in said if words]
+
+
+def _recent(messages: list[dict]) -> list[dict]:
+    """The messages from the person's second-to-last one on: a turn offers the tools of what they asked there and of
+    what the model searched for since (``base.assistant.relevant``)."""
+    said = [at for at, m in enumerate(messages) if m.get("role") == "user" and _words(m.get("content"))]
+    return messages[said[-2] :] if len(said) >= 2 else messages
 
 
 def _ran(ctx: OperationContext, tools: dict, call, outcome: assistant.ToolOutcome) -> dict:
@@ -117,41 +119,60 @@ def _declined_before(messages: list[dict], call_id: str) -> set[str]:
     return declined
 
 
-def _answer(ctx: OperationContext, tools: dict, call, decision, *, stopped: bool):  # noqa: C901, PLR0911
-    """Run one pending ``call`` (a read alone; a write with the person's yes) → ``(outcome, card)``: the card when the
-    write still waits for its answer. None for data the write would refuse: the model hears which
-    (``invalid_payload``) and asks again with them corrected, in the same turn."""
-    op = assistant.shared.operation_of(call.name, tools)
-    if op is None:
-        return _refused("refused", "not_available", NOT_AVAILABLE), None
-    if stopped:
-        return _refused("cancelled", "base.assistant_stopped", STOPPED), None
-    if op.kind == "query":
-        return assistant.shared.run_tool(ctx, op, call.arguments), None
-    try:
-        arguments = json.loads(call.arguments or "{}")
-    except ValueError:
-        arguments = None
-    if not isinstance(arguments, dict):
-        return assistant.shared.run_tool(ctx, op, call.arguments), None
+def _declined(card: dict, decision) -> assistant.ToolOutcome | None:
+    """What the person's ``decision`` on ``card`` leaves undone, or ``None`` when it is a yes to run. A no is told in
+    the panel's own words (``live.assistant.declined`` tells it in the Hub's)."""
+    if card["blocked"]:
+        return assistant.shared.refusal("cancelled", "base.assistant_not_from_chat", NOT_FROM_THE_CHAT)
+    if decision.stop:
+        return assistant.shared.stopped()
+    if not decision.accepted or not assistant.shared.confirmed(card, decision.typed):
+        return assistant.shared.refusal("cancelled", NOT_CONFIRMED_CODE, NOT_CONFIRMED)
+    return None
+
+
+def _waiting(ctx: OperationContext, op, arguments: dict, card: dict):
+    """``(outcome, card)`` of a write nobody has answered: its card, with what it will do; one whose preview cannot be
+    read gets no card and tells the model why."""
+    if card["blocked"]:
+        return None, card
+    failure, preview = assistant.shared.preview(ctx, op, arguments)
+    if failure is not None:
+        return failure, None
+    return None, {**card, "preview": preview}
+
+
+def _answer_write(ctx: OperationContext, op, call, arguments: dict, decision):
+    """``(outcome, card)`` of the write ``call``, which runs only with the person's yes to its card. No card for data
+    the write would refuse: the model hears which (``invalid_payload``) and asks again with them corrected, in the same
+    turn."""
     refused = assistant.shared.invalid_arguments(op, arguments)
     if refused is not None:
         return refused, None
     card = assistant.card(op, arguments, ctx)
     if decision is None or decision.call_id != call.call_id:
-        if card["blocked"]:
-            return None, card
-        failure, preview = assistant.shared.preview(ctx, op, arguments)
-        if failure is not None:
-            return failure, None
-        return None, {**card, "preview": preview}
-    if card["blocked"]:
-        return _refused("cancelled", "base.assistant_not_from_chat", NOT_FROM_THE_CHAT), None
-    if decision.stop:
-        return _refused("cancelled", "base.assistant_stopped", STOPPED), None
-    if not decision.accepted or not assistant.shared.confirmed(card, decision.typed):
-        return _refused("cancelled", NOT_CONFIRMED_CODE, NOT_CONFIRMED), None
+        return _waiting(ctx, op, arguments, card)
+    declined = _declined(card, decision)
+    if declined is not None:
+        return declined, None
     return assistant.shared.run_tool(ctx, op, call.arguments), None
+
+
+def _answer(ctx: OperationContext, tools: dict, call, decision, *, stopped: bool):
+    """Run one pending ``call`` (a read alone; a write with the person's yes, ``_answer_write``) → ``(outcome, card)``:
+    the card when the write still waits for its answer."""
+    op = assistant.shared.operation_of(call.name, tools)
+    if op is None:
+        return assistant.shared.refusal("refused", "not_available", NOT_AVAILABLE), None
+    if stopped:
+        return assistant.shared.stopped(), None
+    try:
+        arguments = None if op.kind == "query" else json.loads(call.arguments or "{}")
+    except ValueError:
+        arguments = None
+    if not isinstance(arguments, dict):
+        return assistant.shared.run_tool(ctx, op, call.arguments), None
+    return _answer_write(ctx, op, call, arguments, decision)
 
 
 @operation(
@@ -174,6 +195,8 @@ def assistant_turn(ctx: OperationContext, data: AssistantTurnIn) -> dict:
     if ctx.actor is None:
         raise Unauthorized(gettext("Sign in to talk to the assistant."))
     tools = assistant.catalog(ctx)
+    # The assistant's own search of the account's tools runs as one of them, but never ranks among them.
+    runs = {**tools, assistant.FIND_TOOLS: get_operation(assistant.FIND_TOOLS)}
     pending = list(data.pending)
     decision = data.decision
     stopped = False
@@ -188,17 +211,17 @@ def assistant_turn(ctx: OperationContext, data: AssistantTurnIn) -> dict:
             append.append({"role": "tool", "tool_call_id": call.call_id, "content": content})
             pending.pop(0)
             continue
-        outcome, card = _answer(ctx, tools, call, decision, stopped=stopped)
+        outcome, card = _answer(ctx, runs, call, decision, stopped=stopped)
         if outcome is None:
             break
         if decision is not None and decision.call_id == call.call_id:
             stopped = decision.stop
             decision = None
         append.append({"role": "tool", "tool_call_id": call.call_id, "content": outcome.content})
-        executed.append(_ran(ctx, tools, call, outcome))
+        executed.append(_ran(ctx, runs, call, outcome))
         pending.pop(0)
     messages = [*data.messages, *append]
-    asked = _asked(data.messages)
+    recent = _recent(data.messages)
     if card is not None:
         card["money"] = {"currency": "EUR", "decimals": 2}
     text = assistant.instructions(
@@ -217,7 +240,10 @@ def assistant_turn(ctx: OperationContext, data: AssistantTurnIn) -> dict:
         "executed": executed,
         "confirm": card,
         "pending": [p.model_dump() for p in pending],
-        "tools": [assistant.tool_spec(op) for op in assistant.relevant(tools, asked[-2:], ctx.language)],
+        "tools": [
+            assistant.tool_spec(op)
+            for op in assistant.relevant(tools, _asked(recent), ctx.language, searched=assistant.searched(recent))
+        ],
         "instructions": text,
         "continuation": data.continuation,
         "stop": stop,

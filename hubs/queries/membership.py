@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from django.conf import settings
 from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.utils import timezone, translation
 from django.utils.translation import gettext_lazy
@@ -88,9 +89,12 @@ def answered_business_ids(user_id: UUID) -> list[UUID]:
 
 def _who_enters():
     """The members who enter a hub: answered, on a business that still opens. A business being deleted lets nobody in
-    (a restore gives the access back), whatever ``business_list`` shows its owner in its days of recovery."""
-    return HubMember.objects.filter(accepted_at__isnull=False).exclude(
-        hub__status__in=[Hub.Status.DELETING, Hub.Status.DELETED]
+    (a restore gives the access back), whatever ``business_list`` shows its owner in its days of recovery. Under the
+    name of ERPlora's own business, only its own people: a row from before the name was reserved lets nobody in."""
+    return (
+        HubMember.objects.filter(accepted_at__isnull=False)
+        .exclude(hub__status__in=[Hub.Status.DELETING, Hub.Status.DELETED])
+        .exclude(hub__slug=settings.PLATFORM_HUB_SLUG, hub__is_platform=False)
     )
 
 

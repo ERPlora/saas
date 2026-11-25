@@ -1,5 +1,7 @@
 """The events ERPlora's Stripe endpoint sends, each one handed to its handler."""
 
+from collections.abc import Callable
+
 from billing.models import CheckoutAttempt
 from billing.services import (
     checkout_webhooks,
@@ -9,57 +11,37 @@ from billing.services import (
     subscription_webhooks,
 )
 
+#: What each event does with its object. The handler is looked up on its module when the event arrives.
+_HANDLERS: dict[str, Callable[[dict], str]] = {
+    "checkout.session.completed": lambda obj: checkout_webhooks.checkout_completed(obj),
+    "checkout.session.async_payment_succeeded": lambda obj: checkout_webhooks.checkout_completed(obj),
+    "checkout.session.async_payment_failed": lambda obj: checkout_webhooks.checkout_closed(
+        obj, CheckoutAttempt.Status.FAILED
+    ),
+    "checkout.session.expired": lambda obj: checkout_webhooks.checkout_closed(obj, CheckoutAttempt.Status.EXPIRED),
+    "invoice.paid": lambda obj: invoice_webhooks.invoice_paid(obj),
+    "invoice.payment_succeeded": lambda obj: invoice_webhooks.invoice_paid(obj),
+    "invoice.payment_failed": lambda obj: invoice_webhooks.invoice_payment_failed(obj),
+    "invoice.voided": lambda obj: invoice_recording.invoice_voided(obj),
+    "invoice.marked_uncollectible": lambda obj: invoice_recording.invoice_voided(obj),
+    "credit_note.created": lambda obj: rectifying_invoices.credit_note_created(obj),
+    "credit_note.voided": lambda obj: rectifying_invoices.credit_note_voided(obj),
+    "charge.refunded": lambda obj: rectifying_invoices.charge_refunded(obj),
+    "customer.subscription.created": lambda obj: subscription_webhooks.subscription_updated(obj),
+    "customer.subscription.updated": lambda obj: subscription_webhooks.subscription_updated(obj),
+    "customer.subscription.deleted": lambda obj: subscription_webhooks.subscription_deleted(obj),
+    "customer.updated": lambda obj: subscription_webhooks.customer_updated(obj),
+}
 
-#: The events ERPlora's Stripe endpoint sends to ``/webhooks/stripe/``: what ``process_stripe_event``
-#: handles, and the one list ``audit_stripe_webhooks`` compares the endpoint with every day;
-#: ``billing/README.md`` and ``billing/webhooks.py`` cite it instead of repeating it. ``invoice.payment_succeeded`` is
-#: handled as ``invoice.paid`` but not subscribed: one notice per payment is enough.
-STRIPE_WEBHOOK_EVENTS = (
-    "checkout.session.completed",
-    "checkout.session.async_payment_succeeded",
-    "checkout.session.async_payment_failed",
-    "checkout.session.expired",
-    "invoice.paid",
-    "invoice.payment_failed",
-    "invoice.voided",
-    "invoice.marked_uncollectible",
-    "credit_note.created",
-    "credit_note.voided",
-    "charge.refunded",
-    "customer.subscription.created",
-    "customer.subscription.updated",
-    "customer.subscription.deleted",
-    "customer.updated",
-)
+#: The events ERPlora's Stripe endpoint sends to ``/webhooks/stripe/``: the one list ``audit_stripe_webhooks`` compares
+#: the endpoint with every day; ``billing/README.md`` and ``billing/webhooks.py`` cite it instead of repeating it.
+#: ``invoice.payment_succeeded`` is handled as ``invoice.paid`` but not subscribed: one notice per payment is enough.
+STRIPE_WEBHOOK_EVENTS = tuple(event_type for event_type in _HANDLERS if event_type != "invoice.payment_succeeded")
 
 
-def process_stripe_event(event: dict) -> str:  # noqa: C901, PLR0911
+def process_stripe_event(event: dict) -> str:
     """Process one signed Stripe event; its outcome (``completed``, ``processed``, ``ignored``, ``unknown``,
     ``invalid``, ``pending``…). Raises when it must be retried (Stripe did not answer a read the event needs)."""
     obj = (event.get("data") or {}).get("object") or {}
-    match event.get("type"):
-        case "checkout.session.completed" | "checkout.session.async_payment_succeeded":
-            return checkout_webhooks.checkout_completed(obj)
-        case "checkout.session.async_payment_failed":
-            return checkout_webhooks.checkout_closed(obj, CheckoutAttempt.Status.FAILED)
-        case "checkout.session.expired":
-            return checkout_webhooks.checkout_closed(obj, CheckoutAttempt.Status.EXPIRED)
-        case "invoice.paid" | "invoice.payment_succeeded":
-            return invoice_webhooks.invoice_paid(obj)
-        case "invoice.payment_failed":
-            return invoice_webhooks.invoice_payment_failed(obj)
-        case "invoice.voided" | "invoice.marked_uncollectible":
-            return invoice_recording.invoice_voided(obj)
-        case "credit_note.created":
-            return rectifying_invoices.credit_note_created(obj)
-        case "credit_note.voided":
-            return rectifying_invoices.credit_note_voided(obj)
-        case "charge.refunded":
-            return rectifying_invoices.charge_refunded(obj)
-        case "customer.subscription.created" | "customer.subscription.updated":
-            return subscription_webhooks.subscription_updated(obj)
-        case "customer.subscription.deleted":
-            return subscription_webhooks.subscription_deleted(obj)
-        case "customer.updated":
-            return subscription_webhooks.customer_updated(obj)
-    return "ignored"
+    handler = _HANDLERS.get(event.get("type"))
+    return handler(obj) if handler else "ignored"

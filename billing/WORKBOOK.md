@@ -75,7 +75,9 @@ periodo («Mensual» o «Anual · −n %»), sus líneas como en /pricing/ (tras
 del plan …», «Hasta 40 apps activadas a la vez», o «Todas las apps activadas a la vez» si el plan no tiene tope;
 después los mensajes al mes, «Dominio propio para tu web (www.tunegocio.com)» en los planes que lo incluyen y, al final, la prueba), «Tu plan actual» en el que se tiene y el botón de cada uno:
 «Mejorar a …», «Cambiar a …», «Cambiar a anual · …» o «Bajar a Gratis»; con el plan cancelado o una bajada
-programada, «Mantener el plan». Cada tarjeta enseña sus cinco primeras líneas, con el botón justo debajo del
+programada, «Mantener el plan». Un plan que no se vende con el periodo elegido, porque le falta su precio de Stripe,
+tiene el botón desactivado y debajo dice por qué: «Solo con pago mensual», «Solo con pago anual» o «No está a la venta
+ahora mismo». Cada tarjeta enseña sus cinco primeras líneas, con el botón justo debajo del
 precio; «Ver todas las características» despliega las demás en todas las tarjetas a la vez y «Ver menos» las
 recoge. Un negocio que el personal de ERPlora marcó en el admin (BILLING-F27) ve también,
 al final, el plan interno «Prueba de pago (interno)»; ningún otro negocio lo ve. Si el negocio tiene una factura sin pagar, arriba sale el aviso con «Pagar la factura» y no se
@@ -298,7 +300,7 @@ Pasos:
 4. Al terminar, «Pagando…» hasta que llega la página del negocio, que avisa «… ya está en …» y cuya tarjeta Plan cambia en cuanto Stripe lo confirma. El negocio sigue funcionando todo el tiempo.
 Entra: el plan elegido (solo los que se ofrecen a ese negocio; los internos, solo a uno que el personal marcó), el periodo, los datos de facturación y el código promocional si lo hay.
 Sale: el negocio en el plan nuevo, su suscripción y su cliente en Stripe, el plan nuevo enviado al negocio (`hubs.subscription.changed`) y la factura de ERPlora del primer cobro (BILLING-F25), llegue antes o después el aviso del pago.
-Si falla: si el pago no se puede abrir, «No hemos podido abrir el pago seguro» y «No se ha cobrado nada» con «Reintentar»; un plan sin precio en Stripe, «no está a la venta»; un plan que no se ofrece a ese negocio (uno interno sin la marca, aunque se pida por la API) se rechaza antes de abrir el pago, «No hay ningún plan con este identificador»; sin datos de facturación, el formulario; con una factura sin pagar, no se vende nada a ese negocio. Si la persona cierra el diálogo, no se cobra nada y el negocio sigue en Gratis.
+Si falla: si el pago no se puede abrir, «No hemos podido abrir el pago seguro» y «No se ha cobrado nada» con «Reintentar»; un plan sin su precio de Stripe para el periodo elegido no se puede pulsar: debajo de su botón dice «Solo con pago mensual», «Solo con pago anual» o «No está a la venta ahora mismo», y pedido igualmente por la API se rechaza, «Esto no se puede comprar ahora mismo. Contacta con soporte.» (`billing.not_on_sale`); un plan que no se ofrece a ese negocio (uno interno sin la marca, aunque se pida por la API) se rechaza antes de abrir el pago, «No hay ningún plan con este identificador»; sin datos de facturación, el formulario; con una factura sin pagar, no se vende nada a ese negocio. Si la persona cierra el diálogo, no se cobra nada y el negocio sigue en Gratis.
 Implicados: hubs (la suscripción del negocio), el negocio (recibe su plan)
 
 ### BILLING-F09 Volver del pago: confirmado, pendiente o cerrado
@@ -338,7 +340,7 @@ Pasos:
 4. Aviso: «… ya está en …» (o «…, con pago anual»); una bajada, que espera, avisa «… pasa a … el …» (o «… pasa a …, con pago mensual, el …»).
 Entra: el plan y el periodo nuevos y la suscripción del negocio con su tarjeta; al cambiar de periodo, también cambia el precio de cada módulo.
 Sale: el plan cambiado (`billing.plan.changed`) o la bajada programada (`billing.plan.change_scheduled`), con el IVA de la tabla en cada línea, y el plan nuevo enviado al negocio.
-Si falla: «El precio estaba desactualizado: aquí lo tienes de nuevo, revísalo antes de confirmar» si pasó demasiado tiempo; la tarjeta rechazada no cambia nada; el mismo plan y periodo no es un cambio; bajar a Gratis es cancelar (BILLING-F13); con una cancelación pendiente, «Mantén antes el plan para cambiarlo»; con una factura sin pagar, «Antes, paga la factura pendiente»; más de 400 € sin NIF pide el NIF.
+Si falla: «El precio estaba desactualizado: aquí lo tienes de nuevo, revísalo antes de confirmar» si pasó demasiado tiempo; la tarjeta rechazada no cambia nada; el mismo plan y periodo no es un cambio; bajar a Gratis es cancelar (BILLING-F13); con una cancelación pendiente, «Mantén antes el plan para cambiarlo»; con una factura sin pagar, «Antes, paga la factura pendiente»; un plan o un periodo sin su precio de Stripe no se puede pulsar, como en BILLING-F08; más de 400 € sin NIF pide el NIF.
 Implicados: el negocio (recibe su plan), ASSISTANT-F25 (pedido al asistente del panel, que manda aquí)
 
 ### BILLING-F12 Dar días de prueba o un descuento con un código promocional
@@ -498,12 +500,12 @@ Estado: hecho
 Actor: propietario, cuenta que paga
 Pantalla: Facturación › Suscripciones
 Pasos:
-1. En **Facturación › Suscripciones** hay una fila por negocio que paga: el plan y sus aplicaciones de pago a precio sin IVA (una cancelada dice «(hasta el …)» y deja de salir cuando termina), la próxima factura con IVA (con una bajada programada, la del plan y el periodo nuevos, con sus aplicaciones al precio de ese periodo; al mantener el plan, vuelve a la del actual) y el estado.
+1. En **Facturación › Suscripciones** hay una fila por negocio que paga: el plan y sus aplicaciones de pago a precio sin IVA (una cancelada dice «(hasta el …)» y deja de salir cuando termina), la próxima factura con IVA (con una bajada programada, la del plan y el periodo nuevos, con sus aplicaciones al precio de ese periodo; al mantener el plan, vuelve a la del actual) y el estado. Un negocio eliminado sale «En eliminación», como su página, sin próxima factura ni nada que cambiar, hasta que la pasada siguiente termina su suscripción en Stripe; después deja de salir.
 2. Cada fila lleva sus acciones: la principal a la vista («Ver la factura» si hay una sin cobrar; si no, «Mantenerlo con mi tarjeta», «Cambiar plan» o «Mantener el plan») y en «⋮» «Ver facturas» y «Cancelar plan».
 Entra: las suscripciones de los negocios que paga la cuenta o de los que es propietaria.
 Sale: nada.
 Si falla: sin negocios de pago, «Todos tus negocios están en Gratis» con «Ver planes»; sin los datos de quien paga, la próxima factura no puede calcular su IVA y se dice. Un propietario cuyo plan cobra la tarjeta de otra cuenta (la del propietario anterior tras un traspaso) ve «Se paga con la tarjeta de otra cuenta»: no lo cambia ni lo cancela, lo mantiene con su tarjeta (HUBS-F28).
-Implicados: hubs (HUBS-F28: el plan de un negocio traspasado)
+Implicados: hubs (HUBS-F28: el plan de un negocio traspasado; HUBS-F18: un negocio eliminado)
 
 ### BILLING-F24 Abrir el portal de pagos de Stripe para cambiar la tarjeta
 Estado: hecho
@@ -525,10 +527,10 @@ Pantalla: ninguna
 Pasos:
 1. Stripe avisa de un cobro pagado (alta, renovación, cambio de plan o módulo).
 2. erplora.com califica la venta (BILLING-F03), le pone número de su serie (ERP-año-número, correlativo sin huecos) y la fecha del día, y copia los datos de quien paga ese día.
-3. La manda al negocio de plataforma de ERPlora, que la registra con VeriFactu y devuelve su estado y su QR; cuando la emite, se avisa por correo a quien paga.
+3. La manda al negocio de plataforma de ERPlora, que la registra con VeriFactu y devuelve su estado y su QR; cuando la emite, quien paga recibe un correo con el PDF de la factura adjunto, sin enlaces: «La factura va adjunta. También la tienes en tu panel, en Facturación.».
 Entra: el cobro de Stripe con sus líneas y los datos de quien paga.
-Sale: la factura y sus líneas (`billing.invoice.recorded`), su estado fiscal y el correo.
-Si falla: si el negocio de plataforma no responde, la factura queda «emitiéndose» y se reintenta (a los 15 minutos, después el doble cada vez, como mucho 6 horas); si lo rechaza, se guarda el motivo y se reintenta. Una renovación sin cobrar se lista «No cobrada», sin número, y se numera al pagarla. Un cobro de 0 € de una prueba no hace factura; el de un descuento de un código sí (BILLING-F12), con el descuento en cada línea. El mismo cobro avisado varias veces hace una sola. Con claves reales, sin ruta de emisión no se cobra.
+Sale: la factura y sus líneas (`billing.invoice.recorded`), su estado fiscal y el correo con su PDF.
+Si falla: si el negocio de plataforma no responde, la factura queda «emitiéndose» y se reintenta (a los 15 minutos, después el doble cada vez, como mucho 6 horas); si lo rechaza, se guarda el motivo y se reintenta. Si aún no entrega el PDF, el correo no sale sin él: se vuelve a mandar en la pasada siguiente. Una renovación sin cobrar se lista «No cobrada», sin número, y se numera al pagarla. Un cobro de 0 € de una prueba no hace factura; el de un descuento de un código sí (BILLING-F12), con el descuento en cada línea. El mismo cobro avisado varias veces hace una sola. Con claves reales, sin ruta de emisión no se cobra.
 Implicados: el negocio de plataforma de ERPlora (emite la factura)
 
 ### BILLING-F26 Devolver un cobro
@@ -540,7 +542,7 @@ Pasos:
 2. Stripe avisa a erplora.com, que emite una factura rectificativa con importes negativos, la calificación y el destinatario de la original, su tipo (R1 para devoluciones y cambios de precio, R4 para lo demás) y su motivo.
 3. La rectificativa sale en **Facturación › Facturas** con «Rectificativa R1 · motivo» y la factura que rectifica.
 Entra: el aviso de la devolución o de la nota de crédito.
-Sale: la rectificativa de su serie propia (ERPR-año-número), emitida como cualquier factura (`billing.credit_note.recorded`).
+Sale: la rectificativa de su serie propia (ERPR-año-número), emitida como cualquier factura (`billing.credit_note.recorded`), y su correo con el PDF adjunto: «La factura rectificativa va adjunta. También la tienes en tu panel, en Facturación.».
 Si falla: una devolución de una factura que aún no existe espera y Stripe vuelve a avisar; la misma devolución nunca rectifica dos veces. Una nota de crédito anulada en Stripe (solo se puede mientras su factura no está cobrada) nunca se vuelve rectificativa, aunque su aviso llegue después; y si ya lo era, la rectificativa no se toca —una factura enviada a la AEAT no se modifica— y soporte recibe un correo para emitir a mano la factura que la anula.
 Implicados: el negocio de plataforma de ERPlora (emite la rectificativa)
 
@@ -570,7 +572,7 @@ Pasos:
 4. Desde ese momento el plan se vende a ese precio; sin sus precios, no está a la venta.
 Entra: el plan y sus precios de Stripe.
 Sale: el plan a la venta con sus precios comprobados.
-Si falla: un precio que no cuadra no se guarda y dice por qué debajo de su campo («Este precio no está en euros», «Stripe cobra … y el plan dice …», «Este precio incluye el IVA o no lo dice…», un precio de pruebas en producción no se encuentra…). Si Stripe no contesta, no se guarda y se pide repetir; sin claves de Stripe (en desarrollo) se guarda y el admin avisa de que no se comprobó. Un plan sin su precio de Stripe no se vende y la Tienda lo dice.
+Si falla: un precio que no cuadra no se guarda y dice por qué debajo de su campo («Este precio no está en euros», «Stripe cobra … y el plan dice …», «Este precio incluye el IVA o no lo dice…», un precio de pruebas en producción no se encuentra…). Si Stripe no contesta, no se guarda y se pide repetir; sin claves de Stripe (en desarrollo) se guarda y el admin avisa de que no se comprobó. Un plan sin su precio de Stripe para un periodo no se vende con ese periodo: en la Tienda su botón está desactivado y dice por qué (BILLING-F08).
 Implicados: hubs (el admin de los planes)
 
 ### BILLING-F29 Probar el cobro real en PRE con un reloj de prueba de Stripe

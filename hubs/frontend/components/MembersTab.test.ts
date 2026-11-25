@@ -22,6 +22,7 @@ import { accessibleName, apiError, BYE, closeRowMenu, describeCall, errorFrame, 
 import { member } from '../__tests__/members';
 import InviteModal from './InviteModal.vue';
 import MembersTab from './MembersTab.vue';
+import TransferDialog from './TransferDialog.vue';
 
 // The DataTable's test helpers: a row's actions wherever they are, and a phone's viewport.
 import { offeredRowActions } from '@erplora/ui/testing/data-table';
@@ -30,6 +31,7 @@ import { viewport } from '../../../packages/ui/src/components/DataTable/__tests_
 const BUSINESS = {
   id: 'h1',
   name: 'Panadería López',
+  is_platform: false,
   status: 'active',
   pending_transfer: null,
   can: { open: true, manage_members: true, manage_settings: true, manage_billing: true, transfer: true, delete: true },
@@ -168,6 +170,29 @@ describe('MembersTab: the list', () => {
     expect(s.testid('members-roles').text()).toContain('What can each one do?');
     expect(s.testid('members-roles').text()).toContain('Owner: everything, also the plan, transferring and deleting the business.');
     expect(s.testid('members-roles').text()).toContain('Accountant: the accountancy firm that keeps the books.');
+    expect(s.testid('members-roles').text()).toContain('it takes no place on the plan.');
+  });
+
+  it('says what each role may do in ERPlora’s own business, which has no plan and is never deleted', async () => {
+    const s = await setup({ is_platform: true });
+    await s.show(page(ROWS, { seats: { used: 2, limit: null } }));
+    expect(s.wrapper.findAll('.roles-line').map((line) => line.text())).toEqual([
+      'Owner: everything, also transferring the business.',
+      'Admin: the team, the modules and the settings.',
+      'Manager and employee: they work inside the business. Employees who only use a PIN at the till are managed inside the business.',
+      'Accountant: the accountancy firm that keeps the books. It only reads sales and invoices, with their taxes, and downloads the invoices.',
+    ]);
+    expect(s.testid('members-seats').exists()).toBe(false);
+  });
+
+  it.each([
+    [false, 'hubs.members.inviteModal.freeRole', 'hubs.members.transfer.consequenceBilling'],
+    [true, null, null],
+  ])('its dialogs speak of the plan only where there is one (is_platform: %s)', async (is_platform, freeRole, billing) => {
+    const s = await setup({ is_platform });
+    await s.show(page());
+    expect(s.wrapper.findComponent(InviteModal).props('freeRoleText')).toBe(freeRole);
+    expect(s.wrapper.findComponent(TransferDialog).props('billingText')).toBe(billing);
   });
 
   it('an error is the table’s, with «Retry»', async () => {

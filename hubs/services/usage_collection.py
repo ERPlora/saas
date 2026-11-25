@@ -60,11 +60,12 @@ def usage_record(ctx: OperationContext, data: UsageRecordIn) -> dict:
     """One day of a business's usage as the Hub measured it (``collect_hub_usage``); only the platform runs it.
 
     A day measured again replaces its figures. New or different figures are told to the owner and the admins
-    (``hubs.business.usage_collected``), whose page re-runs; the same figures again write and tell nothing.
+    (``hubs.business.usage_collected``), whose page re-runs; the same figures again write and tell nothing. ERPlora's
+    own business has no plan to measure it against: unknown here.
     """
     if ctx.actor != "system":
         raise PermissionDenied(_("Only the platform records the usage of a business."), code="internal_command")
-    if not Hub.objects.filter(pk=data.id).exists():
+    if not Hub.objects.filter(pk=data.id, is_platform=False).exists():
         raise access_control.not_found()
     figures = {name: getattr(data, name) for name in USAGE_FIGURES}
     sample, created = HubUsageDaily.objects.select_for_update().get_or_create(

@@ -19,7 +19,7 @@
 import type { ChildProcess } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 
-import type { APIRequestContext, APIResponse } from '@playwright/test';
+import type { APIRequestContext, APIResponse, Page } from '@playwright/test';
 
 import { FAKE_PROVIDER_URL, startFakeProvider } from './assistant-chat';
 import { runSeed } from './django';
@@ -259,20 +259,28 @@ async function spend(request: APIRequestContext, made: Gateway): Promise<void> {
   expect((await call(request, '/internal/assistant/chat', turn(made.demo))).status()).toBe(200);
 }
 
-test('ASSISTANT-F24: the staff see what each business spent and what it cost, and cannot change it', async ({ page, request }) => {
+/** The staff on «Assistant usage records» once `spend` ran: the page's errors and what the seed made. */
+async function onTheUsageRecords(page: Page, request: APIRequestContext): Promise<{ errors: string[]; made: Gateway }> {
   const errors = watchPageErrors(page);
   const made = seed('gateway');
   await spend(request, made);
   await signIn(page.request, ADMIN);
-
   await page.goto('/admin/assistant/assistantusage/');
+  return { errors, made };
+}
+
+test('ASSISTANT-F24: the staff see what each business spent with each model and what it cost, and cannot change it', async ({ page, request }) => {
+  const { errors, made } = await onTheUsageRecords(page, request);
   const bar = page.getByRole('row', { name: /E2E Bar Asistente/ });
   await atEverySize(page, 'ASSISTANT-F24', async () => {
     await expect(page.getByRole('heading', { level: 1, name: /assistant usage record/i })).toBeVisible();
+    await expect(bar).toContainText('gpt-e2e-large');
     await expect(bar).toContainText('1200');
     // (1200 × 1 + 300 × 2) / 1 000 000 USD.
     await expect(bar).toContainText('0.0018');
   });
+  await expect(page.locator('th.column-answered_by')).toContainText('Model');
+  await expect(page.locator('th.column-answered_by')).toBeInViewport({ ratio: 1 });
   // The cost and the messages are read without scrolling the table, at the desk's width.
   await expect(page.getByRole('columnheader', { name: 'Cost (USD)' })).toBeInViewport({ ratio: 1 });
   await expect(page.getByRole('columnheader', { name: 'Messages' })).toBeInViewport({ ratio: 1 });
@@ -298,17 +306,15 @@ test.describe('in Spanish', () => {
   test.use({ locale: 'es-ES' });
 
   test('ASSISTANT-F24: «Registros de uso del asistente» speaks the staff\'s language', async ({ page, request }) => {
-    const errors = watchPageErrors(page);
-    const made = seed('gateway');
-    await spend(request, made);
-    await signIn(page.request, ADMIN);
-
-    await page.goto('/admin/assistant/assistantusage/');
+    const { errors } = await onTheUsageRecords(page, request);
     await atEverySize(page, 'ASSISTANT-F24-es', async () => {
       await expect(page.getByRole('heading', { level: 1, name: /registro de uso del asistente/i })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: 'Coste (USD)' })).toBeVisible();
       // Since ASSISTANT-F26 an account has its rows too (assistant/admin/usage.py `business, demo or account`).
       await expect(page.getByRole('columnheader', { name: 'Negocio, demo o cuenta' })).toBeVisible();
+      await expect(page.locator('th.column-answered_by')).toContainText('Modelo');
+      // The seed's spent business has its row from before the model was kept.
+      await expect(page.getByRole('row', { name: /E2E Sin Mensajes/ })).toContainText('Sin registrar');
       await expect(page.getByRole('link', { name: 'Negocios' })).toBeVisible();
       await expect(page.getByText('3 registros de uso del asistente')).toBeVisible();
     });

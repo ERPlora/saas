@@ -32,6 +32,8 @@ HUB_ADMIN_CALLBACK_URL = config(
 )
 _hub_admin_callback = urlsplit(HUB_ADMIN_CALLBACK_URL)
 HUB_ADMIN_ORIGIN = f"{_hub_admin_callback.scheme}://{_hub_admin_callback.netloc}"
+# The address of ERPlora's own business: the one reserved name (live.slugs) a business here bears and the jump takes.
+PLATFORM_HUB_SLUG = "erp"
 EXCHANGE_CODE_TTL_SECONDS = 60
 # How long a pass the Hub signs for the way back to erplora.com opens (accounts/hub_pass.py).
 HUB_PASS_MAX_AGE_SECONDS = 60

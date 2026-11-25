@@ -9,13 +9,12 @@ from live.operations import AI, operation
 from live.outbox import record_event
 
 from hubs import events
-from hubs.models import Hub
 from hubs.queries import access_control, businesses
 from hubs.queries.access_control import Role
 from hubs.schemas.businesses import BusinessAddressIn, BusinessDetailOut, BusinessUpdateIn
 from hubs.services.creation import _chosen_slug, _slug_taken
 from hubs.services.hub_push import Call, push_after_commit
-from hubs.services.refusals import business_deleted
+from hubs.services.refusals import refuse_to_change
 
 
 @operation(
@@ -47,8 +46,7 @@ def business_update(ctx: OperationContext, data: BusinessUpdateIn) -> dict:
     ``hubs.country_locked``; sending the same one again is no change."""
     member = access_control.access(access_control.account_of(ctx), data.id, Role.ADMIN, lock=True)
     hub = member.hub
-    if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
-        raise business_deleted()
+    refuse_to_change(hub)
     sent = data.model_dump(exclude_unset=True, exclude_none=True, exclude={"id"})
     changes = {
         field: value for field, value in sent.items() if getattr(hub, field) != value
@@ -100,8 +98,7 @@ def business_change_address(ctx: OperationContext, data: BusinessAddressIn) -> d
     it and receives the old links and QR codes. The same address again changes nothing."""
     member = access_control.access(access_control.account_of(ctx), data.id, Role.OWNER, lock=True)
     hub = member.hub
-    if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
-        raise business_deleted()
+    refuse_to_change(hub)
     if data.slug == hub.slug:
         return businesses.business_detail(member)
     slug = _chosen_slug(data.slug, excluding=hub.id)

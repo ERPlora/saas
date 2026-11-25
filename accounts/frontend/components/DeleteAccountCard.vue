@@ -1,9 +1,9 @@
 <script setup lang="ts">
 // The danger card of Account → Profile (mockups `account.html` «profile», «Eliminar tu cuenta»; on every surface:
 // Google Play asks for it in the apps). It says up front which businesses hold the account — those it owns
-// (`can.delete`: transfer or delete them) and those it pays for without owning them (`is_payer`: their owner
-// enters their own payment details) — named in one line, each linked to its Settings, and keeps «Delete account»
-// off meanwhile. A
+// (transfer or delete them; ERPlora's own, which nobody deletes, only transfer it) and those it pays for without owning
+// them (`is_payer`: their owner enters their own payment details) — named in one line, each linked to where it is let
+// go, and keeps «Delete account» off meanwhile. A
 // business in its 90 days of deletion holds nobody. Read from `hubs.business.list`, the operation the server reads
 // for the same rule (`accounts.services.businesses_holding`); the server decides in the end
 // (DeleteAccountDialog shows its 409 too). Until that list is known — loading, failed, or no answer in time —
@@ -18,7 +18,7 @@ import LoadFailed from '../../../frontend/LoadFailed.vue';
 import { useLiveState } from '../../../frontend/live-state';
 import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import type { BusinessRowOut } from '../../../frontend/sdk-types/hubs';
-import { BUSINESSES } from '../paths';
+import { letGoPage } from '../paths';
 import DeleteAccountDialog from './DeleteAccountDialog.vue';
 
 defineProps<{
@@ -34,13 +34,17 @@ const state = useLiveState(live, { isEmpty: (data) => data.rows.length === 0 });
 /** The server answered which businesses there are: only then may the card say whether any holds the account. */
 const known = computed(() => state.view.value === 'empty' || state.view.value === 'ready');
 const rows = computed<BusinessRowOut[]>(() => live.data.value?.rows ?? []);
-const owned = computed(() => rows.value.filter((row) => row.can.delete));
-const paid = computed(() => rows.value.filter((row) => !row.can.delete && row.is_payer && !row.deletion_requested_at));
+const kept = computed(() => rows.value.filter((row) => !row.deletion_requested_at));
+const owned = computed(() => kept.value.filter((row) => row.role === 'hub_owner'));
+const deletable = computed(() => owned.value.filter((row) => !row.is_platform));
+const ownsPlatform = computed(() => owned.value.length > deletable.value.length);
+const paid = computed(() => kept.value.filter((row) => row.role !== 'hub_owner' && row.is_payer));
 const held = computed(() => owned.value.length > 0 || paid.value.length > 0);
 
 /**
  * The businesses that hold the account, named in ONE line as the person's language joins them («A, B y C»),
- * each name a link to its Settings: not a stack of links, so the page stays clean. The sentence above says what to do.
+ * each name a link to where it is let go: not a stack of links, so the page stays clean. The sentence above says what
+ * to do.
  */
 const heldParts = computed<Array<{ business?: BusinessRowOut; text?: string }>>(() => {
   const list = owned.value.length ? owned.value : paid.value;
@@ -63,12 +67,20 @@ const deleting = shallowRef(false);
           <h2 class="card-row__title">
             {{ $t('accounts.account.delete.title') }}
           </h2>
-          <p
-            v-if="owned.length"
-            class="card-text"
-          >
-            {{ $t('accounts.account.delete.owns', owned.length) }}
-          </p>
+          <template v-if="owned.length">
+            <p
+              v-if="deletable.length"
+              class="card-text"
+            >
+              {{ $t('accounts.account.delete.owns', deletable.length) }}
+            </p>
+            <p
+              v-if="ownsPlatform"
+              class="card-text"
+            >
+              {{ $t('accounts.account.delete.ownsPlatform') }}
+            </p>
+          </template>
           <p
             v-else-if="paid.length"
             class="card-text"
@@ -102,7 +114,7 @@ const deleting = shallowRef(false);
               <router-link
                 v-if="part.business"
                 data-testid="profile-danger-business"
-                :to="`${BUSINESSES}/${part.business.id}/settings`"
+                :to="letGoPage(part.business)"
               >
                 {{ part.business.name }}
               </router-link>

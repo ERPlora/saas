@@ -16,6 +16,7 @@ from hubs.models import BillingProfile, Hub, Plan, Subscription, SubscriptionIte
 from hubs.queries import access_control, hub_sync, plan_catalog
 from hubs.schemas.subscriptions import SubscriptionApplyIn, SubscriptionApplyOut
 from hubs.services.hub_push import LIVE_STATUSES, bump_state, push_after_commit
+from hubs.services.refusals import refuse_platform_business
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ STANDING_MOVES = {
     output=SubscriptionApplyOut,
     ai=INTERNAL,  # only the platform runs it
 )
-def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict:  # noqa: C901, PLR0912, PLR0915
+def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict:
     """Write what the live Stripe subscription says of a business (billing reads it: webhook, checkout,
     the sweep of unpaid plans). Only the platform runs it, in the owner's channel (``system_ctx_for``).
 
@@ -72,59 +73,24 @@ def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict
     hub = Hub.objects.select_for_update().filter(pk=data.hub_id).first()
     if hub is None:
         raise access_control.not_found()
+    refuse_platform_business(hub)
     sent = data.model_dump(exclude_unset=True, exclude={"hub_id"})
     seen_before = _what_the_hub_sees(hub.id)
     subscription = Subscription.objects.select_for_update().filter(hub=hub).first()
     # Only a business stopped for not paying comes back with a payment (nothing else suspends one today,
     # but a payment must never undo a suspension it did not cause).
     was_unpaid = bool(subscription and subscription.unpaid_reason)
-    changed = False
-    plan = None
-    if "plan" in sent:
-        plan = Plan.objects.filter(slug=sent["plan"]).first()
-        if plan is None:
-            reason = _("There is no plan with this identifier.")
-            raise InvalidPayload(reason, fields={"plan": reason})
+    plan = _plan_said(sent)
+    changed = subscription is None
     if subscription is None:
         subscription = Subscription(hub=hub, plan=plan or plan_catalog.free_plan())
-        changed = True
-    changes = {}
-    if plan is not None and subscription.plan_id != plan.pk:
-        changes["plan"] = plan
-    # A customer sent alone is the payer's (``billing.services.stripe_customers.ensure_customer``): a live
-    # subscription keeps the one Stripe charges until Stripe says otherwise (the previous payer's card after a
-    # hand-over, HUBS-F28).
-    payers_only = "stripe_subscription_id" not in sent and bool(subscription.stripe_subscription_id)
-    for field in APPLIED_FIELDS:
-        if field == "stripe_customer_id" and payers_only:
-            continue
-        if field in sent:
-            value = sent[field]
-            if value is None and field in CLEARED_TO_EMPTY:
-                value = ""
-            if getattr(subscription, field) != value:
-                changes[field] = value
-    paid_plan = plan is not None and plan.price_monthly > 0
-    if sent.get("stripe_subscription_id") and paid_plan and subscription.trial_plan_id is not None:
-        # The paid plan carries its own trial in Stripe; modules alone leave the business on Free.
-        changes["trial_plan"] = None
+    changes = _changes_said(subscription, plan, sent)
     for field, value in changes.items():
         setattr(subscription, field, value)
     if changes or changed:
         subscription.save()
         changed = True
-    customer = sent.get("stripe_customer_id")
-    profile = hub.billing_profile
-    if customer and profile is not None and not profile.stripe_customer_id:
-        BillingProfile.objects.filter(pk=profile.pk).update(stripe_customer_id=customer, updated_at=timezone.now())
-        changed = True
-    elif customer and profile is not None and profile.stripe_customer_id != customer:
-        logger.warning(
-            "hubs.subscription.customer_differs hub=%s payer=%s subscription=%s",
-            hub.id,
-            profile.stripe_customer_id,
-            customer,
-        )
+    changed |= _remember_customer(hub, sent.get("stripe_customer_id"))
     if "modules" in sent:
         changed |= _apply_modules(subscription, data.modules or [])
     changed |= sync_plan_modules(subscription)
@@ -137,6 +103,56 @@ def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict
         record_event(ctx, events.SUBSCRIPTION_CHANGED, {"id": str(hub.id)})
     hub.refresh_from_db(fields=["state_version"])
     return {"hub_id": hub.id, "state_version": hub.state_version, "changed": changed}
+
+
+def _plan_said(sent: dict) -> Plan | None:
+    """The plan of ``sent``; ``None`` when it says none."""
+    if "plan" not in sent:
+        return None
+    plan = Plan.objects.filter(slug=sent["plan"]).first()
+    if plan is None:
+        reason = _("There is no plan with this identifier.")
+        raise InvalidPayload(reason, fields={"plan": reason})
+    return plan
+
+
+def _changes_said(subscription: Subscription, plan: Plan | None, sent: dict) -> dict:
+    """What ``sent`` says of the subscription and is not so yet, field by field."""
+    said = {field: _as_written(field, sent[field]) for field in APPLIED_FIELDS if field in sent}
+    # A customer sent alone is the payer's (``billing.services.stripe_customers.ensure_customer``): a live
+    # subscription keeps the one Stripe charges until Stripe says otherwise (the previous payer's card after a
+    # hand-over, HUBS-F28).
+    if "stripe_subscription_id" not in sent and subscription.stripe_subscription_id:
+        said.pop("stripe_customer_id", None)
+    changes = {field: value for field, value in said.items() if getattr(subscription, field) != value}
+    if plan is not None and subscription.plan_id != plan.pk:
+        changes["plan"] = plan
+    paid_plan = plan is not None and plan.price_monthly > 0
+    if sent.get("stripe_subscription_id") and paid_plan and subscription.trial_plan_id is not None:
+        # The paid plan carries its own trial in Stripe; modules alone leave the business on Free.
+        changes["trial_plan"] = None
+    return changes
+
+
+def _as_written(field: str, value):
+    return "" if value is None and field in CLEARED_TO_EMPTY else value
+
+
+def _remember_customer(hub: Hub, customer: str | None) -> bool:
+    """The payer keeps its first customer of Stripe; another one is only logged. ``True`` if it was written."""
+    profile = hub.billing_profile
+    if not customer or profile is None or profile.stripe_customer_id == customer:
+        return False
+    if profile.stripe_customer_id:
+        logger.warning(
+            "hubs.subscription.customer_differs hub=%s payer=%s subscription=%s",
+            hub.id,
+            profile.stripe_customer_id,
+            customer,
+        )
+        return False
+    BillingProfile.objects.filter(pk=profile.pk).update(stripe_customer_id=customer, updated_at=timezone.now())
+    return True
 
 
 def _what_the_hub_sees(hub_id: UUID) -> tuple:

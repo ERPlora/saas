@@ -41,10 +41,10 @@ export function yearOptions(now: Date = new Date()): number[] {
   return Array.from({ length: YEARS }, (_, index) => year - index);
 }
 
-/** The businesses whose invoices the account sees (it owns or pays them), by name in `locale`. */
+/** The businesses whose invoices the account sees (it owns or pays them; ERPlora's own has none), by name in `locale`. */
 export function invoiceBusinesses(rows: readonly BusinessRowOut[], locale: string): BusinessRowOut[] {
   return rows
-    .filter((row) => row.role === 'hub_owner' || row.is_payer)
+    .filter((row) => !row.is_platform && (row.role === 'hub_owner' || row.is_payer))
     .sort((a, b) => a.name.localeCompare(b.name, locale));
 }
 

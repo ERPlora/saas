@@ -2,10 +2,14 @@
 
 The jump code is stored as its SHA-256, bound to one hub, and spent by a single conditional
 ``UPDATE … WHERE used_at IS NULL`` instead of ``select_for_update``. Two audiences: ``hub-session``
-(a member enters their hub) and ``hub-admin`` (the platform's staff open a hub in the Hub's Django
-admin at ``hubs.erplora.com``).
+(a member enters their hub, and the platform's staff enter a business they are no member of as its
+support, ``hub_support``) and ``hub-admin`` (the platform's staff open a hub in the Hub's Django
+admin at ``hubs.erplora.com``). The business decides whether support comes in: the Hub refuses a
+``hub_support`` code while the business has its support access off. ERPlora's own business takes
+none (``takes_support``).
 """
 
+import logging
 import secrets
 from dataclasses import dataclass
 from datetime import timedelta
@@ -18,6 +22,8 @@ from live.slugs import validate_hub_slug
 from accounts.models import AuthExchangeCode
 from accounts.queries import account_hubs, two_factor
 from accounts.services.platform_staff import SUPPORT_GROUP
+
+logger = logging.getLogger(__name__)
 
 
 class HubAccessDenied(Exception):
@@ -34,13 +40,16 @@ class SecondFactorRequired(HubAccessDenied):
 class InvalidCode(Exception):
     """The code is unknown, expired, already used, for another hub or for an account that lost access.
 
-    Also when the hub is no hub slug (``live.slugs``): no reserved name ever gets a session.
+    Also when the hub is no hub slug (``is_hub_slug``): no reserved name but ERPlora's own business's ever gets a
+    session.
     """
 
 
 #: The role a ``hub-admin`` code carries to the Hub's admin: the platform's, never a ``hub_*`` one.
 HUB_ADMIN_ROLE_ADMIN = "platform_admin"
 HUB_ADMIN_ROLE_SUPPORT = "platform_support"
+#: The role of the platform's staff in a business they are no member of: they enter it as ERPlora's support.
+HUB_SUPPORT_ROLE = "hub_support"
 #: First label of the platform host ``hubs.erplora.com``: never a hub, so no
 #: code of either audience names it. ``live.slugs`` reserves it as well; it is refused here too so
 #: the SaaS never mints a code for its own host, whatever the shared list says.
@@ -59,12 +68,21 @@ class HubIdentity:
 
 
 def is_hub_slug(hub_slug) -> bool:
-    """Whether ``hub_slug`` follows the rule shared with the Hub (``live.slugs``) and is no platform host."""
+    """Whether ``hub_slug`` follows the rule shared with the Hub (``live.slugs``) and is no platform host. Of the
+    reserved names, ERPlora's own business's alone is one."""
+    if hub_slug == settings.PLATFORM_HUB_SLUG:
+        return True
     try:
         validate_hub_slug(hub_slug)
     except ValueError:
         return False
     return hub_slug != PLATFORM_HOST_SLUG
+
+
+def takes_support(hub_slug) -> bool:
+    """Whether the platform's staff may enter ``hub_slug`` as support: any hub's but ERPlora's own business's, which
+    only its people enter."""
+    return is_hub_slug(hub_slug) and hub_slug != settings.PLATFORM_HUB_SLUG
 
 
 def _platform_role(user) -> str | None:
@@ -83,17 +101,21 @@ def _platform_role(user) -> str | None:
 
 
 def _role_in(user, hub_slug: str, audience: str) -> str | None:
-    """What ``user`` is on ``hub_slug`` for ``audience``: a member's ``hub_*`` role or a platform role."""
+    """What ``user`` is on ``hub_slug`` for ``audience``: a member's ``hub_*`` role, ``hub_support`` for the platform's
+    staff on a business they are no member of and that takes support, or a platform role in the Hub admin."""
     if audience == AuthExchangeCode.HUB_ADMIN_AUDIENCE:
         return _platform_role(user)
-    return account_hubs.hub_roles_of(user).get(hub_slug)
+    role = account_hubs.hub_roles_of(user).get(hub_slug)
+    if role is None and takes_support(hub_slug) and _platform_role(user) is not None:
+        return HUB_SUPPORT_ROLE
+    return role
 
 
-def _needs_second_factor(user, audience: str) -> bool:
-    """With ``ACCOUNTS_MFA_ENABLED``: ``hub-admin`` always, ``hub-session`` if the account has an app."""
+def _needs_second_factor(user, audience: str, role: str) -> bool:
+    """With ``ACCOUNTS_MFA_ENABLED``: ``hub-admin`` and support always, a member if the account has an app."""
     if not settings.ACCOUNTS_MFA_ENABLED:
         return False
-    return audience == AuthExchangeCode.HUB_ADMIN_AUDIENCE or two_factor.has_totp(user)
+    return audience == AuthExchangeCode.HUB_ADMIN_AUDIENCE or role == HUB_SUPPORT_ROLE or two_factor.has_totp(user)
 
 
 def issue_code(
@@ -105,23 +127,27 @@ def issue_code(
 ) -> str:
     """Mint a one-time code for ``user`` to enter ``hub_slug``; return it (only its hash is kept).
 
-    ``hub-session`` needs a membership of the hub. ``hub-admin`` needs no membership, only an
-    active staff account with a platform role (``_platform_role``). A reserved or malformed slug,
-    or the platform host, is refused even if a membership row names it (rows saved without
-    validation, or before the shared rule).
+    ``hub-session`` needs a membership of the hub, or else an active staff account with a platform
+    role, which enters as support (``hub_support``) where ``takes_support``. ``hub-admin`` needs no membership, only an
+    active staff account with a platform role (``_platform_role``). A reserved or malformed slug (but
+    ERPlora's own business's), or the platform host, is refused even if a membership row names it (rows
+    saved without validation, or before the shared rule).
 
     ``second_factor`` is whether the caller's session passed the second factor
     (``mfa.mfa_completed(request)``); it only counts with ``ACCOUNTS_MFA_ENABLED`` on. Then
-    ``hub-admin`` always needs it, and ``hub-session`` needs it from an
+    ``hub-admin`` and support always need it, and a member needs it from an
     account that turned on an authenticator app; without it, ``SecondFactorRequired``. The access
     is checked first: a stranger is refused as one, whatever their second factor.
     """
     if audience not in (AuthExchangeCode.HUB_SESSION_AUDIENCE, AuthExchangeCode.HUB_ADMIN_AUDIENCE):
         raise ValueError(f"unknown audience {audience!r}")
-    if not is_hub_slug(hub_slug) or _role_in(user, hub_slug, audience) is None:
+    role = _role_in(user, hub_slug, audience) if is_hub_slug(hub_slug) else None
+    if role is None:
         raise HubAccessDenied(hub_slug)
-    if not second_factor and _needs_second_factor(user, audience):
+    if not second_factor and _needs_second_factor(user, audience, role):
         raise SecondFactorRequired(hub_slug)
+    if role == HUB_SUPPORT_ROLE:
+        logger.info("hub_login.hub_support user=%s hub=%s", user.pk, hub_slug)
     code = secrets.token_urlsafe(32)
     now = timezone.now()
     AuthExchangeCode.objects.create(
@@ -140,8 +166,8 @@ def redeem_code(code: str, hub_slug: str, *, audience: str = AuthExchangeCode.HU
 
     The code is spent by one conditional ``UPDATE``, so two concurrent redemptions cannot both
     win. A code for another hub or another audience is refused without spending it. The access is
-    re-checked at redemption (an active account, and its membership for ``hub-session`` or its
-    platform role for ``hub-admin``): a code does not outlive the access it was minted for. A
+    re-checked at redemption (an active account, and the membership or the platform role it was
+    minted for): a code does not outlive the access it was minted for. A
     reserved or malformed hub, or the platform host, is refused before the code is looked up, so it
     is not spent.
     """

@@ -7,7 +7,7 @@ from hubs.models import Hub, Subscription
 
 def _hub_named(hub_id) -> Hub | None:
     try:
-        return Hub.objects.filter(pk=hub_id).first() if hub_id else None
+        return Hub.objects.filter(pk=hub_id, is_platform=False).first() if hub_id else None
     except ValueError, TypeError, DjangoValidationError:
         return None
 

@@ -226,7 +226,7 @@ class TestTheInstructions:
         text = assistant.instructions(language=language, account="Lena", screens={})
 
         assert "erplora.com desde el navegador" not in text and "erplora.com in your browser" not in text
-        assert "FIRST RULE" not in text and "- If something cannot be done from here" in text
+        assert "FIRST RULE" not in text and "Never say that something cannot be done here" in text
 
     def test_the_store_is_not_offered_where_nothing_is_sold(self, account, rf):
         request = rf.get("/")
@@ -454,6 +454,45 @@ class TestAWrite:
         assert got[1]["pending"] == [self.CREATE] and got[1]["continuation"] == "tok"
         assert not Hub.objects.filter(name="Sol Hair").exists()
         assert model_requests(fake_provider) == [] and used_by(account) == 0
+
+    def test_a_read_and_a_write_of_one_answer_run_the_read_and_stop_at_the_writes_card(
+        self, signed_in, account, answering, fake_provider
+    ):
+        listed = {"call_id": "c0", "name": "hubs__business__list", "arguments": "{}"}
+        messages = self.asked()
+        messages[-1]["tool_calls"].insert(0, {"id": "c0", "type": "function", "function": {"name": listed["name"], "arguments": "{}"}})
+
+        got = frames(post_turn(signed_in, {"messages": messages, "pending": [listed, self.CREATE]}))
+
+        assert types(got) == ["executed", "confirm", "done"]
+        assert (got[0]["name"], got[1]["call"], got[2]["pending"]) == ("hubs.business.list", self.CREATE, [self.CREATE])
+        assert [m["tool_call_id"] for m in got[2]["append"]] == ["c0"]
+        assert model_requests(fake_provider) == [] and not Hub.objects.filter(name="Sol Hair").exists()
+
+    def test_two_writes_of_one_answer_show_one_card_at_a_time_and_a_yes_runs_only_its_own(
+        self, signed_in, account, answering, fake_provider
+    ):
+        hub = create_business(account, name="Bar Lena")
+        renames = [
+            {"call_id": call_id, "name": "hubs__business__update", "arguments": json.dumps({"id": str(hub.id), "name": name})}
+            for call_id, name in (("c1", "Bar Nuevo"), ("c2", "Bar Final"))
+        ]
+        asked = [{"id": c["call_id"], "type": "function", "function": {"name": c["name"], "arguments": c["arguments"]}} for c in renames]
+        messages = [ask("Rename Bar Lena to Bar Nuevo, then to Bar Final"), {"role": "assistant", "content": "", "tool_calls": asked}]
+
+        first = frames(post_turn(signed_in, {"messages": messages, "pending": renames}))
+
+        assert types(first) == ["confirm", "done"]
+        assert (first[0]["call"], first[1]["pending"]) == (renames[0], renames)
+        yes = {"call_id": "c1", "accepted": True}
+
+        then = frames(post_turn(signed_in, {"messages": messages, "pending": first[1]["pending"], "decision": yes}))
+
+        assert types(then) == ["executed", "confirm", "done"]
+        assert (then[0]["call_id"], then[0]["outcome"], then[1]["call"]) == ("c1", "ok", renames[1])
+        assert [m["tool_call_id"] for m in then[2]["append"]] == ["c1"] and then[2]["pending"] == [renames[1]]
+        hub.refresh_from_db()
+        assert hub.name == "Bar Nuevo" and model_requests(fake_provider) == []
 
     def test_it_runs_only_with_the_word_typed(self, signed_in, account, answering, fake_provider):
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Done: Sol Hair is ready."))
@@ -866,23 +905,23 @@ class TestWhatStopsATurn:
         got = frames(post_turn(signed_in, {"messages": [ask("Hello")]}))
 
         assert {"type": "error", "code": "assistant.provider_failed", "retriable": False} in got
-        assert got[-1] == {"type": "done", "append": [], "pending": [], "continuation": None, "web": False}
+        assert got[-1] == {"type": "done", "append": [], "pending": [], "continuation": None, "web": False, "sources": []}
         assert used_by(account) == 0
 
     def test_too_many_rounds_of_tools_stop_before_the_model(self, signed_in, account, answering, fake_provider):
-        got = frames(post_turn(signed_in, {"messages": [ask("Loop"), *tool_rounds(assistant.MAX_ROUNDS)]}))
+        got = frames(post_turn(signed_in, {"messages": [ask("Loop"), *tool_rounds(20)]}))
 
         assert types(got) == ["error", "done"]
         assert got[0] == {"type": "error", "code": "assistant.too_many_steps"}
         assert model_requests(fake_provider) == []
 
-    def test_a_question_gets_six_rounds_of_tools_and_no_more(self, signed_in, account, answering, fake_provider):
-        """The six rounds the WORKBOOK promises: after five the model still answers; the sixth stops (above)."""
+    def test_a_question_gets_twenty_rounds_of_tools_and_no_more(self, signed_in, account, answering, fake_provider):
+        """The twenty rounds the WORKBOOK promises, as many as the Hub's assistant: after nineteen the model still
+        answers; the twentieth stops (above). A read and a change for each day of the week take eight."""
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Here."))
 
-        got = frames(post_turn(signed_in, {"messages": [ask("Loop"), *tool_rounds(5)]}))
+        got = frames(post_turn(signed_in, {"messages": [ask("Loop"), *tool_rounds(19)]}))
 
-        assert assistant.MAX_ROUNDS == 6
         assert types(got) == ["text", "usage", "done"]
         assert len(model_requests(fake_provider)) == 1
 

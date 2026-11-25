@@ -107,7 +107,7 @@ ACCOUNT_PERMISSIONS = frozenset(
 )
 
 #: What the platform alone runs (the Hub's doors, the commands, the workers, as ``"system"``): each refuses any other
-#: actor itself, first, whatever permissions it holds. Six of them ask for a permission every account holds
+#: actor itself, first, whatever permissions it holds. Several ask for a permission every account holds
 #: (``hubs.manage``): that refusal is all that stands between them and a customer.
 SYSTEM_ONLY = frozenset(
     {
@@ -127,7 +127,9 @@ SYSTEM_ONLY = frozenset(
         "hubs.business.notify_people",
         "hubs.business.record_hub_error",
         "hubs.business.record_maintenance",
+        "hubs.business.record_scheduled_move",
         "hubs.custom_domain.record",
+        "hubs.platform_business.create",
         "hubs.subscription.apply",
         "hubs.usage.prune",
         "hubs.usage.record",

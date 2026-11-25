@@ -52,6 +52,10 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   asistente. La copia que leía antes (`accounts.HubMembership`) salió del código en `accounts/0011` y su tabla, de la
   base de datos en `accounts/0012` (saas#220). El salto se queda en `accounts`: moverlo (`/hub-login/`,
   `/internal/auth/redeem`, `AuthExchangeCode`) no quitaba ninguna copia. Guardarraíl AST: `tests/test_access.py`.
+- **El negocio propio de ERPlora** (`Hub.is_platform`, HUBS-F39): su fila solo guarda sus personas. La crea
+  `manage.py create_platform_business`, con el id que ya tiene en el Hub; al Hub solo va su foto, `{hub_id, slug, version,
+  members}`, y nunca `PUT`, `DELETE` ni `restore`. Las puertas que cambian o cobran un negocio la rechazan
+  (`services.refusals.refuse_platform_business`); las que el Hub llama no la conocen.
 - **Personal en un negocio** (`hubs.W002`, W11b): el personal de ERPlora (`is_staff` o `is_superuser`) y los clientes
   nunca comparten cuenta. Las puertas lo impiden (`hubs.business.create`, `hubs.member.invite`/`resend` e
   `hubs.invitation.accept` responden 409 `hubs.platform_account`; `create_platform_user` y `User.clean`, es decir el
@@ -355,8 +359,8 @@ Lo que hace y por qué, en `WORKBOOK.md` (HUBS-F17 y «Para quien lo mantiene»)
   Lock `hashtext('erplora.saas.collect_hub_usage')`
   (`services.exclusive_runs.run_exclusively`: una segunda pasada sale al momento). Sale con error **después** de la pasada si el
   Hub no contestó o se negó (`unreachable`, `refused`), si respondió fuera del contrato (`invalid`: fila, página,
-  otro día o un cursor repetido) o si una fila reventó (`failed`). Un hub que el SaaS no vendió (el de plataforma,
-  las plantillas) cuenta como `unknown`, en el log, sin error.
+  otro día o un cursor repetido) o si una fila reventó (`failed`). Un hub que el SaaS no vendió (el de plataforma, aunque
+  tenga fila, y las plantillas) cuenta como `unknown`, en el log, sin error.
 - **Evento `hubs.business.usage_collected`** (`{business_id}`), en el canal del propietario y de cada administrador
   (`notify_people`), solo cuando el día es nuevo o cambia: re-ejecuta `hubs.business.get`, `hubs.usage.get` y
   `hubs.usage.series` (no la lista de negocios). `hubs.subscription.changed` también re-ejecuta las dos de uso (el
@@ -456,6 +460,13 @@ listo al responder, y lo dice.
   (`provision_failed`). El aviso `ready` (o el sondeo que lo oye) borra ese error; una llamada entregada después no
   lo borra (la preparación sigue debida). Los estados viven en `hub_client` (`PREPARING_STATUSES`, `FAILED_STATUS`,
   `ENDED_STATUSES`).
+- **Mantenimiento programado** (HUBS-F09, HUBS-F21): el mismo sondeo trae `move_scheduled_for`, cuándo empieza el
+  traslado del negocio a otro servidor que el personal pidió para su madrugada (UTC; `null` sin él, una vez arrancado
+  o cancelado; opcional: un Hub que no lo manda cuenta como `null`). A un negocio listo (activo, con el pago pendiente
+  o suspendido) solo se le pregunta por eso, y no por la petición de una persona: lo hace el `saas-worker` en cada
+  vuelta (`services.scheduled_moves`, cerrojo `check_scheduled_moves`). `hubs.business.record_scheduled_move` lo
+  guarda en `Hub.move_scheduled_for` y emite `hubs.business.move_scheduled_changed` en el canal del propietario, sin
+  tocar `state_version`; la lista y la ficha lo dicen mientras ese instante está por llegar.
 - **Demo asíncrona** (PUBLIC-F28; `public/demo.py`): `POST /internal/demos` responde 202 con `status: "requested"`.
   `/demo/start/` guarda la demo con `ready: false` y vuelve a la puerta, que dice «Preparando tu demo…»
   (`data-testid="demo-state-preparing"`, `role="status"`) mientras su página pregunta `GET /demo/status/` cada segundo

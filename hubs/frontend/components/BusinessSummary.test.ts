@@ -81,6 +81,14 @@ describe('BusinessSummary', () => {
     expect(s.kv('summary-plan')).toEqual({ Devices: '1', 'Apps turned on at once': '20', Users: '2 of 3' });
   });
 
+  it.each(['web', 'desktop'] as const)('ERPlora’s own business has neither plan nor usage, on %s', async (surface) => {
+    applySurface(surface);
+    const s = await setup({ is_platform: true, plan: null, seats: { used: 2, limit: null } });
+    for (const absent of ['summary-plan', 'summary-plan-store', 'summary-usage']) expect(s.card(absent).exists()).toBe(false);
+    expect(s.card('summary-facts').exists()).toBe(true);
+    expect(s.wrapper.findComponent(DeviceAccessCard).exists()).toBe(true);
+  });
+
   it('the apps it turns on at once, from the plan it uses (`max_apps`, the cap the Hub applies): 0 is unlimited', async () => {
     const trying = await setup({ trial_plan: STARTER, trial_end: '2026-10-30T10:00:00Z' });
     expect(trying.kv('summary-plan')).toMatchObject({ 'Apps turned on at once': 'Unlimited' });

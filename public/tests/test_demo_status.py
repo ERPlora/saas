@@ -91,6 +91,28 @@ def test_the_status_reads_the_hub_body_as_the_hub_writes_it_and_tolerates_an_old
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("step", ["failed", "expired", "dropped"])
+def test_a_pause_is_said_before_how_the_demo_is_going(client, hub_double, step):
+    """During a freeze the demo keeps its place: how it was going is asked again once the freeze is over."""
+    slug = start(client, hub_double, ready=False)
+    paused = {"status": step, "maintenance": {"frozen": True}}
+    hub_double.answer("GET", r"^/internal/hubs/[0-9a-f-]+$", 200, paused)
+
+    assert status(client) == {"state": "maintenance"}
+    assert client.session["demo"]["slug"] == slug
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("maintenance", [{"frozen": False}, {"frozen": "yes"}, {}, "frozen", ["frozen"]])
+def test_what_does_not_say_the_hub_is_frozen_is_no_pause(client, hub_double, maintenance):
+    start(client, hub_double, ready=False)
+    answer = {"status": "creating", "maintenance": maintenance}
+    hub_double.answer("GET", r"^/internal/hubs/[0-9a-f-]+$", 200, answer)
+
+    assert status(client) == {"state": "preparing"}
+
+
+@pytest.mark.django_db
 def test_a_ready_demo_enters_even_when_another_freeze_is_active(client, hub_double):
     """A platform-wide pause never holds back a demo whose database is already ready."""
     slug = start(client, hub_double, ready=False)
@@ -154,11 +176,77 @@ def test_the_status_with_the_hub_away_keeps_waiting(client, hub_double, caplog):
     [(403, {"error": {"code": "forbidden"}}), (200, {"status": "dropped"}), (200, {}), (200, ["ready"])],
 )
 def test_the_status_with_an_answer_off_the_contract_is_unavailable(client, hub_double, answer_status, body, caplog):
-    start(client, hub_double, ready=False)
+    slug = start(client, hub_double, ready=False)
     hub_double.answer("GET", r"^/internal/hubs/[0-9a-f-]+$", answer_status, body)
 
     assert status(client) == {"state": "unavailable", "url": f"{DOOR}?state=unavailable"}
+    assert client.session["demo"]["slug"] == slug
     assert "demo.status.bad_answer" in caplog.text
+
+
+def noted(client, caplog) -> list[tuple[str, str]]:
+    """What asking the status once writes in the log: each line's level and words."""
+    caplog.set_level("INFO", logger="public.demo")
+    caplog.clear()
+    status(client)
+    return [(record.levelname, record.getMessage()) for record in caplog.records if record.name == "public.demo"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("answer_status", "body", "level", "line"),
+    [
+        (200, {"status": "ready"}, "INFO", "ready hub={slug}"),
+        (200, {"status": "failed"}, "WARNING", "not_prepared hub={slug}"),
+        (200, {"status": "purged"}, "INFO", "ended hub={slug} status=purged"),
+        (200, {"status": "dropped"}, "ERROR", "bad_answer hub={slug} status=200 hub_status='dropped'"),
+        (200, ["ready"], "ERROR", "bad_answer hub={slug} status=200 hub_status=None"),
+        (404, {"error": {"code": "base.hub_gone"}}, "INFO", "ended hub={slug} status=404"),
+        (403, {"error": {"code": "forbidden"}}, "ERROR", "bad_answer hub={slug} status=403 code=forbidden"),
+    ],
+)
+def test_the_log_says_what_the_hub_answered_of_which_demo(
+    client, hub_double, caplog, answer_status, body, level, line
+):
+    """Only what the team has to look at is an error: the alarm of the log counts those."""
+    slug = start(client, hub_double, ready=False)
+    hub_double.answer("GET", r"^/internal/hubs/[0-9a-f-]+$", answer_status, body)
+
+    assert noted(client, caplog) == [(level, "demo.status." + line.format(slug=slug))]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("body", [{"status": "creating"}, {"status": "creating", "maintenance": {"frozen": True}}])
+def test_waiting_for_a_demo_writes_nothing_in_the_log(client, hub_double, caplog, body):
+    start(client, hub_double, ready=False)
+    hub_double.answer("GET", r"^/internal/hubs/[0-9a-f-]+$", 200, body)
+
+    assert noted(client, caplog) == []
+
+
+@pytest.mark.django_db
+def test_the_log_says_why_the_hub_is_away_as_a_warning(client, hub_double, monkeypatch, caplog):
+    from hubs import hub_client
+
+    slug = start(client, hub_double, ready=False)
+
+    def away(hub_id):
+        raise hub_client.HubUnavailable("timed out")
+
+    monkeypatch.setattr(hub_client, "get_hub", away)
+
+    assert noted(client, caplog) == [("WARNING", f"demo.status.hub_unavailable hub={slug} timed out")]
+
+
+@pytest.mark.django_db
+def test_the_log_says_which_demo_was_asked_too_fast(client, hub_double, monkeypatch, caplog):
+    from public import demo
+
+    monkeypatch.setattr(demo, "STATUS_RATE", "1/m")
+    slug = start(client, hub_double, ready=False)
+    status(client)
+
+    assert noted(client, caplog) == [("INFO", f"demo.status.throttled hub={slug}")]
 
 
 @pytest.mark.django_db
@@ -211,6 +299,17 @@ def test_the_status_is_limited_per_browser_and_past_it_asks_the_hub_nothing(clie
     assert answers == [{"state": "preparing"}] * 3
     assert len([c for c in hub_double.calls if c.method == "GET"]) == 2
     assert "demo.status.throttled" in caplog.text
+
+
+@pytest.mark.django_db
+def test_a_ready_demo_is_jumped_into_past_the_limit(client, hub_double, monkeypatch):
+    from public import demo
+
+    monkeypatch.setattr(demo, "STATUS_RATE", "1/m")
+    slug = start(client, hub_double)
+
+    assert [status(client)["state"] for _ in range(3)] == ["ready"] * 3
+    assert client.session["demo"]["slug"] == slug
 
 
 @pytest.mark.django_db

@@ -8,6 +8,7 @@ from datetime import date, datetime
 from datetime import timezone as dt_timezone
 
 from django.conf import settings
+from django.db.models import Sum
 from django.utils import timezone
 from live.context import OperationContext
 from live.operations import INTERNAL, operation
@@ -41,20 +42,24 @@ def monthly_limit(caller: Caller, now: datetime) -> int:
     return plan.assistant_messages_per_month if plan is not None else 0
 
 
-def usage_row(caller: Caller, now: datetime):
-    """The caller's row of usage now (a business's or an account's this month, a demo's only one), or ``None`` before
-    its first use."""
+def rows_of(caller: Caller, month: date):
+    """The caller's rows that count ``month``, one per model: a business's or an account's of that month, a demo's of
+    its whole life."""
     if caller.demo:
-        return AssistantUsage.objects.filter(demo=caller.demo).first()
+        return AssistantUsage.objects.filter(demo=caller.demo)
     if caller.user_id is not None:
-        return AssistantUsage.objects.filter(user_id=caller.user_id, month=month_of(now)).first()
-    return AssistantUsage.objects.filter(hub_id=caller.hub_id, month=month_of(now)).first()
+        return AssistantUsage.objects.filter(user_id=caller.user_id, month=month)
+    return AssistantUsage.objects.filter(hub_id=caller.hub_id, month=month)
+
+
+def messages_of(rows) -> int:
+    """The messages of the allowance spent in ``rows``, those of every model."""
+    return rows.aggregate(total=Sum("messages"))["total"] or 0
 
 
 def usage_of(caller: Caller, now: datetime) -> dict:
-    row = usage_row(caller, now)
     return {
-        "used": row.messages if row is not None else 0,
+        "used": messages_of(rows_of(caller, month_of(now))),
         "limit": monthly_limit(caller, now),
         "resets_at": None if caller.demo else resets_at(month_of(now)),
         "demo": bool(caller.demo),

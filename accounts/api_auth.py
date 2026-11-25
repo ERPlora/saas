@@ -16,6 +16,7 @@ routers are mounted (``config/api.py``).
 """
 
 import logging
+from collections.abc import Iterator
 
 from django.core.exceptions import ImproperlyConfigured
 from django.utils import timezone
@@ -24,6 +25,7 @@ from django_ratelimit.core import is_ratelimited
 from live.errors import OperationError
 from live.operations import Operation, registry
 from ninja import NinjaAPI
+from ninja.operation import Operation as Route
 from ninja.security import APIKeyHeader, HttpBearer
 
 from accounts.models import API_KEY_PREFIX, API_KEY_SCOPES
@@ -133,26 +135,40 @@ def refuse_api_keys(request) -> None:
     return None
 
 
+def _routes_to_install(api: NinjaAPI) -> Iterator[Route]:
+    """The routes of ``api`` with authentication and no key checks yet: the others are open to anonymous visitors."""
+    for bound_router in api._get_bound_routers():
+        for path_view in bound_router.path_operations.values():
+            for route in path_view.operations:
+                callbacks = route.auth_callbacks
+                if callbacks and callbacks[0] is not refuse_api_keys and not isinstance(callbacks[0], ApiKeyBearer):
+                    yield route
+
+
+def _exposed_operation(route: Route) -> Operation | None:
+    """The operation a key may open through ``route``, if any. Raises ``ImproperlyConfigured`` when no key can carry
+    its scope."""
+    op = registry.get(route.operation_id) if route.operation_id else None
+    if op is None or not op.expose_api:
+        return None
+    scope = scope_for(op)
+    if scope not in API_KEY_SCOPES:
+        raise ImproperlyConfigured(
+            f"{op.name} is exposed to API keys, but no key can carry {scope!r}: add it to "
+            "accounts.models.API_KEY_SCOPES (with its label) or do not expose the operation."
+        )
+    return op
+
+
 def install_api_key_auth(api: NinjaAPI) -> list[str]:
     """Put the key checks in front of every route of ``api`` that has authentication; return the operations a key
     may open. Raises ``ImproperlyConfigured`` when an exposed operation asks for a scope no key can carry."""
     exposed = []
-    for bound_router in api._get_bound_routers():
-        for path_view in bound_router.path_operations.values():
-            for route in path_view.operations:
-                callbacks = list(route.auth_callbacks)
-                if not callbacks or callbacks[0] is refuse_api_keys or isinstance(callbacks[0], ApiKeyBearer):
-                    continue  # open to anonymous visitors, or already installed
-                op = registry.get(route.operation_id) if route.operation_id else None
-                if op is None or not op.expose_api:
-                    route.auth_callbacks = [refuse_api_keys, *callbacks]
-                    continue
-                scope = scope_for(op)
-                if scope not in API_KEY_SCOPES:
-                    raise ImproperlyConfigured(
-                        f"{op.name} is exposed to API keys, but no key can carry {scope!r}: add it to "
-                        "accounts.models.API_KEY_SCOPES (with its label) or do not expose the operation."
-                    )
-                route.auth_callbacks = [ApiKeyBearer(op), ApiKeyHeader(op), *callbacks]
-                exposed.append(op.name)
+    for route in _routes_to_install(api):
+        op = _exposed_operation(route)
+        if op is None:
+            route.auth_callbacks = [refuse_api_keys, *route.auth_callbacks]
+        else:
+            route.auth_callbacks = [ApiKeyBearer(op), ApiKeyHeader(op), *route.auth_callbacks]
+            exposed.append(op.name)
     return exposed

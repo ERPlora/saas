@@ -1,10 +1,11 @@
 """The Hub's turn: the plan's messages and what each turn spent.
 
 - ``assistant.message.claim`` / ``.release``: a message of the plan's monthly allowance (a demo's own few), taken
-  before the model is called and given back if the turn failed before answering. An account's claim that reaches
-  80 % of its month, or the last message, mails it once that month (``assistant.emails``).
-- ``assistant.usage.record``: what a turn, an embedding or the voice spent (tokens, dictations, characters read
-  aloud) and its cost in USD.
+  on the row of the model asked before it is called and given back there if the turn failed before answering; the
+  allowance adds the messages of every model. An account's claim that reaches 80 % of its month, or the last message,
+  mails it once that month (``assistant.emails``).
+- ``assistant.usage.record``: what a turn, an embedding or the voice spent with a model (tokens, dictations,
+  characters read aloud) and its cost in USD, on the row of that model.
 """
 
 import logging
@@ -21,7 +22,7 @@ from live.outbox import record_event
 
 from assistant import emails, events, queries
 from assistant.models import AssistantUsage
-from assistant.schemas import Caller, ClaimOut, MessageReleaseIn, UsageOut, UsageRecordIn
+from assistant.schemas import Caller, ClaimIn, ClaimOut, MessageReleaseIn, UsageOut, UsageRecordIn
 
 logger = logging.getLogger("assistant.services")
 
@@ -38,59 +39,60 @@ def _caller_payload(caller: Caller) -> dict:
     return payload
 
 
-def _rows_of(caller: Caller, month):
-    """The caller's rows that count ``month``: a business's or an account's of that month, a demo's only one."""
+def _row_of(caller: Caller, model: str, now) -> AssistantUsage:
+    """The caller's row of usage of ``model`` now (made the first time): a business's or an account's of this month, a
+    demo's of its whole life. A demo's first row forgets the rows of the demos that started more than a day ago."""
+    month = queries.usage.month_of(now)
     if caller.demo:
-        return AssistantUsage.objects.filter(demo=caller.demo)
-    if caller.user_id is not None:
-        return AssistantUsage.objects.filter(user_id=caller.user_id, month=month)
-    return AssistantUsage.objects.filter(hub_id=caller.hub_id, month=month)
-
-
-def _row_of(caller: Caller, now) -> AssistantUsage:
-    """The caller's row of usage now (made the first time): a business's or an account's of this month, a demo's only
-    one. A demo's first row forgets the rows of the demos that started more than a day ago."""
-    if caller.demo:
-        row, created = AssistantUsage.objects.get_or_create(demo=caller.demo, defaults={"month": queries.usage.month_of(now)})
+        row, created = AssistantUsage.objects.get_or_create(demo=caller.demo, model=model, defaults={"month": month})
         if created:
             AssistantUsage.objects.exclude(demo="").filter(created_at__lt=now - DEMO_USAGE_KEPT).delete()
         return row
     if caller.user_id is not None:
-        return AssistantUsage.objects.get_or_create(user_id=caller.user_id, month=queries.usage.month_of(now))[0]
-    return AssistantUsage.objects.get_or_create(hub_id=caller.hub_id, month=queries.usage.month_of(now))[0]
+        return AssistantUsage.objects.get_or_create(user_id=caller.user_id, month=month, model=model)[0]
+    return AssistantUsage.objects.get_or_create(hub_id=caller.hub_id, month=month, model=model)[0]
 
 
 @operation(
     "assistant.message.claim",
     kind="command",
     permission="assistant.manage",
-    input=Caller,
+    input=ClaimIn,
     output=ClaimOut,
     ai=INTERNAL,  # platform
 )
-def message_claim(ctx: OperationContext, data: Caller) -> dict:
-    """Take a message of the caller's allowance for a turn, before the model is called (the platform only): one
-    ``UPDATE … WHERE messages < limit``, which a concurrent claim waits on and then evaluates again, so two turns
-    never pass the last message together. Without one left nothing is taken and ``claimed`` is false."""
+def message_claim(ctx: OperationContext, data: ClaimIn) -> dict:
+    """Take a message of the caller's allowance for a turn that asks ``data.model``, before it is called (the platform
+    only), on the row of that model. The caller's rows of every model are locked first, so a concurrent claim waits
+    for this one and then counts what it took; the row of the model is one ``UPDATE … WHERE messages < limit - the
+    other models' messages``, which a concurrent claim on the same new row evaluates again, so two turns never pass
+    the last message together. Without one left nothing is taken (nor a row made) and ``claimed`` is false."""
     queries.gates.platform_only(ctx)
-    now = timezone.now()
-    limit = queries.usage.monthly_limit(data, now)
-    row = _row_of(data, now)
-    claimed = AssistantUsage.objects.filter(pk=row.pk, messages__lt=limit).update(
-        messages=F("messages") + 1, updated_at=now
-    )
-    row.refresh_from_db(fields=["messages", "month"])
+    caller, now = data.caller, timezone.now()
+    limit = queries.usage.monthly_limit(caller, now)
+    month = queries.usage.month_of(now)
+    rows = queries.usage.rows_of(caller, month)
+    list(rows.select_for_update().order_by("pk").values_list("pk", flat=True))
+    elsewhere = queries.usage.messages_of(rows.exclude(model=data.model))
+    claimed = 0
+    if elsewhere < limit:
+        row = _row_of(caller, data.model, now)
+        claimed = AssistantUsage.objects.filter(pk=row.pk, messages__lt=limit - elsewhere).update(
+            messages=F("messages") + 1, updated_at=now
+        )
+    used = queries.usage.messages_of(rows)
     if claimed:
-        record_event(ctx, events.MESSAGE_CLAIMED, {**_caller_payload(data), "used": row.messages, "limit": limit})
-    if data.user_id is not None:
-        _warn_the_account(ctx, row, limit, now)
+        record_event(ctx, events.MESSAGE_CLAIMED, {**_caller_payload(caller), "used": used, "limit": limit})
+    if caller.user_id is not None:
+        _warn_the_account(ctx, rows, data.model, limit, now)
     return {
         "claimed": bool(claimed),
-        "month": row.month,
-        "used": row.messages,
+        "month": month,
+        "model": data.model,
+        "used": used,
         "limit": limit,
-        "resets_at": None if data.demo else queries.usage.resets_at(row.month),
-        "demo": bool(data.demo),
+        "resets_at": None if caller.demo else queries.usage.resets_at(month),
+        "demo": bool(caller.demo),
     }
 
 
@@ -111,21 +113,23 @@ def _warning_due(used: int, limit: int) -> str | None:
     return "near" if Fraction(used, limit) >= NEAR_FROM else None
 
 
-def _warn_the_account(ctx: OperationContext, row: AssistantUsage, limit: int, now) -> None:
-    """Take the month's mark of the mail the account's ``row`` reaches — one ``UPDATE … WHERE <mark> IS
-    NULL``, which a concurrent turn waits on and then finds taken, so each mail leaves once a month —, record it, and
-    send the mail after the COMMIT. Also when the claim was refused, so a last mail that could not leave is tried
-    again with the next message the person writes."""
-    warning = _warning_due(row.messages, limit)
+def _warn_the_account(ctx: OperationContext, rows, model: str, limit: int, now) -> None:
+    """Take the month's mark of the mail the account's ``rows`` of the month reach, on the row of ``model`` (or its
+    first row, when the claim was refused before making one), unless one of them has it already: the claim locked
+    them, so a concurrent turn waits and then finds it taken, and each mail leaves once a month whatever model
+    answers. Record it, and send the mail after the COMMIT. Also when the claim was refused, so a last mail that could
+    not leave is tried again with the next message the person writes."""
+    used = queries.usage.messages_of(rows)
+    warning = _warning_due(used, limit)
     if warning is None:
         return
     mark = WARNING_MARKS[warning]
-    if not AssistantUsage.objects.filter(pk=row.pk, **{f"{mark}__isnull": True}).update(**{mark: now}):
+    if rows.filter(**{f"{mark}__isnull": False}).exists():
         return
-    record_event(
-        ctx, events.USAGE_WARNED, {"user": str(row.user_id), "warning": warning, "used": row.messages, "limit": limit}
-    )
-    transaction.on_commit(partial(_mail_the_warning, row.pk, mark, now, row.messages, limit), robust=True)
+    row = rows.filter(model=model).first() or rows.order_by("pk").first()
+    AssistantUsage.objects.filter(pk=row.pk).update(**{mark: now})
+    record_event(ctx, events.USAGE_WARNED, {"user": str(row.user_id), "warning": warning, "used": used, "limit": limit})
+    transaction.on_commit(partial(_mail_the_warning, row.pk, mark, now, used, limit), robust=True)
 
 
 def _mail_the_warning(row_id, mark: str, taken_at, used: int, limit: int) -> None:
@@ -153,17 +157,13 @@ def _mail_the_warning(row_id, mark: str, taken_at, used: int, limit: int) -> Non
     ai=INTERNAL,  # platform
 )
 def message_release(ctx: OperationContext, data: MessageReleaseIn) -> dict:
-    """Give back the message a turn took in ``month``, when it failed before answering anything (the platform only):
-    the person saw no answer, so it is not spent. Never below zero."""
+    """Give back the message a turn took in ``month`` on ``model``, when it failed before answering anything (the
+    platform only): the person saw no answer, so it is not spent. Never below zero."""
     queries.gates.platform_only(ctx)
     caller = data.caller
-    rows = _rows_of(caller, data.month)
-    if rows.filter(messages__gt=0).update(messages=F("messages") - 1, updated_at=timezone.now()):
-        record_event(
-            ctx,
-            events.MESSAGE_RELEASED,
-            {**_caller_payload(caller), "used": rows.values_list("messages", flat=True).first() or 0},
-        )
+    rows = queries.usage.rows_of(caller, data.month)
+    if rows.filter(model=data.model, messages__gt=0).update(messages=F("messages") - 1, updated_at=timezone.now()):
+        record_event(ctx, events.MESSAGE_RELEASED, {**_caller_payload(caller), "used": queries.usage.messages_of(rows)})
     return queries.usage.usage_of(caller, timezone.now())
 
 
@@ -176,12 +176,12 @@ def message_release(ctx: OperationContext, data: MessageReleaseIn) -> dict:
     ai=INTERNAL,  # platform
 )
 def usage_record(ctx: OperationContext, data: UsageRecordIn) -> dict:
-    """Add what a turn, an embedding or the voice spent to the caller's row of now (the platform only): tokens,
-    dictations, characters read aloud and their cost in USD. Never a message: those are claimed."""
+    """Add what a turn, an embedding or the voice spent to the caller's row of its model now (the platform only):
+    tokens, dictations, characters read aloud and their cost in USD. Never a message: those are claimed."""
     queries.gates.platform_only(ctx)
     now = timezone.now()
-    row = _row_of(data.caller, now)
-    spent = data.model_dump(exclude={"caller"})
+    row = _row_of(data.caller, data.model, now)
+    spent = data.model_dump(exclude={"caller", "model"})
     AssistantUsage.objects.filter(pk=row.pk).update(
         **{field: F(field) + value for field, value in spent.items()}, updated_at=now
     )

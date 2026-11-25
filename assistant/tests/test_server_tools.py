@@ -537,6 +537,11 @@ class TestItsSettings:
         assert project.ASSISTANT_SEARCH_URL == "https://api.search.brave.com/res/v1/web/search"
 
 
+class TestTheAddressesAnAnswerWrites:
+    def test_the_rules_allow_only_an_address_a_tool_returned(self):
+        assert "never write a web address that no tool returned in this turn" in server_tools.rules()
+
+
 class TestTheSourceLine:
     def test_an_answer_that_names_no_source_gets_its_address(self):
         assert server_tools.source_line("La ley cambió.", [ARTICLE]) == f"\n\n{ARTICLE}"
@@ -613,6 +618,24 @@ class TestInTheTurn:
 
         assert [frame["name"] for frame in got if isinstance(frame, dict) and frame["type"] == "function_call"] == ["sale_order_list"]
 
+    def test_an_answer_with_ours_and_the_hubs_runs_ours_and_tells_the_model_to_ask_the_hubs_again(self, internal, business, answering, fake_provider):
+        """What our tools give never reaches the Hub, so the Hub's tool waits for an answer of its own: no call is lost,
+        each gets its result or the reason it did not run, in the order the model asked for them."""
+        both = [
+            {"index": 0, "id": "call_h", "type": "function", "function": {"name": "sale_order_list", "arguments": "{}"}},
+            {"index": 1, "id": "call_d", "type": "function", "function": {"name": "current_datetime", "arguments": "{}"}},
+        ]
+        fake_provider.reply("POST", COMPLETIONS, sse=[openai_chunk(tool_calls=both), openai_chunk(finish="tool_calls"), "[DONE]"])
+        fake_provider.reply("POST", COMPLETIONS, sse=openai_tool_call("sale_order_list", "{}", call_id="call_h2"))
+
+        got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business, [{"name": "sale_order_list"}])))
+
+        assert [frame["call_id"] for frame in got if isinstance(frame, dict) and frame["type"] == "function_call"] == ["call_h2"]
+        *_, asked, hubs, ours = self.chat_requests(fake_provider)[1].body["messages"]
+        assert [call["id"] for call in asked["tool_calls"]] == ["call_h", "call_d"]
+        assert (hubs["tool_call_id"], json.loads(hubs["content"])["code"]) == ("call_h", "assistant.tool_not_run")
+        assert (ours["tool_call_id"], "utc" in json.loads(ours["content"])) == ("call_d", True)
+
     def test_a_tool_of_the_hub_named_as_one_of_ours_is_ours(self, internal, business, answering, fake_provider):
         fake_provider.reply("POST", COMPLETIONS, sse=openai_answer("Ok"))
 
@@ -686,7 +709,8 @@ class TestInTheTurn:
 
         got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
 
-        assert [frame["type"] for frame in got if isinstance(frame, dict)] == ["text_delta", "text_delta", "response", "usage"]
+        assert [frame["type"] for frame in got if isinstance(frame, dict)] == ["sources", "text_delta", "text_delta", "response", "usage"]
+        assert got[0] == {"type": "sources", "sources": [server_tools.RATES_SOURCE]}
         said = [frame["text"] for frame in got if isinstance(frame, dict) and frame["type"] == "text_delta"]
         assert said == ["1 USD is 0.89 EUR.", f"\n\n{server_tools.RATES_SOURCE}"]
         assert "0.88755" not in json.dumps([frame for frame in got if isinstance(frame, dict)])
@@ -728,8 +752,8 @@ class TestInTheTurn:
 
         got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
 
-        assert got[0] == {"type": "web"}
-        assert got[2] == {"type": "text_delta", "text": f"\n\n{ARTICLE}"}
+        assert got[:2] == [{"type": "web"}, {"type": "sources", "sources": [ARTICLE]}]
+        assert got[3] == {"type": "text_delta", "text": f"\n\n{ARTICLE}"}
         _first, second = self.chat_requests(search)
         assert json.loads(second.body["messages"][-1]["content"])["results"][0]["url"] == ARTICLE
 
@@ -741,7 +765,7 @@ class TestInTheTurn:
 
         got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
 
-        assert [frame["type"] for frame in got if isinstance(frame, dict)] == ["web", "text_delta", "response", "usage"]
+        assert [frame["type"] for frame in got if isinstance(frame, dict)] == ["web", "sources", "text_delta", "response", "usage"]
 
     def test_the_mark_comes_as_the_pages_do_so_a_turn_that_fails_later_still_has_it(self, internal, business, answering, search):
         search.reply("GET", SEARCH, json=found(row()))
@@ -750,7 +774,7 @@ class TestInTheTurn:
 
         got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
 
-        assert [frame["type"] for frame in got if isinstance(frame, dict)] == ["web", "error", "usage"]
+        assert [frame["type"] for frame in got if isinstance(frame, dict)] == ["web", "sources", "error", "usage"]
 
     @pytest.mark.parametrize("brave", [found(), None], ids=["no_pages", "no_search"])
     def test_a_turn_that_brought_nothing_from_the_web_says_so_too(self, internal, business, answering, search, rates, brave):
@@ -776,7 +800,7 @@ class TestInTheTurn:
 
         got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business)))
 
-        assert got[2]["text"].split() == [server_tools.RATES_SOURCE, ARTICLE]
+        assert got[4]["text"].split() == [server_tools.RATES_SOURCE, ARTICLE]
 
     def test_an_answer_with_a_tool_of_the_hub_keeps_its_source(self, internal, business, answering, rates):
         rates.reply("GET", RATES, json=USD_EUR)
@@ -786,8 +810,8 @@ class TestInTheTurn:
         got = frames(door(Client(), "/internal/assistant/chat/stream", self.turn(business, [{"name": "sale_order_list"}])))
 
         types = [frame["type"] for frame in got if isinstance(frame, dict)]
-        assert types[:3] == ["text_delta", "text_delta", "function_call"]
-        assert got[1]["text"] == f"\n\n{server_tools.RATES_SOURCE}"
+        assert types[:4] == ["sources", "text_delta", "text_delta", "function_call"]
+        assert got[2]["text"] == f"\n\n{server_tools.RATES_SOURCE}"
 
     def test_a_turn_that_only_calls_a_tool_of_the_hub_writes_no_source(self, internal, business, answering, rates):
         rates.reply("GET", RATES, json=USD_EUR)

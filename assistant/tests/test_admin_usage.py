@@ -158,3 +158,80 @@ def test_the_accounts_read_in_spanish(client, viewer, rows, account_row):
 
     assert ">Cuentas<" in page
     assert "Negocio, demo o cuenta" in page
+
+
+# --- What each model spent ----------------------------------------------------------------
+
+
+@pytest.fixture
+def two_models(business):
+    month = queries.usage.month_of(timezone.now())
+    AssistantUsage.objects.create(
+        hub=business, month=month, model="gpt-large", messages=40, cost_usd=Decimal("0.12")
+    )
+    AssistantUsage.objects.create(hub=business, month=month, model="qwen3.7-plus", messages=12, cost_usd=Decimal("0.03"))
+
+
+def test_each_model_of_a_business_has_its_row_with_its_name_and_cost(client, viewer, two_models, business):
+    client.force_login(viewer)
+
+    page = client.get(USAGE).content.decode()
+
+    assert "gpt-large" in page and "qwen3.7-plus" in page
+    assert "0.12" in page and "0.03" in page
+    assert "2 assistant usage records" in page
+
+
+def test_the_rows_are_filtered_by_model(client, viewer, two_models):
+    client.force_login(viewer)
+
+    assert "?model=qwen3.7-plus" in client.get(USAGE).content.decode()
+    page = client.get(USAGE, {"model": "qwen3.7-plus"}).content.decode()
+
+    assert "1 assistant usage record" in page
+    assert "0.03" in page and "0.12" not in page
+
+
+def test_a_row_from_before_the_model_was_kept_says_it_has_none(client, viewer, rows):
+    client.force_login(viewer)
+
+    page = client.get(USAGE, HTTP_ACCEPT_LANGUAGE="es").content.decode()
+
+    assert ">Modelo<" in page
+    assert "Sin registrar" in page
+
+
+# --- The provider's cache -----------------------------------------------------------------
+
+
+@pytest.fixture
+def cached(business):
+    return AssistantUsage.objects.create(
+        hub=business,
+        month=queries.usage.month_of(timezone.now()),
+        model="claude-haiku-5-5",
+        messages=3,
+        tokens_input=64_200,
+        tokens_output=310,
+        tokens_cache_read=30_017,
+        tokens_cache_write=3_209,
+        cost_usd=Decimal("0.0047"),
+    )
+
+
+def test_the_input_read_from_and_written_to_the_cache_is_shown_apart(client, viewer, cached):
+    client.force_login(viewer)
+
+    page = client.get(USAGE).content.decode().replace(",", "")
+
+    for figure in ("64200", "30017", "3209"):
+        assert figure in page
+    assert "Cache read tokens" in page and "Cache write tokens" in page
+
+
+def test_the_cache_reads_in_spanish(client, viewer, cached):
+    client.force_login(viewer)
+
+    page = client.get(f"{USAGE}{cached.pk}/change/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
+
+    assert "Tokens leídos de la caché" in page and "Tokens escritos en la caché" in page

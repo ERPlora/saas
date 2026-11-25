@@ -13,7 +13,8 @@ forgets it. Stripe away is ``unavailable``, never an invented card. The list is 
 subscription is not there.
 """
 
-from datetime import timedelta
+from datetime import date, timedelta
+from decimal import Decimal
 
 import pytest
 from django.core.cache import cache
@@ -22,7 +23,7 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from billing import queries
-from billing.models import Invoice, PaymentFailure, PlanChangeSchedule
+from billing.models import Invoice, PaymentFailure, PlanChangeSchedule, TaxCategory, TaxRule, VatCheck
 from billing.schemas.common import HubIn
 from billing.schemas.payment_methods import PaymentMethodIn
 from billing.schemas.subscriptions import SubscriptionListIn
@@ -244,6 +245,106 @@ class TestTheRow:
         assert row["plan"]["name"] == shop.subscription.plan.translated("name", "es")
 
 
+    def test_a_plan_that_renews_has_no_end(self, owner, shop):
+        paid = pay(shop)
+
+        [row] = subscriptions(owner)
+
+        assert row["business"] == {"id": str(paid.id), "name": "Panadería López"}
+        assert (row["ends_at"], row["cancel_requested"], row["paid_by_another_account"]) == (None, False, False)
+
+    def test_a_cancelled_plan_ends_with_its_period(self, owner, shop):
+        paid = pay(shop, cancel_at_period_end=True)
+
+        [row] = subscriptions(owner)
+
+        assert row["ends_at"].startswith(paid.subscription.current_period_end.date().isoformat())
+
+
+class TestTheModulesOfTheRow:
+    @pytest.fixture
+    def loyalty(self, inventory):
+        """Another paid module on sale: 5 € a month, 50 € a year (net)."""
+        return type(inventory).objects.create(
+            slug="loyalty", tier=inventory.tier, price_monthly_cents=500, price_annual_cents=5000
+        )
+
+    def test_each_has_its_own_price(self, owner, shop, inventory, loyalty):
+        pay(shop, modules=["inventory", "loyalty"])
+
+        [row] = subscriptions(owner)
+
+        assert [(module["slug"], module["price_cents"]) for module in row["modules"]] == [
+            ("inventory", 1000),
+            ("loyalty", 500),
+        ]
+        # 36.29 + 12.10 + 6.05
+        assert row["next_invoice"]["total_cents"] == 5444
+
+    @pytest.mark.parametrize("ended, left", [("inventory", "loyalty"), ("loyalty", "inventory")])
+    def test_one_that_ended_hides_no_other(self, owner, shop, inventory, loyalty, ended, left):
+        pay(shop, modules=["inventory", "loyalty"])
+        shop.subscription.items.filter(module_slug=ended).update(valid_until=timezone.now() - timedelta(days=1))
+
+        [row] = subscriptions(owner)
+
+        assert [module["slug"] for module in row["modules"]] == [left]
+
+    def test_one_that_is_cancelled_stops_billing_no_other(self, owner, shop, inventory, loyalty):
+        pay(shop, modules=["inventory", "loyalty"])
+        shop.subscription.items.filter(module_slug="inventory").update(valid_until=timezone.now() + timedelta(days=20))
+
+        [row] = subscriptions(owner)
+
+        assert len(row["modules"]) == 2
+        # 36.29 + 6.05
+        assert row["next_invoice"]["total_cents"] == 4234
+
+    def test_one_the_plan_includes_is_listed_and_not_billed_apart(self, owner, shop, inventory):
+        pay(shop, modules=["inventory"])
+        shop.subscription.items.update(source="plan")
+
+        [row] = subscriptions(owner)
+
+        assert [(module["slug"], module["source"]) for module in row["modules"]] == [("inventory", "plan")]
+        assert row["next_invoice"]["total_cents"] == 3629
+
+    def test_one_that_left_the_catalogue_has_no_price(self, owner, shop, inventory):
+        pay(shop, modules=["inventory"])
+        inventory.delete()
+
+        [row] = subscriptions(owner)
+
+        assert [(module["slug"], module["price_cents"]) for module in row["modules"]] == [("inventory", None)]
+        assert row["next_invoice"]["total_cents"] == 3629
+
+
+class TestTheVatOfTheNextInvoice:
+    """What the payer is charged by its place and the VIES verdict on file, over a plan of 29.99 and a module of 10.00."""
+
+    @pytest.mark.parametrize("status, total", [(VatCheck.VERIFIED, 3999), (VatCheck.INVALID, 4839)])
+    def test_a_european_business_is_reverse_charged_only_with_a_proof(self, owner, shop, inventory, status, total):
+        pay(shop, modules=["inventory"])
+        BillingProfile.objects.filter(pk=shop.billing_profile_id).update(
+            billing_country="DE", billing_postal_code="10115", tax_id="DE812871812"
+        )
+        VatCheck.objects.create(vat_number="DE812871812", status=status, consultation_number="WAPIAAAAX1")
+
+        assert subscriptions(owner)[0]["next_invoice"]["total_cents"] == total
+
+    def test_a_module_is_priced_by_its_own_category(self, owner, shop, inventory):
+        pay(shop, modules=["inventory"])
+        TaxRule.objects.create(
+            category=TaxCategory.objects.get(key="service.software_license"),
+            country_code="ES",
+            rate_pct=Decimal("10.00"),
+            valid_from=date(2020, 1, 1),
+        )
+
+        # 36.29 + 11.00
+        assert subscriptions(owner)[0]["next_invoice"]["total_cents"] == 4729
+
+
 class TestTheActions:
     def actions(self, owner):
         [row] = subscriptions(owner)
@@ -357,6 +458,90 @@ class TestTheActions:
 
         assert actions == ["take_over", "view_invoices"]
         assert not (can["change_plan"] or can["cancel_plan"] or can["keep_plan"])
+        assert subscriptions(owner)[0]["paid_by_another_account"] is True
+
+    def test_a_business_without_a_payer_is_kept_with_the_owner_s_card(self, owner, shop):
+        paid = pay(shop)
+        type(paid).objects.filter(pk=paid.pk).update(billing_profile=None)
+
+        [row] = subscriptions(owner)
+
+        assert row["actions"] == ["take_over", "view_invoices"]
+        assert row["paid_by_another_account"] is True
+
+    def test_a_plan_on_the_card_of_a_payer_before_is_kept_with_the_owner_s(self, owner, shop):
+        paid = pay(shop)
+        BillingProfile.objects.filter(pk=paid.billing_profile_id).update(stripe_customer_id="cus_2")
+
+        [row] = subscriptions(owner)
+
+        assert row["actions"] == ["take_over", "view_invoices"]
+        assert row["paid_by_another_account"] is True
+
+    @pytest.mark.parametrize("customer", ["cus_1", "cus_2"], ids=["its-card", "another-card"])
+    def test_who_pays_and_no_longer_owns_it_only_consults(self, owner, shop, make_user, customer):
+        paid = pay(shop, cancel_at_period_end=True)
+        BillingProfile.objects.filter(pk=paid.billing_profile_id).update(stripe_customer_id=customer)
+        HubMember.objects.filter(hub=shop, user=owner).update(role=HubMember.Role.ADMIN)
+        add_member(shop, make_user("new@example.com"), HubMember.Role.OWNER)
+
+        [row] = subscriptions(owner)
+
+        assert row["actions"] == ["view_invoices"]
+        assert row["can"] == {
+            "take_over": False,
+            "change_plan": False,
+            "cancel_plan": False,
+            "keep_plan": False,
+            "view_invoice": False,
+            "view_invoices": True,
+        }
+        assert row["paid_by_another_account"] is False
+
+    def owes(self, hub, payer, stripe_id="in_open"):
+        return Invoice.objects.create(
+            stripe_invoice_id=stripe_id,
+            hub=hub,
+            payer_account=payer,
+            payment_status="open",
+            net_cents=2999,
+            tax_cents=630,
+            total_cents=3629,
+        )
+
+    def test_with_an_invoice_not_collected_the_plan_is_cancelled_and_not_changed(self, owner, shop):
+        pay(shop, status="past_due")
+        self.owes(shop, owner)
+
+        actions, can = self.actions(owner)
+
+        assert actions == ["view_invoice", "cancel_plan", "view_invoices"]
+        assert (can["view_invoice"], can["change_plan"], can["cancel_plan"]) == (True, False, True)
+
+    def test_a_cancelled_plan_that_owes_an_invoice_is_kept(self, owner, shop):
+        pay(shop, status="past_due", cancel_at_period_end=True)
+        self.owes(shop, owner)
+
+        assert self.actions(owner)[0] == ["view_invoice", "keep_plan", "view_invoices"]
+
+    def test_the_invoice_owed_goes_before_keeping_it_with_the_owner_s_card(self, owner, shop, make_user):
+        pay(shop, status="past_due")
+        payer = make_user("payer@example.com")
+        self.owes(shop, payer)
+        BillingProfile.objects.filter(pk=shop.billing_profile_id).update(owner=payer)
+
+        assert self.actions(owner)[0] == ["view_invoice", "take_over", "view_invoices"]
+
+    def test_an_invoice_owed_stays_on_its_business(self, owner, shop):
+        pay(shop, status="past_due")
+        pay(create_business(owner, name="Bar Norte"), sub_id="sub_2")
+        owed = self.owes(shop, owner)
+
+        rows = {row["business"]["name"]: row for row in subscriptions(owner)}
+
+        assert rows["Panadería López"]["unpaid_invoice_id"] == str(owed.id)
+        assert rows["Bar Norte"]["unpaid_invoice_id"] is None
+        assert rows["Bar Norte"]["actions"] == ["change_plan", "cancel_plan", "view_invoices"]
 
 
 class TestThePaymentMethod:
@@ -637,3 +822,74 @@ class TestTheNextInvoiceOfADowngradeThatWaits:
 
         assert response.status_code == 200
         assert response.json()["rows"][0]["next_invoice"]["total_cents"] == 3629
+
+
+class TestADeletedBusiness:
+    """Deleting a business cancels its plan at once: until billing's next sweep ends its Stripe
+    subscription, its row says the business is deleted, as the business's own page does, with no next
+    invoice and nothing to change."""
+
+    def deleted(self, owner, hub, **paid):
+        from hubs.schemas.businesses import BusinessDeleteIn
+        from hubs.services import deletion
+        from hubs.tests.conftest import ctx_for as hub_ctx
+
+        business = pay(hub, **paid)
+        deletion.business_delete(hub_ctx(owner), BusinessDeleteIn(id=business.id, confirm_name=business.name))
+        return business
+
+    @pytest.mark.parametrize("cancelled_first", [True, False], ids=["plan-cancelled-first", "plan-running"])
+    def test_its_row_says_it_is_deleted_and_bills_nothing_more(self, owner, shop, cancelled_first):
+        self.deleted(owner, shop, cancel_at_period_end=cancelled_first)
+
+        [row] = subscriptions(owner)
+
+        assert (row["status"], row["status_label"]) == ("deleting", "Deleted")
+        assert row["next_invoice"] is None
+        assert row["actions"] == ["view_invoices"]
+        assert row["cancel_requested"] is True
+
+    def test_one_another_account_pays_is_said_so_and_kept_by_nobody(self, owner, shop, make_user):
+        business = self.deleted(owner, shop)
+        BillingProfile.objects.filter(pk=business.billing_profile_id).update(owner=make_user("payer@example.com"))
+
+        [row] = subscriptions(owner)
+
+        assert row["actions"] == ["view_invoices"]
+        assert row["paid_by_another_account"] is True
+
+    def test_it_says_so_in_spanish(self, owner, shop):
+        self.deleted(owner, shop, cancel_at_period_end=True)
+
+        [row] = subscriptions(owner, "es")
+
+        assert row["status_label"] == "Eliminado"
+
+    def test_it_is_no_row_of_a_stripe_status(self, owner, shop):
+        self.deleted(owner, shop)
+
+        rows = queries.subscription_list(ctx_for(owner), SubscriptionListIn(status="active")).model_dump(mode="json")
+
+        assert (rows["rows"], rows["total"]) == ([], 0)
+
+    def test_another_business_of_the_account_still_renews(self, owner, shop):
+        self.deleted(owner, shop)
+        pay(create_business(owner, name="Bar Norte"), sub_id="sub_2")
+
+        rows = {row["business"]["name"]: row for row in subscriptions(owner)}
+
+        assert rows["Bar Norte"]["status"] == "active"
+        assert rows["Bar Norte"]["next_invoice"] is not None
+
+    def test_recovered_before_the_sweep_it_is_on_free_with_no_row(self, owner, shop):
+        """Recovering it does not take back the end asked of Stripe: it is on Free and bills nothing."""
+        from hubs.schemas.common import ByIdIn
+        from hubs.services import deletion
+        from hubs.tests.conftest import ctx_for as hub_ctx
+
+        business = self.deleted(owner, shop, cancel_at_period_end=True)
+        deletion.business_restore(hub_ctx(owner), ByIdIn(id=business.id))
+
+        rows = queries.subscription_list(ctx_for(owner), SubscriptionListIn()).model_dump(mode="json")
+
+        assert (rows["rows"], rows["total"]) == ([], 0)

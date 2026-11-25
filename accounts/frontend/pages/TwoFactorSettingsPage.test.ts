@@ -134,6 +134,19 @@ describe('TwoFactorSettingsPage: index (mfa/index.html)', () => {
     expect(button('recovery-generate')!.text()).toBe('Generate recovery codes');
   });
 
+  it('holds its buttons while what one of them asked is on its way', async () => {
+    const answer = held(offline);
+    fakeAllauth({ 'GET /account/authenticators': list(TOTP, recovery(9)), 'GET /account/authenticators/recovery-codes': answer.answer });
+    const { button, click } = await mountPage();
+    const free = () => ['totp-turn-off', 'recovery-view', 'trust-revoke'].filter((testid) => !button(testid)!.props('disabled'));
+    expect(free()).toEqual(['totp-turn-off', 'recovery-view', 'trust-revoke']);
+    await click('recovery-view');
+    expect(free()).toEqual([]);
+    answer.release();
+    await flushPromises();
+    expect(free()).toEqual(['totp-turn-off', 'recovery-view', 'trust-revoke']);
+  });
+
   it('speaks Spanish, one code and several in their plural', async () => {
     fakeAllauth({ 'GET /account/authenticators': [list(TOTP, recovery(1)), list(TOTP, recovery(9))] });
     const first = await mountPage('es');

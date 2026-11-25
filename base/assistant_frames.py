@@ -26,12 +26,14 @@ def assistant_message(text: str, calls: list[dict]) -> dict:
 @dataclass
 class GatewayAnswer:
     """The gateway's frames of one turn, read in order: what was said, the tools the model asked for, their
-    ``continuation``, whether pages came from the web, and whether the turn ended (``"[DONE]"``) or failed."""
+    ``continuation``, whether pages came from the web, the web addresses erplora.com's tools consulted, and whether the
+    turn ended (``"[DONE]"``) or failed."""
 
     text: list[str] = field(default_factory=list)
     calls: list[dict] = field(default_factory=list)
     continuation: str | None = None
     web: bool = False
+    sources: list[str] = field(default_factory=list)
     finished: bool = False
     failed: bool = False
 
@@ -55,7 +57,7 @@ class GatewayAnswer:
 
     def keep(self, kind: Any, frame: dict) -> None:
         """What a frame the panel does not show tells the closing ``done``: a tool the model asked for, the turn's
-        ``continuation``, or that the answer brought pages from the web."""
+        ``continuation``, that the answer brought pages from the web, or the addresses a tool consulted."""
         if kind == "function_call":
             self.calls.append(
                 {
@@ -68,18 +70,24 @@ class GatewayAnswer:
             self.continuation = frame.get("continuation") or None
         elif kind == "web":
             self.web = True
+        elif kind == "sources":
+            self.sources += frame["sources"]
 
     def done(self) -> dict:
         """The closing frame: what the browser keeps (``append``), the tools that wait (``pending``), their
-        ``continuation`` and ``web``. A turn that failed or never ended keeps only what was said, if anything was."""
+        ``continuation``, ``web`` and the ``sources`` the panel checks the answer's addresses against. A turn that failed or never ended keeps only what was said, if anything was."""
         said = "".join(self.text)
         if self.failed or not self.finished:
             append = [assistant_message(said, [])] if said else []
-            return {"type": "done", "append": append, "pending": [], "continuation": None, "web": self.web}
+            return {
+                "type": "done", "append": append, "pending": [], "continuation": None, "web": self.web,
+                "sources": self.sources,
+            }
         return {
             "type": "done",
             "append": [assistant_message(said, self.calls)],
             "pending": self.calls,
             "continuation": self.continuation,
             "web": self.web,
+            "sources": self.sources,
         }

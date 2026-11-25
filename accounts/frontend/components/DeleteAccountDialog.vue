@@ -3,7 +3,7 @@
 // inside the apps, so it shows on every surface): a ConfirmDialog that says what goes and waits for the account's
 // email typed, then `accounts.profile.delete`. A business the account owns or pays for holds it (409
 // `accounts.owns_businesses` / `accounts.pays_businesses`, with `businesses`): the dialog names each one with a
-// link to its Settings, where it is transferred or deleted. The server may ask «Confirm it's you» first
+// link to where it is let go. The server may ask «Confirm it's you» first
 // (ReauthModal). Deleted, every session has ended: the page leaves for the public web with a full load.
 import { ConfirmDialog, InlineFeedback } from '@erplora/ui/components';
 import { ApiError, useCommand } from '@erplora/ui/sdk';
@@ -12,13 +12,14 @@ import { useI18n } from 'vue-i18n';
 
 import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import { useErrorText } from '../error-text';
-import { BUSINESSES } from '../paths';
+import { letGoPage } from '../paths';
 import { reauthRequestOf, useReauthentication } from '../reauth';
 import ReauthModal from './ReauthModal.vue';
 
 interface HoldingBusiness {
   id: string;
   name: string;
+  is_platform: boolean;
 }
 
 const props = withDefaults(
@@ -108,7 +109,7 @@ const dialogError = computed(() => {
         >
           <router-link
             data-testid="delete-account-business"
-            :to="`${BUSINESSES}/${business.id}/settings`"
+            :to="letGoPage(business)"
             @click="open = false"
           >
             {{ business.name }}

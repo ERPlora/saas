@@ -19,11 +19,14 @@ from live.outbox import OutboxEvent
 
 from assistant import queries, services
 from assistant.models import AssistantUsage
-from assistant.schemas import Caller, MessageReleaseIn
+from assistant.schemas import Caller, ClaimIn, MessageReleaseIn
 from assistant.services.platform_actor import platform_context
 from assistant.tests.test_quota import RIVALS, waiting_on_a_lock
 
 pytestmark = pytest.mark.django_db
+
+#: The model every turn of these tests asks.
+MODEL = "gpt-test"
 
 PANEL = "https://erplora.com/dashboard"
 EACH_BUSINESS_ES = (
@@ -43,7 +46,7 @@ def comes_back(month: date, language: str) -> str:
 
 
 def spent(user, messages: int, *, month: date | None = None, **marks) -> AssistantUsage:
-    return AssistantUsage.objects.create(user=user, month=month or this_month(), messages=messages, **marks)
+    return AssistantUsage.objects.create(user=user, model=MODEL, month=month or this_month(), messages=messages, **marks)
 
 
 @pytest.fixture(autouse=True)
@@ -63,7 +66,7 @@ def turn(django_capture_on_commit_callbacks):
 
     def one(user):
         with django_capture_on_commit_callbacks(execute=True):
-            return services.turn_usage.message_claim(platform_context(), Caller(user_id=user.pk))
+            return services.turn_usage.message_claim(platform_context(), ClaimIn(caller=Caller(user_id=user.pk), model=MODEL))
 
     return one
 
@@ -73,7 +76,7 @@ def give_back(django_capture_on_commit_callbacks):
     def one(user):
         with django_capture_on_commit_callbacks(execute=True):
             services.turn_usage.message_release(
-                platform_context(), MessageReleaseIn(caller=Caller(user_id=user.pk), month=this_month())
+                platform_context(), MessageReleaseIn(caller=Caller(user_id=user.pk), month=this_month(), model=MODEL)
             )
 
     return one
@@ -362,11 +365,11 @@ class TestThroughThePanelsTurn:
 
 class TestNobodyElseIsMailed:
     def test_a_business_spending_its_plans_messages_mails_nobody(self, account, business, django_capture_on_commit_callbacks):
-        AssistantUsage.objects.create(hub=business, month=this_month(), messages=23)
+        AssistantUsage.objects.create(hub=business, model=MODEL, month=this_month(), messages=23)
 
         with django_capture_on_commit_callbacks(execute=True):
             for _ in range(8):
-                services.turn_usage.message_claim(platform_context(), Caller(hub_id=business.pk))
+                services.turn_usage.message_claim(platform_context(), ClaimIn(caller=Caller(hub_id=business.pk), model=MODEL))
 
         assert AssistantUsage.objects.get(hub=business).messages == 30
         assert mail.outbox == []
@@ -377,7 +380,7 @@ class TestNobodyElseIsMailed:
 
         with django_capture_on_commit_callbacks(execute=True):
             for _ in range(6):
-                services.turn_usage.message_claim(platform_context(), Caller(demo="demo-1a2b3c4d"))
+                services.turn_usage.message_claim(platform_context(), ClaimIn(caller=Caller(demo="demo-1a2b3c4d"), model=MODEL))
 
         assert mail.outbox == []
         assert not OutboxEvent.objects.filter(name="assistant.usage.warned").exists()
@@ -414,7 +417,7 @@ class TestNobodyElseIsMailed:
 
         with django_capture_on_commit_callbacks(execute=True):
             with pytest.raises(RuntimeError), transaction.atomic():
-                services.turn_usage.message_claim(platform_context(), Caller(user_id=account.pk))
+                services.turn_usage.message_claim(platform_context(), ClaimIn(caller=Caller(user_id=account.pk), model=MODEL))
                 raise RuntimeError("the turn failed")
 
         assert mail.outbox == []
@@ -451,7 +454,7 @@ def test_turns_at_once_refused_at_the_last_mail_it_once(make_user, settings):
     settings.PUBLIC_HOST = "erplora.com"
     account = make_user("race@example.com", language="es")
     month = this_month()
-    AssistantUsage.objects.create(user=account, month=month, messages=30, near_warned_at=timezone.now())
+    AssistantUsage.objects.create(user=account, model=MODEL, month=month, messages=30, near_warned_at=timezone.now())
     held, release = threading.Event(), threading.Event()
     answers = []
 
@@ -466,7 +469,7 @@ def test_turns_at_once_refused_at_the_last_mail_it_once(make_user, settings):
 
     def one():
         try:
-            answers.append(services.turn_usage.message_claim(platform_context(), Caller(user_id=account.pk)).claimed)
+            answers.append(services.turn_usage.message_claim(platform_context(), ClaimIn(caller=Caller(user_id=account.pk), model=MODEL)).claimed)
         finally:
             connection.close()
 

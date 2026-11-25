@@ -95,3 +95,27 @@ describe('the real deadline of an unpaid invoice', () => {
     expect(reasonDate({ status: 'deleting', open_blocked_reason: 'deleting', purge_after: '2027-01-11T10:00:00Z' }, 'en')).toContain('Jan 11, 2027');
   });
 });
+
+describe('the maintenance scheduled for its night', () => {
+  // 02:00 in UTC is 03:00 in Madrid and 02:00 in the Canaries: the moment is said on the business's own clock.
+  const tonight = { status: 'active', open_blocked_reason: null, move_scheduled_for: '2026-11-17T02:00:00Z', timezone: 'Europe/Madrid' } as const;
+
+  it('an active business with one says it, with the day and the hour on its clock', () => {
+    expect(reasonKey(tonight, false)).toBe('hubs.reason.moveScheduled');
+    expect(reasonKey(tonight, true)).toBe('hubs.reason.moveScheduled');
+    expect(reasonDate(tonight, 'es')).toBe('17 nov 2026, 3:00');
+    expect(reasonDate(tonight, 'en')).toBe('Nov 17, 2026, 3:00 AM');
+    expect(reasonDate({ ...tonight, timezone: 'Atlantic/Canary' }, 'es')).toBe('17 nov 2026, 2:00');
+  });
+
+  it('without one an active business says nothing', () => {
+    expect(reasonKey({ ...tonight, move_scheduled_for: null }, false)).toBeNull();
+    expect(reasonDate({ ...tonight, move_scheduled_for: null }, 'es')).toBe('');
+  });
+
+  it('an unpaid or deleted business keeps saying its own state first', () => {
+    expect(reasonKey({ ...tonight, status: 'past_due' }, false)).toBe('hubs.reason.pastDue');
+    expect(reasonKey({ ...tonight, status: 'suspended', open_blocked_reason: 'suspended' }, false)).toBe('hubs.reason.suspended');
+    expect(reasonKey({ ...tonight, status: 'deleting', open_blocked_reason: 'deleting' }, false)).toBe('hubs.reason.deleting');
+  });
+});

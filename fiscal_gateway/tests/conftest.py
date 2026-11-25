@@ -37,8 +37,10 @@ PASSWORD = "secret"
 HUB = "0199e8a0-0000-7000-8000-000000000001"
 HUB_SLUG = "bar-manolo"
 SECRET = "test-internal-secret"
-#: The platform's hub: ERPlora's own records, through its seal. No business of the SaaS bears it.
-PLATFORM = "erplora"
+#: The platform's hub, under its name and the one it had: ERPlora's own records, through its seal. No business
+#: of the SaaS bears either.
+PLATFORM = "erp"
+FORMER_PLATFORM = "erplora"
 
 # qcStatements (RFC 3739, 1.3.6.1.5.5.7.1.3) holding one QCStatement: id-etsi-qcs-QcType
 # (0.4.0.1862.1.6) with id-etsi-qct-eseal (0.4.0.1862.1.6.2), DER-encoded (ETSI EN 319 412-5).
@@ -135,7 +137,6 @@ def _secrets(settings):
     settings.INTERNAL_SHARED_SECRET_PREVIOUS = ""
     settings.ERPLORA_ENVIRONMENT = "prod"
     settings.AEAT_PRODUCTION_ENABLED = True
-    settings.PLATFORM_HUB_SLUG = PLATFORM
 
 
 @pytest.fixture

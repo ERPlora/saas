@@ -1,15 +1,5 @@
 [
   {
-    "path": "accounts/api_auth.py",
-    "file_name": "api_auth.py",
-    "functions": [
-      {
-        "name": "install_api_key_auth",
-        "complexity": 24
-      }
-    ]
-  },
-  {
     "path": "accounts/photos.py",
     "file_name": "photos.py",
     "functions": [
@@ -54,10 +44,6 @@
       {
         "name": "AnthropicProvider::to_messages",
         "complexity": 24
-      },
-      {
-        "name": "AnthropicProvider::parse_stream",
-        "complexity": 45
       }
     ]
   },
@@ -120,36 +106,6 @@
     ]
   },
   {
-    "path": "assistant/turn.py",
-    "file_name": "turn.py",
-    "functions": [
-      {
-        "name": "run",
-        "complexity": 30
-      }
-    ]
-  },
-  {
-    "path": "base/listener.py",
-    "file_name": "listener.py",
-    "functions": [
-      {
-        "name": "Listener::_wait",
-        "complexity": 16
-      }
-    ]
-  },
-  {
-    "path": "base/services.py",
-    "file_name": "services.py",
-    "functions": [
-      {
-        "name": "_answer",
-        "complexity": 17
-      }
-    ]
-  },
-  {
     "path": "base/tests/test_admin_django_catalog.py",
     "file_name": "test_admin_django_catalog.py",
     "functions": [
@@ -160,196 +116,12 @@
     ]
   },
   {
-    "path": "billing/management/commands/audit_stripe_webhooks.py",
-    "file_name": "audit_stripe_webhooks.py",
-    "functions": [
-      {
-        "name": "endpoint_problems",
-        "complexity": 23
-      }
-    ]
-  },
-  {
-    "path": "billing/queries/catalog.py",
-    "file_name": "catalog.py",
-    "functions": [
-      {
-        "name": "store_catalog",
-        "complexity": 25
-      }
-    ]
-  },
-  {
-    "path": "billing/queries/subscriptions.py",
-    "file_name": "subscriptions.py",
-    "functions": [
-      {
-        "name": "_subscription_row",
-        "complexity": 20
-      }
-    ]
-  },
-  {
-    "path": "billing/seed.py",
-    "file_name": "seed.py",
-    "functions": [
-      {
-        "name": "seed_tax_data",
-        "complexity": 17
-      }
-    ]
-  },
-  {
-    "path": "billing/services/invoice_webhooks.py",
-    "file_name": "invoice_webhooks.py",
-    "functions": [
-      {
-        "name": "_record_failure",
-        "complexity": 21
-      }
-    ]
-  },
-  {
-    "path": "billing/services/live_subscriptions.py",
-    "file_name": "live_subscriptions.py",
-    "functions": [
-      {
-        "name": "live_state",
-        "complexity": 29
-      }
-    ]
-  },
-  {
-    "path": "billing/services/oss_notices.py",
-    "file_name": "oss_notices.py",
-    "functions": [
-      {
-        "name": "note_oss_threshold",
-        "complexity": 16
-      }
-    ]
-  },
-  {
-    "path": "billing/services/platform_invoices.py",
-    "file_name": "platform_invoices.py",
-    "functions": [
-      {
-        "name": "reconcile_platform_invoices",
-        "complexity": 30
-      }
-    ]
-  },
-  {
-    "path": "billing/services/price_checks.py",
-    "file_name": "price_checks.py",
-    "functions": [
-      {
-        "name": "_price_problems",
-        "complexity": 24
-      }
-    ]
-  },
-  {
-    "path": "billing/services/rectifying_invoices.py",
-    "file_name": "rectifying_invoices.py",
-    "functions": [
-      {
-        "name": "_rectifying_lines",
-        "complexity": 26
-      }
-    ]
-  },
-  {
-    "path": "billing/services/stripe_sales.py",
-    "file_name": "stripe_sales.py",
-    "functions": [
-      {
-        "name": "_recurring_net",
-        "complexity": 23
-      }
-    ]
-  },
-  {
-    "path": "billing/services/unpaid_sweep.py",
-    "file_name": "unpaid_sweep.py",
-    "functions": [
-      {
-        "name": "sweep_unpaid",
-        "complexity": 26
-      }
-    ]
-  },
-  {
-    "path": "billing/vat.py",
-    "file_name": "vat.py",
-    "functions": [
-      {
-        "name": "_qualify",
-        "complexity": 29
-      }
-    ]
-  },
-  {
-    "path": "hubs/services/custom_domain_checks.py",
-    "file_name": "custom_domain_checks.py",
-    "functions": [
-      {
-        "name": "custom_domain_record",
-        "complexity": 23
-      },
-      {
-        "name": "_check_pending",
-        "complexity": 25
-      }
-    ]
-  },
-  {
-    "path": "hubs/services/member_management.py",
-    "file_name": "member_management.py",
-    "functions": [
-      {
-        "name": "member_invite",
-        "complexity": 16
-      }
-    ]
-  },
-  {
-    "path": "hubs/services/reconciliation.py",
-    "file_name": "reconciliation.py",
-    "functions": [
-      {
-        "name": "reconcile",
-        "complexity": 33
-      }
-    ]
-  },
-  {
-    "path": "hubs/services/subscription_sync.py",
-    "file_name": "subscription_sync.py",
-    "functions": [
-      {
-        "name": "subscription_apply",
-        "complexity": 39
-      }
-    ]
-  },
-  {
     "path": "hubs/tests/hub_double.py",
     "file_name": "hub_double.py",
     "functions": [
       {
         "name": "HubDouble::_default",
         "complexity": 38
-      }
-    ]
-  },
-  {
-    "path": "public/demo.py",
-    "file_name": "demo.py",
-    "functions": [
-      {
-        "name": "status",
-        "complexity": 16
       }
     ]
   },
@@ -394,64 +166,6 @@
       {
         "name": "marked_prose",
         "complexity": 37
-      }
-    ]
-  },
-  {
-    "path": "whatsapp/gateway/message_templates.py",
-    "file_name": "message_templates.py",
-    "functions": [
-      {
-        "name": "sync_templates",
-        "complexity": 17
-      }
-    ]
-  },
-  {
-    "path": "whatsapp/gateway/sending.py",
-    "file_name": "sending.py",
-    "functions": [
-      {
-        "name": "send",
-        "complexity": 18
-      }
-    ]
-  },
-  {
-    "path": "whatsapp/gateway/token_renewal.py",
-    "file_name": "token_renewal.py",
-    "functions": [
-      {
-        "name": "renew_tokens",
-        "complexity": 16
-      }
-    ]
-  },
-  {
-    "path": "whatsapp/media.py",
-    "file_name": "media.py",
-    "functions": [
-      {
-        "name": "media",
-        "complexity": 16
-      }
-    ]
-  },
-  {
-    "path": "whatsapp/parse.py",
-    "file_name": "parse.py",
-    "functions": [
-      {
-        "name": "_change",
-        "complexity": 18
-      },
-      {
-        "name": "_history",
-        "complexity": 22
-      },
-      {
-        "name": "_message",
-        "complexity": 23
       }
     ]
   },

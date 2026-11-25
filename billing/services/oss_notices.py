@@ -9,7 +9,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from billing import emails, queries, vat, vat_countries
-from billing.models import Invoice, OssNotice
+from billing.models import FiscalPolicy, Invoice, OssNotice
 from billing.money import to_cents
 from billing.oss import OSS_WARNING_PERCENT
 
@@ -41,6 +41,39 @@ def _write_oss_notice(year: int, kind: str, invoice: Invoice, **values) -> OssNo
         return None
 
 
+def _note_crossing(policy: FiscalPolicy, threshold: int, invoice: Invoice) -> OssNotice | None:
+    """The crossing of the invoice's year, unless it is told already: the previous year closed above the threshold
+    (so this one starts in destination) or this one has just passed it."""
+    year = invoice.issued_on.year
+    if _oss_noticed(year, [OssNotice.Kind.CROSSED]):
+        return None
+    previous = queries.cross_border_b2c_cents(policy, year - 1)
+    if previous > threshold:
+        return _write_oss_notice(
+            year, OssNotice.Kind.CROSSED, invoice, reason=OssNotice.Reason.PREVIOUS_YEAR,
+            accumulated_cents=previous, threshold_cents=threshold, effective_from=date(year, 1, 1),
+        )
+    # The invoice is saved as paid already: the sum includes it.
+    current = queries.cross_border_b2c_cents(policy, year)
+    if current > threshold:
+        return _write_oss_notice(
+            year, OssNotice.Kind.CROSSED, invoice, reason=OssNotice.Reason.CURRENT_YEAR,
+            accumulated_cents=current, threshold_cents=threshold, effective_from=invoice.issued_on,
+        )
+    return None
+
+
+def _note_near(policy: FiscalPolicy, threshold: int, invoice: Invoice) -> OssNotice | None:
+    """The 80 % warning of the invoice's year, unless it or the crossing is told already."""
+    year = invoice.issued_on.year
+    if _oss_noticed(year, [OssNotice.Kind.NEAR, OssNotice.Kind.CROSSED]):
+        return None
+    current = queries.cross_border_b2c_cents(policy, year)
+    if current * 100 <= threshold * OSS_WARNING_PERCENT:
+        return None
+    return _write_oss_notice(year, OssNotice.Kind.NEAR, invoice, accumulated_cents=current, threshold_cents=threshold)
+
+
 def note_oss_threshold(invoice: Invoice) -> list[OssNotice]:
     """After charging ``invoice``: the year's crossing of the OSS threshold and its 80 % warning, each once per
     year, mailed to the team after the COMMIT. The crossing first, so a sale that jumps past the threshold is
@@ -50,38 +83,9 @@ def note_oss_threshold(invoice: Invoice) -> list[OssNotice]:
     issuer = (policy.issuer_country or vat.DEFAULT_ISSUER_COUNTRY).strip().upper()
     if policy.oss_registered or not _counts_towards_oss(invoice, issuer):
         return []
-    year = invoice.issued_on.year
     threshold = to_cents(policy.oss_threshold)
-    written = []
-    if not _oss_noticed(year, [OssNotice.Kind.CROSSED]):
-        previous = queries.cross_border_b2c_cents(policy, year - 1)
-        if previous > threshold:
-            crossing = {
-                "reason": OssNotice.Reason.PREVIOUS_YEAR,
-                "accumulated_cents": previous,
-                "effective_from": date(year, 1, 1),
-            }
-        else:
-            # The invoice is saved as paid already: the sum includes it.
-            current = queries.cross_border_b2c_cents(policy, year)
-            crossing = (
-                {"reason": OssNotice.Reason.CURRENT_YEAR, "accumulated_cents": current, "effective_from": invoice.issued_on}
-                if current > threshold
-                else None
-            )
-        if crossing is not None:
-            written.append(
-                _write_oss_notice(year, OssNotice.Kind.CROSSED, invoice, threshold_cents=threshold, **crossing)
-            )
-    if not _oss_noticed(year, [OssNotice.Kind.NEAR, OssNotice.Kind.CROSSED]):
-        current = queries.cross_border_b2c_cents(policy, year)
-        if current * 100 > threshold * OSS_WARNING_PERCENT:
-            written.append(
-                _write_oss_notice(
-                    year, OssNotice.Kind.NEAR, invoice, accumulated_cents=current, threshold_cents=threshold
-                )
-            )
-    written = [notice for notice in written if notice is not None]
+    noted = [_note_crossing(policy, threshold, invoice), _note_near(policy, threshold, invoice)]
+    written = [notice for notice in noted if notice is not None]
     for notice in written:
         logger.warning(
             "[FISCAL] OSS %s %s: %s of %s cents (invoice %s)",
