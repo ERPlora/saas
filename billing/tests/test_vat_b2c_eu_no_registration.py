@@ -12,7 +12,7 @@ from decimal import Decimal
 import pytest
 
 from billing import queries
-from billing.vat import resolve_vat
+from billing.tests.vat_sales import charged
 
 pytestmark = pytest.mark.django_db
 
@@ -20,14 +20,14 @@ DISCREPANCY_EVENT = "fiscal.vat.stripe_charged_no_tax_on_subject_sale"
 
 
 def _resolve(total, **kwargs):
-    return resolve_vat(Decimal(total), tax_included=False, **kwargs)
+    return charged(total, tax_included=False, **kwargs)
 
 
 def _german_consumer(**extra):
     """The customer of that sale: Berlin, no VAT id, Stripe charged 0."""
     return {
-        "customer_country": "DE",
-        "customer_postal_code": "10115",
+        "country": "DE",
+        "postal_code": "10115",
         "tax_cents": 0,
         **extra,
     }
@@ -57,7 +57,7 @@ class TestAnUnexplainedZeroIsReconciled:
             assert vat.base + vat.tax == Decimal(gross), gross
 
     def test_a_spanish_consumer_with_no_tax_charged_is_reconciled_too(self):
-        vat = _resolve("121.00", customer_country="ES", tax_cents=0)
+        vat = _resolve("121.00", country="ES", tax_cents=0)
 
         assert vat.rate == Decimal("21.00")
         assert vat.tax == Decimal("21.00")
@@ -81,9 +81,9 @@ class TestNoZeroIsExplainedAway:
 
     def _french_business(self, **extra):
         return {
-            "customer_country": "FR",
-            "customer_tax_id": "FR12345678901",
-            "customer_tax_id_type": "eu_vat",
+            "country": "FR",
+            "tax_id": "FR12345678901",
+            "tax_id_type": "eu_vat",
             "tax_cents": 0,
             **extra,
         }
@@ -101,7 +101,7 @@ class TestNoZeroIsExplainedAway:
     ):
         with caplog.at_level("ERROR", logger="billing.vat"):
             vat = _resolve(
-                "100.00", **self._french_business(customer_tax_id_verified=True)
+                "100.00", **self._french_business(tax_id_verified=True)
             )
 
         assert vat.treatment == "reverse_charge"
@@ -121,7 +121,7 @@ class TestNoZeroIsExplainedAway:
 
 class TestNothingElseMoves:
     def test_a_quota_from_stripe_still_wins(self):
-        vat = _resolve("121.00", customer_country="ES", tax_cents=2100)
+        vat = _resolve("121.00", country="ES", tax_cents=2100)
 
         assert vat.base == Decimal("100.00")
         assert vat.tax == Decimal("21.00")
@@ -133,10 +133,10 @@ class TestNothingElseMoves:
 
         vat = _resolve(
             "100.00",
-            customer_country="FR",
-            customer_tax_id="FR12345678901",
-            customer_tax_id_type="eu_vat",
-            customer_tax_id_verified=True,
+            country="FR",
+            tax_id="FR12345678901",
+            tax_id_type="eu_vat",
+            tax_id_verified=True,
             tax_cents=0,
         )
 
@@ -147,8 +147,8 @@ class TestNothingElseMoves:
         with caplog.at_level("ERROR", logger="billing.vat"):
             vat = _resolve(
                 "29.99",
-                customer_country="US",
-                customer_postal_code="10001",
+                country="US",
+                postal_code="10001",
                 tax_cents=0,
             )
 
@@ -163,8 +163,8 @@ class TestNothingElseMoves:
         with caplog.at_level("ERROR", logger="billing.vat"):
             _resolve(
                 "100.00",
-                customer_country="ES",
-                customer_postal_code="35001",
+                country="ES",
+                postal_code="35001",
                 tax_cents=0,
             )
 
@@ -172,7 +172,7 @@ class TestNothingElseMoves:
 
     def test_an_excluded_territory_carries_no_quota(self):
         vat = _resolve(
-            "100.00", customer_country="ES", customer_postal_code="35001", tax_cents=0
+            "100.00", country="ES", postal_code="35001", tax_cents=0
         )
 
         assert vat.treatment == "not_subject"
@@ -180,7 +180,7 @@ class TestNothingElseMoves:
         assert vat.base == Decimal("100.00")
 
     def test_a_gross_price_is_split_as_always(self):
-        vat = resolve_vat(Decimal("121.00"), customer_country="ES", tax_cents=0)
+        vat = charged("121.00", country="ES", tax_cents=0)
 
         assert vat.base == Decimal("100.00")
         assert vat.tax == Decimal("21.00")

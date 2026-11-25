@@ -226,16 +226,6 @@
     ]
   },
   {
-    "path": "billing/vat.py",
-    "file_name": "vat.py",
-    "functions": [
-      {
-        "name": "_qualify",
-        "complexity": 29
-      }
-    ]
-  },
-  {
     "path": "hubs/services/member_management.py",
     "file_name": "member_management.py",
     "functions": [

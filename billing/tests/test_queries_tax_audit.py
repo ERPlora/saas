@@ -14,7 +14,7 @@ import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
-from billing.models import TaxRule
+from billing.models import FiscalPolicy, TaxRule
 
 pytestmark = pytest.mark.django_db
 
@@ -134,6 +134,14 @@ class TestThePostalCodeMap:
         problems = _problems()
 
         assert "ES/IC (postal code 35001)" in problems
+
+    def test_the_territories_are_asked_as_spanish_whoever_the_issuer_is(self):
+        FiscalPolicy.objects.update(issuer_country="PT")
+
+        output = _run()
+
+        assert "Issuer country: PT" in output
+        assert "ES/IC: not subject" in output
 
 
 class TestTheCountriesThatAlreadyHaveAPayer:

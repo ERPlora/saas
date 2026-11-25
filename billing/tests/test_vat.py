@@ -11,14 +11,10 @@ from decimal import Decimal
 import pytest
 
 from billing import queries
-from billing.vat import resolve_vat
+from billing.tests.vat_sales import charged, priced
 from billing.vat_countries import BILLING_COUNTRIES, EU_VAT_RATES, tax_id_type_for
 
 pytestmark = pytest.mark.django_db
-
-
-def _resolve(total, **kwargs):
-    return resolve_vat(Decimal(total), **kwargs)
 
 
 def _register_in_oss():
@@ -29,7 +25,7 @@ def _register_in_oss():
 
 class TestDomesticSale:
     def test_spanish_consumer_pays_21_percent(self):
-        result = _resolve("1.21", customer_country="ES")
+        result = charged("1.21", country="ES")
 
         assert result.rate == Decimal("21.00")
         assert result.base == Decimal("1.00")
@@ -39,21 +35,21 @@ class TestDomesticSale:
     def test_base_plus_tax_always_equals_the_gross(self):
         """The amount charged rules: the breakdown can never alter it."""
         for gross in ["1.21", "29.99", "54.99", "109.99", "419.99", "0.01"]:
-            result = _resolve(gross, customer_country="ES")
+            result = charged(gross, country="ES")
 
             assert result.base + result.tax == Decimal(gross), gross
 
     def test_rounding_is_half_up(self):
         """Explicit HALF_UP; a bare quantize() inherits HALF_EVEN."""
         # 29.99 / 1.21 = 24.7851... → 24.79 (not 24.78)
-        result = _resolve("29.99", customer_country="ES")
+        result = charged("29.99", country="ES")
 
         assert result.base == Decimal("24.79")
         assert result.tax == Decimal("5.20")
 
     def test_missing_country_falls_back_to_the_issuer(self):
         """Stripe does not always send a country; a sale without one cannot go out without VAT."""
-        result = _resolve("1.21", customer_country="")
+        result = charged("1.21", country="")
 
         assert result.rate == Decimal("21.00")
         assert result.tax == Decimal("0.21")
@@ -65,7 +61,7 @@ class TestOtherEuCountries:
     (and without the voluntary OSS registration) the ISSUER's VAT is charged, not the customer's."""
 
     def test_b2c_in_another_member_state_pays_the_issuer_rate_below_the_threshold(self):
-        result = _resolve("121.00", customer_country="FR")
+        result = charged("121.00", country="FR")
 
         assert result.rate == Decimal("21.00")
         assert result.tax == Decimal("21.00")
@@ -75,7 +71,7 @@ class TestOtherEuCountries:
     def test_above_the_threshold_the_destination_rate_applies(self):
         _register_in_oss()
 
-        result = _resolve("100.00", customer_country="FR")
+        result = charged("100.00", country="FR")
 
         assert result.rate == Decimal("20.00")
         assert result.tax_country == "FR"
@@ -85,14 +81,14 @@ class TestOtherEuCountries:
     def test_germany_is_19_under_oss(self):
         _register_in_oss()
 
-        assert _resolve("100.00", customer_country="DE").rate == Decimal("19.00")
+        assert charged("100.00", country="DE").rate == Decimal("19.00")
 
 
 class TestSpanishTerritoriesOutsideTheVatArea:
     """The Canary Islands, Ceuta and Melilla are outside the scope of VAT."""
 
     def test_the_canary_islands_are_not_subject(self):
-        result = _resolve("100.00", customer_country="ES", customer_postal_code="35001")
+        result = charged("100.00", country="ES", postal_code="35001")
 
         assert result.treatment == "not_subject"
         assert result.rate == Decimal("0.00")
@@ -101,28 +97,28 @@ class TestSpanishTerritoriesOutsideTheVatArea:
 
     def test_tenerife_too(self):
         assert (
-            _resolve(
-                "100.00", customer_country="ES", customer_postal_code="38001"
+            charged(
+                "100.00", country="ES", postal_code="38001"
             ).treatment
             == "not_subject"
         )
 
     def test_ceuta_and_melilla_are_not_subject(self):
         assert (
-            _resolve(
-                "100.00", customer_country="ES", customer_postal_code="51001"
+            charged(
+                "100.00", country="ES", postal_code="51001"
             ).treatment
             == "not_subject"
         )
         assert (
-            _resolve(
-                "100.00", customer_country="ES", customer_postal_code="52001"
+            charged(
+                "100.00", country="ES", postal_code="52001"
             ).treatment
             == "not_subject"
         )
 
     def test_the_mainland_still_pays_21(self):
-        result = _resolve("121.00", customer_country="ES", customer_postal_code="28001")
+        result = charged("121.00", country="ES", postal_code="28001")
 
         assert result.treatment == "domestic"
         assert result.tax == Decimal("21.00")
@@ -132,8 +128,8 @@ class TestSpanishTerritoriesOutsideTheVatArea:
         _register_in_oss()
 
         assert (
-            _resolve(
-                "100.00", customer_country="FR", customer_postal_code="35001"
+            charged(
+                "100.00", country="FR", postal_code="35001"
             ).treatment
             == "oss"
         )
@@ -152,8 +148,8 @@ class TestCategories:
             valid_from=date(2020, 1, 1),
         )
 
-        result = _resolve(
-            "110.00", customer_country="ES", category_key="service.training"
+        result = charged(
+            "110.00", country="ES", category_key="service.training"
         )
 
         assert result.rate == Decimal("10.00")
@@ -161,8 +157,8 @@ class TestCategories:
         assert result.tax == Decimal("10.00")
 
     def test_a_category_without_its_own_rule_uses_the_generic_one(self):
-        result = _resolve(
-            "121.00", customer_country="ES", category_key="service.saas_subscription"
+        result = charged(
+            "121.00", country="ES", category_key="service.saas_subscription"
         )
 
         assert result.rate == Decimal("21.00")
@@ -173,7 +169,7 @@ class TestCategories:
         rule.rate_pct = Decimal("25.00")
         rule.save()
 
-        assert _resolve("125.00", customer_country="ES").rate == Decimal("25.00")
+        assert charged("125.00", country="ES").rate == Decimal("25.00")
 
 
 class TestFallbackWhenTheTableIsUnusable:
@@ -183,7 +179,7 @@ class TestFallbackWhenTheTableIsUnusable:
 
         TaxRule.objects.all().delete()
 
-        result = _resolve("121.00", customer_country="ES")
+        result = charged("121.00", country="ES")
 
         assert result.rate == Decimal("21.00")
         assert result.tax == Decimal("21.00")
@@ -201,12 +197,12 @@ class TestReverseCharge:
     def test_b2b_with_eu_vat_id_in_another_country_is_reverse_charge(self):
         _enable_reverse_charge()
 
-        result = _resolve(
+        result = charged(
             "100.00",
-            customer_country="FR",
-            customer_tax_id="FR12345678901",
-            customer_tax_id_type="eu_vat",
-            customer_tax_id_verified=True,
+            country="FR",
+            tax_id="FR12345678901",
+            tax_id_type="eu_vat",
+            tax_id_verified=True,
         )
 
         assert result.is_reverse_charge is True
@@ -218,11 +214,11 @@ class TestReverseCharge:
 
     def test_a_spanish_business_is_not_reverse_charge(self):
         """Reverse charge is intra-community: in Spain the VAT is charged."""
-        result = _resolve(
+        result = charged(
             "121.00",
-            customer_country="ES",
-            customer_tax_id="B27593136",
-            customer_tax_id_type="es_cif",
+            country="ES",
+            tax_id="B27593136",
+            tax_id_type="es_cif",
         )
 
         assert result.is_reverse_charge is False
@@ -232,7 +228,7 @@ class TestReverseCharge:
 
 class TestOutsideTheEu:
     def test_export_carries_no_eu_vat(self):
-        result = _resolve("100.00", customer_country="US")
+        result = charged("100.00", country="US")
 
         assert result.treatment == "not_subject"
         assert result.rate == Decimal("0.00")
@@ -243,7 +239,7 @@ class TestOutsideTheEu:
 
 class TestStripeTakesPrecedence:
     def test_an_explicit_breakdown_from_stripe_is_respected(self):
-        result = _resolve("121.00", customer_country="ES", tax_cents=2100)
+        result = charged("121.00", country="ES", tax_cents=2100)
 
         assert result.tax == Decimal("21.00")
         assert result.base == Decimal("100.00")
@@ -253,12 +249,12 @@ class TestStripeTakesPrecedence:
         """The qualification is ours: Stripe only brings the amounts."""
         _enable_reverse_charge()
 
-        result = _resolve(
+        result = charged(
             "100.00",
-            customer_country="FR",
-            customer_tax_id="FR12345678901",
-            customer_tax_id_type="eu_vat",
-            customer_tax_id_verified=True,
+            country="FR",
+            tax_id="FR12345678901",
+            tax_id_type="eu_vat",
+            tax_id_verified=True,
             tax_cents=0,
         )
 
@@ -301,15 +297,13 @@ class TestASpanishPostalCodeIsFiveDigits:
 
     def test_benidorm_without_its_zero_is_not_sold_at_zero(self):
         """Selling: an unknown Spanish place cannot be priced (the sale door asks for the address)."""
-        from billing.vat import quote_vat
-
-        assert quote_vat(Decimal("100.00"), customer_country="ES", customer_postal_code="3500") is None
-        assert quote_vat(Decimal("100.00"), customer_country="ES", customer_postal_code="") is None
-        assert quote_vat(Decimal("100.00"), customer_country="ES", customer_postal_code="03500").rate == Decimal("21.00")
+        assert priced("100.00", country="ES", postal_code="3500") is None
+        assert priced("100.00", country="ES", postal_code="") is None
+        assert priced("100.00", country="ES", postal_code="03500").rate == Decimal("21.00")
 
     def test_what_was_already_charged_to_an_unknown_spanish_place_pays_vat(self, caplog):
         """Invoicing: the money is in, and when in doubt the VAT is charged (never 0 % by a guess)."""
-        result = _resolve("121.00", customer_country="ES", customer_postal_code="3500")
+        result = charged("121.00", country="ES", postal_code="3500")
 
         assert (result.treatment, result.tax) == ("domestic", Decimal("21.00"))
         assert any(r.levelname == "WARNING" and "3500" in r.getMessage() for r in caplog.records)
@@ -335,7 +329,7 @@ class TestTheOssIsEuropean:
             category=TaxCategory.objects.get(key="service.generic"), country_code="NO", rate_pct=Decimal("25.00"), valid_from=date(2020, 1, 1)
         )
 
-        result = _resolve("125.00", customer_country="NO")
+        result = charged("125.00", country="NO")
 
         assert result.treatment != "oss"
         assert (result.tax_country, result.rate) == ("NO", Decimal("25.00"))
@@ -366,11 +360,36 @@ class TestTheReverseChargeRule:
 
 
 class TestAPlaceWithoutARule:
+    def _refused(self, caplog, **sale):
+        with caplog.at_level("INFO", logger="billing.vat"):
+            assert priced("100.00", **sale) is None
+        [record] = [r for r in caplog.records if getattr(r, "event", "") == "fiscal.vat.rate_not_resolvable"]
+        return record
+
     def test_it_is_said_as_a_warning_not_an_error(self, caplog):
         """Who types a country in a form is not a fault of ours: the sale door logs the refusal itself."""
-        from billing.vat import quote_vat
-
-        assert quote_vat(Decimal("100.00"), customer_country="US") is None
+        assert priced("100.00", country="US") is None
 
         assert not [r for r in caplog.records if r.levelname == "ERROR"]
         assert any(getattr(r, "event", "") == "fiscal.vat.rate_not_resolvable" and r.levelname == "WARNING" for r in caplog.records)
+
+    def test_the_log_says_the_place_and_what_was_sold(self, caplog):
+        record = self._refused(caplog, country=" us ", postal_code="10001", category_key="service.training")
+
+        assert record.levelname == "WARNING"
+        assert record.getMessage() == (
+            "[VAT] No tax rule for US/service.training (postal code '10001'): the sale cannot be priced"
+        )
+        assert (record.customer_country, record.customer_postal_code, record.category_key) == (
+            "US",
+            "10001",
+            "service.training",
+        )
+
+    def test_the_log_of_a_place_nobody_said(self, caplog):
+        record = self._refused(caplog, country="", postal_code="3500")
+
+        assert record.getMessage() == (
+            "[VAT] No tax rule for ?/service.generic (postal code '3500'): the sale cannot be priced"
+        )
+        assert (record.customer_country, record.customer_postal_code) == ("", "3500")

@@ -13,7 +13,6 @@ paying customers (``paying_customers``).
 
 from billing.queries.tax import (
     CATEGORY_KEYS,
-    Payer,
     cross_border_b2c_cents,
     destination_rate_applies,
     fiscal_policy,

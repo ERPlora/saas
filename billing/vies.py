@@ -195,7 +195,7 @@ def _post(value: str, payload: dict) -> ViesAnswer:
     return read_answer(body, value)
 
 
-def read_answer(body, vat_number: str) -> ViesAnswer:  # noqa: PLR0911
+def read_answer(body, vat_number: str) -> ViesAnswer:
     """Turn the Commission's answer into a verdict of ours.
 
     The REST endpoint says ``valid``; the per-member-state one, ``isValid``: both are read, so a renamed
@@ -203,14 +203,12 @@ def read_answer(body, vat_number: str) -> ViesAnswer:  # noqa: PLR0911
     is what VIES returns when the request does not identify the requester, so it is
     ``unavailable``.
     """
-    if not isinstance(body, dict):
-        logger.error("[VIES] Unintelligible answer about %s: %r", vat_number, body)
-        return ViesAnswer(UNAVAILABLE)
-    valid = body.get("valid")
+    fields = body if isinstance(body, dict) else {}
+    valid = fields.get("valid")
     if valid is None:
-        valid = body.get("isValid")
-    user_error = str(body.get("userError") or "").upper()
-    consultation_number = str(body.get("requestIdentifier") or "").strip()
+        valid = fields.get("isValid")
+    user_error = str(fields.get("userError") or "").upper()
+    consultation_number = str(fields.get("requestIdentifier") or "").strip()
 
     if user_error == INVALID_REQUESTER_INFO:
         logger.error(
@@ -240,8 +238,8 @@ def read_answer(body, vat_number: str) -> ViesAnswer:  # noqa: PLR0911
         return ViesAnswer(
             VERIFIED,
             consultation_number=consultation_number,
-            name=_shared(body.get("name"))[:255],
-            address=_shared(body.get("address")),
+            name=_shared(fields.get("name"))[:255],
+            address=_shared(fields.get("address")),
         )
 
     if valid is False:

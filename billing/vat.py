@@ -43,11 +43,11 @@ charging Las Palmas 21 % it does not owe.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import replace
 from decimal import Decimal
 
 from billing.money import to_cents
+from billing.payer import Payer
 from billing.vat_breakdown import (
     DOMESTIC,
     NOT_SUBJECT,
@@ -57,6 +57,7 @@ from billing.vat_breakdown import (
     _breakdown,
     _effective_rate,
     _q,
+    _Qualification,
     add_vat,
 )
 from billing.vat_countries import EU_VAT_RATES, spanish_region_for_postal_code
@@ -71,9 +72,7 @@ SAAS_SUBSCRIPTION_CATEGORY = "service.saas_subscription"
 SOFTWARE_LICENSE_CATEGORY = "service.software_license"
 
 
-def reverse_charge_applies(
-    *, customer_country: str, verified: bool, issuer_country: str = ""
-) -> bool:
+def reverse_charge_applies(*, customer_country: str, verified: bool) -> bool:
     """Is a sale to a business of ``customer_country`` with a VIES-``verified`` VAT number reverse charged?
 
     The one rule, for the engine (``_qualify``) and for what the panel tells the buyer: ERPlora in the ROI
@@ -82,15 +81,10 @@ def reverse_charge_applies(
     """
     policy = _policy()
     country = (customer_country or "").strip().upper()
-    issuer = (
-        (issuer_country or policy.issuer_country or DEFAULT_ISSUER_COUNTRY)
-        .strip()
-        .upper()
-    )
     return bool(
         verified
         and country in EU_VAT_RATES
-        and country != issuer
+        and country != _issuer_country(policy)
         and policy.intra_eu_reverse_charge
     )
 
@@ -100,14 +94,12 @@ def vat_rate_for(
     country: str,
     region: str = "",
     category_key: str = GENERIC_CATEGORY,
-    on_date=None,
 ) -> Decimal | None:
     """The rate of a territory, or ``None`` if it charges no VAT (NOT SUBJECT, which is not a 0 % rate)."""
     return _lookup_rate(
         (country or "").strip().upper(),
         (region or "").strip().upper(),
         category_key,
-        on_date,
     )[0]
 
 
@@ -117,8 +109,12 @@ def _policy():
     return queries.fiscal_policy()
 
 
+def _issuer_country(policy) -> str:
+    return (policy.issuer_country or DEFAULT_ISSUER_COUNTRY).strip().upper()
+
+
 def _lookup_rate(
-    country: str, region: str, category_key: str, on_date
+    country: str, region: str, category_key: str
 ) -> tuple[Decimal | None, bool]:
     """``(rate, do we know?)``. ``(None, True)`` is NOT SUBJECT (a rule says no VAT there); ``(None, False)``
     is «I don't know»: no rule and no backstop for that territory — nor when the question was about a
@@ -133,7 +129,6 @@ def _lookup_rate(
         country_code=country,
         region_code=region,
         category_key=category_key,
-        on_date=on_date,
     )
     if rule is not None and region and rule.region_code.upper() != region:
         # The only regions here are the three territories OUTSIDE VAT: falling to the country's 21 % is
@@ -170,137 +165,121 @@ def _lookup_rate(
     return None, False
 
 
-@dataclass(frozen=True)
-class _Qualification:
-    """How a sale is taxed, decided WITHOUT looking at the amount: one place for ``resolve_vat`` (what was
-    charged) and ``quote_vat`` (what will be charged), so the two cannot qualify the same sale apart."""
+def _customer_place(payer: Payer, issuer: str, *, selling: bool) -> tuple[str, str] | None:
+    """The country and the region the customer is in.
 
-    treatment: str
-    rate: Decimal | None
-    tax_country: str
-    tax_region: str
-    customer_country: str = ""
-
-
-def _qualify(  # noqa: C901, PLR0911, PLR0913
-    *,
-    customer_country: str = "",
-    customer_tax_id: str = "",
-    customer_tax_id_type: str = "",
-    customer_tax_id_verified: bool = False,
-    customer_postal_code: str = "",
-    category_key: str = GENERIC_CATEGORY,
-    issuer_country: str = "",
-    on_date=None,
-    rate_charged: Callable[[Decimal], bool] | None = None,
-    pending_base_cents: int = 0,
-    selling: bool = False,
-) -> _Qualification | None:
-    """The qualification of the sale, or ``None`` when its territory has no rule («I don't know»).
-
-    ``rate_charged`` is the one fact that depends on the amount: whether the gateway already charged a
-    rate; asked for the customer's country's and the issuer's, the charged rate rules over the policy in
-    both directions. ``pending_base_cents`` is the base of the sale being priced: the OSS
-    threshold is crossed BY a sale, and that sale already goes to destination.
-
-    ``selling``: a Spanish place without a real postal code is «I don't know» when SELLING (``None``: the
-    sale door asks for the address), and the mainland when invoicing what was already charged (the VAT
-    is charged rather than a 0 % guessed).
+    A Spanish place without a real postal code is «I don't know» when SELLING (``None``: the sale door asks
+    for the address), and the mainland when invoicing what was already charged (the VAT is charged rather
+    than a 0 % guessed).
     """
-    from billing import queries
-
-    country = (customer_country or "").strip().upper()
-    policy = _policy()
-    issuer = (
-        (issuer_country or policy.issuer_country or DEFAULT_ISSUER_COUNTRY)
-        .strip()
-        .upper()
-    )
-    issuer_region = (policy.issuer_region or "").strip().upper()
-
+    country = (payer.country or "").strip().upper()
     if not country:
         # Stripe does not always send a country; a sale without one cannot go out without VAT.
         logger.info("[VAT] No customer country; the issuer's (%s) applies", issuer)
         country = issuer
+    if country != "ES":
+        return country, ""
 
-    region = (
-        spanish_region_for_postal_code(customer_postal_code) if country == "ES" else ""
-    )
+    region = spanish_region_for_postal_code(payer.postal_code)
     if region is None:
         if selling:
             return None
         logger.warning(
             "[VAT] %r is not a Spanish postal code: the sale is taxed as on the mainland",
-            customer_postal_code,
+            payer.postal_code,
         )
         region = ""
+    return country, region
 
-    is_intra_eu_b2b = (
-        customer_tax_id_type == "eu_vat"
-        and bool(customer_tax_id)
-        and reverse_charge_applies(
-            customer_country=country,
-            verified=customer_tax_id_verified,
-            issuer_country=issuer,
-        )
-    )
-    if is_intra_eu_b2b:
-        return _Qualification(
-            REVERSE_CHARGE, None, country, region, customer_country=country
-        )
 
-    rate, known = _lookup_rate(country, region, category_key, on_date)
+def _taxed_in(
+    country: str, region: str, category_key: str, *, customer_country: str
+) -> _Qualification | None:
+    """The sale taxed at the rate of a territory, not subject where there is no VAT; ``None`` without a rule."""
+    rate, known = _lookup_rate(country, region, category_key)
     if not known:
         return None
     if rate is None:
         # Outside the scope of VAT: not subject, and no jurisdiction to declare (``tax_country`` empty).
-        return _Qualification(NOT_SUBJECT, None, "", "", customer_country=country)
-
-    if country != issuer and country in EU_VAT_RATES:
-        # Another member state: the One-Stop Shop threshold decides whose rate. A third country with a
-        # rate of its own in the table (a registration there) is charged that rate, never through the OSS.
-        issuer_rate, issuer_known = _lookup_rate(
-            issuer, issuer_region, category_key, on_date
-        )
-        # The charged rate is the evidence, both ways. When both rates are the same figure (NL,
-        # BE, CZ, LV, LT share the Spanish 21 %) the money proves nothing and the policy decides.
-        destination_rate_charged = rate_charged is not None and rate_charged(rate)
-        issuer_rate_charged = (
-            issuer_rate is not None
-            and rate_charged is not None
-            and rate_charged(issuer_rate)
-        )
-        if destination_rate_charged and not issuer_rate_charged:
-            return _Qualification(OSS, rate, country, region, customer_country=country)
-        only_issuer_rate_charged = issuer_rate_charged and not destination_rate_charged
-        year = on_date.year if on_date else None
-        if not only_issuer_rate_charged and queries.uses_destination_rate(
-            policy, year=year, pending_cents=pending_base_cents
-        ):
-            return _Qualification(OSS, rate, country, region, customer_country=country)
-        # Under the threshold the taxing right is the issuer's: its rate and its country.
-        if not issuer_known:
-            return None
-        if issuer_rate is None:
-            return _Qualification(NOT_SUBJECT, None, "", "", customer_country=country)
-        return _Qualification(
-            DOMESTIC, issuer_rate, issuer, issuer_region, customer_country=country
-        )
-
-    return _Qualification(DOMESTIC, rate, country, region, customer_country=country)
+        return _Qualification(NOT_SUBJECT, None, "", "", customer_country=customer_country)
+    return _Qualification(DOMESTIC, rate, country, region, customer_country=customer_country)
 
 
-def quote_vat(  # noqa: PLR0913
-    net: Decimal,
+def _taxed_at_destination(
+    policy,
+    rate: Decimal,
+    issuer_rate: Decimal | None,
     *,
-    customer_country: str = "",
-    customer_tax_id: str = "",
-    customer_tax_id_type: str = "",
-    customer_tax_id_verified: bool = False,
-    customer_postal_code: str = "",
-    category_key: str = GENERIC_CATEGORY,
-    issuer_country: str = "",
-    on_date=None,
+    charged_rate: Decimal | None,
+    pending_base_cents: int,
+) -> bool:
+    """Is a sale to another member state taxed at its ``rate`` rather than at the issuer's?
+
+    The charged rate is the evidence, both ways. When both rates are the same figure (NL, BE, CZ, LV, LT
+    share the Spanish 21 %) the money proves nothing and the One-Stop Shop threshold decides.
+    """
+    from billing import queries
+
+    destination_charged = charged_rate == rate
+    issuer_charged = issuer_rate is not None and charged_rate == issuer_rate
+    if destination_charged != issuer_charged:
+        return destination_charged
+    return queries.uses_destination_rate(policy, pending_cents=pending_base_cents)
+
+
+def _qualify(
+    payer: Payer,
+    *,
+    category_key: str,
+    charged_rate: Decimal | None = None,
+    pending_base_cents: int = 0,
+    selling: bool = False,
+) -> _Qualification | None:
+    """The qualification of the sale, or ``None`` when its territory has no rule («I don't know»).
+
+    ``charged_rate`` is the one fact that depends on the amount: the rate the gateway already charged, which
+    rules over the policy in both directions. ``pending_base_cents`` is the base of the sale being priced: the
+    OSS threshold is crossed BY a sale, and that sale already goes to destination. ``selling``: what
+    ``_customer_place`` does not know is not guessed.
+    """
+    policy = _policy()
+    issuer = _issuer_country(policy)
+    place = _customer_place(payer, issuer, selling=selling)
+    if place is None:
+        return None
+    country, region = place
+
+    if payer.has_eu_vat_number and reverse_charge_applies(
+        customer_country=country, verified=payer.tax_id_verified
+    ):
+        return _Qualification(
+            REVERSE_CHARGE, None, country, region, customer_country=country
+        )
+
+    destination = _taxed_in(country, region, category_key, customer_country=country)
+    if destination is None or destination.rate is None:
+        return destination
+    if country == issuer or country not in EU_VAT_RATES:
+        # A third country with a rate of its own in the table (a registration there) is charged that rate,
+        # never through the One-Stop Shop.
+        return destination
+
+    # Another member state: its rate through the One-Stop Shop, or the issuer's while it does not rule.
+    issuer_region = (policy.issuer_region or "").strip().upper()
+    origin = _taxed_in(issuer, issuer_region, category_key, customer_country=country)
+    if _taxed_at_destination(
+        policy,
+        destination.rate,
+        origin.rate if origin else None,
+        charged_rate=charged_rate,
+        pending_base_cents=pending_base_cents,
+    ):
+        return replace(destination, treatment=OSS)
+    return origin
+
+
+def quote_vat(
+    net: Decimal, payer: Payer, *, category_key: str = GENERIC_CATEGORY
 ) -> VatBreakdown | None:
     """The tax to ADD to a net price, or ``None`` when it cannot be resolved — the answer that REFUSES the
     sale: without a rule the rate would be a guess and the price is net.
@@ -309,116 +288,57 @@ def quote_vat(  # noqa: PLR0913
     Same qualification as the invoice (``_qualify``), so what is charged and what is declared agree.
     """
     net = _q(Decimal(net))
-    qualification = _qualify(
-        customer_country=customer_country,
-        customer_tax_id=customer_tax_id,
-        customer_tax_id_type=customer_tax_id_type,
-        customer_tax_id_verified=customer_tax_id_verified,
-        customer_postal_code=customer_postal_code,
-        category_key=category_key,
-        issuer_country=issuer_country,
-        on_date=on_date,
-        pending_base_cents=to_cents(net),
-        selling=True,
+    sale = _qualify(
+        payer, category_key=category_key, pending_base_cents=to_cents(net), selling=True
     )
-    if qualification is None:
+    if sale is None:
         # A WARNING: the place may be what a person typed in a form; the door that refuses a sale logs
         # its own ERROR (``billing.services.sale_tax.sale_quote``).
         logger.warning(
             "[VAT] No tax rule for %s/%s (postal code %r): the sale cannot be priced",
-            (customer_country or "?").strip().upper(),
+            (payer.country or "?").strip().upper(),
             category_key,
-            customer_postal_code,
+            payer.postal_code,
             extra={
                 "event": "fiscal.vat.rate_not_resolvable",
-                "customer_country": (customer_country or "").strip().upper(),
-                "customer_postal_code": customer_postal_code,
+                "customer_country": (payer.country or "").strip().upper(),
+                "customer_postal_code": payer.postal_code,
                 "category_key": category_key,
             },
         )
         return None
 
-    if qualification.rate is None:
+    if sale.rate is None:
         # Not subject or reverse charge: the net is charged, and that is all.
-        return VatBreakdown(
-            base=net,
-            tax=Decimal("0.00"),
-            rate=Decimal("0.00"),
-            tax_country=qualification.tax_country,
-            treatment=qualification.treatment,
-            tax_region=qualification.tax_region,
-        )
-
-    total = add_vat(net, qualification.rate)
-    return VatBreakdown(
-        base=net,
-        tax=total - net,
-        rate=qualification.rate,
-        tax_country=qualification.tax_country,
-        treatment=qualification.treatment,
-        tax_region=qualification.tax_region,
-    )
+        return sale.breakdown(net, Decimal("0.00"), Decimal("0.00"))
+    return sale.breakdown(net, add_vat(net, sale.rate) - net, sale.rate)
 
 
-def resolve_vat(  # noqa: PLR0913
+def resolve_vat(
     gross: Decimal,
+    payer: Payer,
     *,
-    customer_country: str = "",
-    customer_tax_id: str = "",
-    customer_tax_id_type: str = "",
-    customer_tax_id_verified: bool = False,
-    customer_postal_code: str = "",
     category_key: str = GENERIC_CATEGORY,
     tax_cents: int = 0,
     tax_included: bool = True,
-    issuer_country: str = "",
-    on_date=None,
 ) -> VatBreakdown:
     """Split base and quota of a CHARGED amount and qualify the sale.
 
-    ``customer_tax_id_verified``: the VAT number is proved in VIES (``services.vat_clearance.clear_tax_id_for_stripe``);
-    without it there is no reverse charge, however ``eu_vat`` the type. ``tax_cents``: the quota Stripe
-    already computed; it rules the amounts, never the qualification, which is ours. ``tax_included``: the
-    tax is INSIDE ``gross`` (modules) or Stripe ADDED it to a net price (plans). ``on_date``: the date of
-    the sale, to pick the rule in force (today by default).
+    Without ``payer.tax_id_verified`` (the VAT number proved in VIES,
+    ``services.vat_clearance.clear_tax_id_for_stripe``) there is no reverse charge, however ``eu_vat`` the
+    type. ``tax_cents``: the quota Stripe already computed; it rules the amounts, never the qualification,
+    which is ours. ``tax_included``: the tax is INSIDE ``gross`` (modules) or Stripe ADDED it to a net price
+    (plans).
     """
     gross = _q(Decimal(gross))
-    qualification = _qualify(
-        customer_country=customer_country,
-        customer_tax_id=customer_tax_id,
-        customer_tax_id_type=customer_tax_id_type,
-        customer_tax_id_verified=customer_tax_id_verified,
-        customer_postal_code=customer_postal_code,
+    sale = _qualify(
+        payer,
         category_key=category_key,
-        issuer_country=issuer_country,
-        on_date=on_date,
         # The invoice describes the money really charged: the rate Stripe charged is the evidence.
-        rate_charged=lambda rate: (
-            bool(tax_cents) and _effective_rate(gross, tax_cents) == rate
-        ),
+        charged_rate=_effective_rate(gross, tax_cents) if tax_cents else None,
     )
-
-    if qualification is None:
+    if sale is None:
         # A territory without a rule: to INVOICE what was charged it is indistinguishable from not subject
         # (both without quota) and the amount charged rules. To SELL it is not (``quote_vat``).
-        qualification = _Qualification(NOT_SUBJECT, None, "", "")
-
-    if qualification.rate is None:
-        return _breakdown(
-            gross,
-            qualification.treatment,
-            rate=None,
-            tax_country=qualification.tax_country,
-            tax_region=qualification.tax_region,
-        )
-
-    return _breakdown(
-        gross,
-        qualification.treatment,
-        rate=qualification.rate,
-        tax_country=qualification.tax_country,
-        tax_region=qualification.tax_region,
-        tax_cents=tax_cents,
-        tax_included=tax_included,
-        customer_country=qualification.customer_country,
-    )
+        sale = _Qualification(NOT_SUBJECT, None, "", "")
+    return _breakdown(gross, sale, tax_cents=tax_cents, tax_included=tax_included)
