@@ -18,31 +18,16 @@ from live.errors import Conflict, NotFound, PermissionDenied
 from live.models import OutboxEvent
 
 from hubs import events
-from hubs.models import Hub, HubMember, Subscription
-from hubs.schemas.membership import MemberInviteIn
-from hubs.services import member_management
-from hubs.tests.conftest import add_member, create_business, ctx_for, member_of
+from hubs.models import Hub, HubMember
+from hubs.tests.conftest import add_member, create_business, fill_the_free_plan, invite, member_of
 
 pytestmark = pytest.mark.django_db
 
 User = get_user_model()
 
 
-def invite(actor, hub, email, role="hub_employee", message=""):
-    return member_management.member_invite(
-        ctx_for(actor), MemberInviteIn(hub_id=hub.id, email=email, role=role, message=message)
-    )
-
-
 def expire(member):
     HubMember.objects.filter(pk=member.pk).update(invitation_expires_at=timezone.now() - timedelta(days=1))
-
-
-def fill(business, owner):
-    """Free without its trial: the owner and two live invitations take its three seats."""
-    Subscription.objects.filter(hub=business).update(trial_end=timezone.now() - timedelta(seconds=1))
-    invite(owner, business, "one@example.com")
-    invite(owner, business, "two@example.com")
 
 
 def told(name):
@@ -243,7 +228,7 @@ class TestWhichRefusalGoesFirst:
         ana = make_user("ana@example.com")
         add_member(business, ana, HubMember.Role.EMPLOYEE, accepted=False)
         expire(member_of(business, ana))
-        fill(business, owner)
+        fill_the_free_plan(business, owner)
         User.objects.filter(pk=ana.pk).update(is_staff=True)
 
         with pytest.raises(Conflict) as refused:
@@ -261,7 +246,7 @@ class TestWhichRefusalGoesFirst:
 
     def test_a_seat_for_somebody_new_goes_before_the_staff(self, business, owner, make_user):
         make_user("root@example.com", is_staff=True)
-        fill(business, owner)
+        fill_the_free_plan(business, owner)
 
         with pytest.raises(Conflict) as refused:
             invite(owner, business, "root@example.com")
