@@ -248,7 +248,8 @@ SOCKET = object()
 class Wire:
     """What the listener hears through, as a test scripts it turn by turn: a connection (psycopg's part of it), the
     clock and ``select``, which answers at once and notes the wait it was asked for. A turn reads as ``(seconds it
-    took, what came of it)``: a number of notifications, ``"closed"``, an error, or ``None`` when nothing came."""
+    took, what came of it)``: a number of notifications, ``"closed"`` (``"notified and closed"`` with a notification
+    before it), an error, or ``None`` when nothing came."""
 
     def __init__(self, monkeypatch):
         self.now = 0.0
@@ -279,9 +280,12 @@ class Wire:
     def consume_input(self):
         if isinstance(self.came, Exception):
             raise self.came
-        self.closed = self.came == "closed"
+        self.closed = self.came in ("closed", "notified and closed")
 
     def notifies(self):
+        if self.came == "notified and closed":
+            self.came = "closed"
+            return object()
         if isinstance(self.came, int) and self.came > 0:
             self.came -= 1
             return object()
@@ -349,6 +353,14 @@ class TestWhatReachesItsSocket:
             (logging.ERROR, f"saas.worker.listen_lost channel={CHANNEL}: the server closed the connection"),
             (logging.INFO, f"saas.worker.listening channel={CHANNEL} pid=1"),
         ]
+
+    def test_a_notification_that_came_before_the_end_is_what_wakes_it(self, wire, ear, caplog):
+        wire.turns = [(1, "notified and closed")]
+
+        with caplog.at_level(logging.INFO, logger="base.listener"):
+            assert ear.wait(10) is True
+
+        assert caplog.records == []
 
     def test_a_connection_that_breaks_wakes_it_closed_and_logged(self, wire, ear, caplog):
         wire.turns = [(1, psycopg.OperationalError("the network went"))]
