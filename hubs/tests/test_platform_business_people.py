@@ -8,7 +8,8 @@ from live.errors import NotFound, OperationError, PermissionDenied
 
 from accounts.services import account_businesses, hub_jump
 from accounts.tests.conftest import enter
-from billing.tests.conftest import stripe_double, stripe_keys  # noqa: F401 - Stripe at the boundary
+from billing import stripe_service
+from billing.tests.stripe_double import StripeDouble
 from hubs.models import Hub, HubMember, SessionRevocation
 from hubs.queries import businesses, hub_sync, membership
 from hubs.schemas.businesses import BusinessListIn, BusinessOpenIn
@@ -21,6 +22,13 @@ from hubs.tests.conftest import add_member, create_business, ctx_for, member_of,
 pytestmark = pytest.mark.django_db
 
 ROLES = ["hub_admin", "hub_manager", "hub_employee", "hub_accountant"]
+
+
+@pytest.fixture
+def stripe_double(monkeypatch):
+    double = StripeDouble()
+    monkeypatch.setattr(stripe_service, "client", lambda: double)
+    return double
 
 
 def invite(hub, inviter, email, role="hub_employee"):

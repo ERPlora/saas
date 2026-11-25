@@ -63,7 +63,7 @@ def founder(make_user):
 
 
 @pytest.fixture
-def platform_business(hub_double, founder, plans):  # noqa: F811
+def platform_business(hub_double, founder, plans):
     return create_platform_business(platform_hub_in(hub_double), founder)
 
 

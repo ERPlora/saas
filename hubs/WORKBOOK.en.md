@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:883be92bfc2ac0170a0a57b5c342ca3316a6e607e7d63a734b634eefdcac2c6a -->
+<!-- generated from WORKBOOK.md sha256:4984b7b6e6c6d0fa6070d1ac9ccd3b5462492f155aa974d3baa28fb4cb28351d -->
 
 ## What it is for and who it is for
 
@@ -191,6 +191,7 @@ last access, with a search by business or by email and a filter by role; it is o
 | HUBS-F35 | Recognise the businesses' service when it calls erplora.com | done |
 | HUBS-F36 | Keep the sectors and the business types in the admin | done |
 | HUBS-F37 | Read the sectors and the business types | done |
+| HUBS-F38 | Add ERPlora's own business and manage its people | done |
 
 ### HUBS-F01 Create the free business with a single question
 Status: done
@@ -483,7 +484,7 @@ Steps:
 5. At the end, even if the service did not answer, it deletes the days older than 400 days (about 13 months), of every business: enough stay to compare a day with the same one the year before.
 In: the night's measurement, page by page.
 Out: the usage of each business and day, for 400 days. Records `hubs.business.usage_collected` and, when it deletes days, `hubs.usage.pruned`.
-If it fails: if the service does not answer or refuses, the pass ends with an error and alerts; a broken row does not stop the others; a business erplora.com did not sell is noted without an error. Two passes at once do not step on each other. A figure the service did not measure, or does not send yet, is kept without a figure and the admin says "—", never a 0. If it cannot delete the old days, what it collected stays and the pass ends with an error and alerts; it deletes them the next night.
+If it fails: if the service does not answer or refuses, the pass ends with an error and alerts; a broken row does not stop the others; a business erplora.com did not sell, or ERPlora's own (HUBS-F38), is noted without an error and without keeping its usage. Two passes at once do not step on each other. A figure the service did not measure, or does not send yet, is kept without a figure and the admin says "—", never a 0. If it cannot delete the old days, what it collected stays and the pass ends with an error and alerts; it deletes them the next night.
 Involved: the business (BASE-F40: measures its usage and serves it)
 
 ### HUBS-F23 ERPlora's staff acting on a business from the admin
@@ -686,3 +687,18 @@ In: the language of whoever asks and, if they want, a sector.
 Out: both lists; nothing is stored.
 If it fails: a sector that does not exist gives an empty list; a deactivated sector or type is not in its list. An API key of the account reads them too.
 Involved: public (the pages of each sector), accounts (the business sign-up at the Entrance)
+
+### HUBS-F38 Add ERPlora's own business and manage its people
+Status: done
+Actor: ERPlora's staff, owner, administrator
+Screen: none to add it; afterwards, Businesses, Summary and Members
+Steps:
+1. The business ERPlora invoices with already exists in the businesses' service, at the reserved address `erp`. The staff adds it to erplora.com once, with the identifier it has there and the account that will own it. erplora.com first asks the businesses' service about that identifier and only goes on if it is ERPlora's own business, ready, at its address and not a demo.
+2. It is born active, with no plan, no subscription and nobody who pays; its owner is already in it. It shows in **Businesses** as any other, and its page has only "Summary", without plan or usage, and "Members".
+3. In "Members", the owner and the administrators invite, change the role, remove and transfer as in any business (HUBS-F24 to HUBS-F29), with no cap of seats.
+4. Every change of its accepted people sends it its snapshot, which here carries only its people and a version number that only grows; if it does not receive it, it is retried (HUBS-F08), and every night it receives it again.
+5. Each accepted person opens it and enters `erp.erplora.com` with their role (HUBS-F11).
+In: the identifier of the business and the email of an active account, with its address confirmed, that is not the staff's.
+Out: its row on erplora.com, only one. The businesses' service is sent only its people; it is never registered, deleted or recovered there. Records `hubs.business.created`.
+If it fails: if the businesses' service does not answer or says something else, nothing is stored; adding it again changes nothing, and with another identifier it is refused. Nobody else can use the address `erp`, and whoever is not an accepted member does not enter. Changing its name, its address, its country, its language or its time zone, connecting a domain to it, saying who pays for it, buying it or changing a plan or a module, deleting it or recovering it is refused with "ERPlora's own business has no plan or payments, and it cannot be changed, deleted or recovered here.", from the panel's assistant too; the admin says the same in its plan and test clock actions. It is not in the Store nor in the filter of Invoices, no check of payments touches it and its usage is not collected (HUBS-F22). Without a plan it has no assistant messages nor WhatsApp: erplora.com answers the businesses' service that it does not know it, as before it was added, and its fiscal records still go with ERPlora's seal. Its owner cannot delete their account until they transfer it (ACCOUNTS-F27).
+Involved: accounts (the entry pass and its owner's account), billing (refuses the payments), assistant, whatsapp and fiscal (do not know it), the business (receives its people)
