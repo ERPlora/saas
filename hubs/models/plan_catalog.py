@@ -34,11 +34,14 @@ class PlanQuerySet(models.QuerySet):
 
     def offered_to(self, hub):
         """The plans ``hub`` may be sold: every active one, internal ones included, if ERPlora's staff marked it
-        (``Hub.can_buy_internal_plans``); ``public()`` for any other business, or without one.
+        (``Hub.can_buy_internal_plans``); ``public()`` for any other business, or without one. ERPlora's own business
+        (``Hub.is_platform``) is sold none.
 
         The Store lists and sells plans through here. The staff never own a business, so the mark is how one of
         ERPlora's own businesses, owned by a customer account, buys an internal plan.
         """
+        if hub is not None and hub.is_platform:
+            return self.none()
         if hub is not None and hub.can_buy_internal_plans:
             return self.filter(is_active=True)
         return self.public()

@@ -22,7 +22,7 @@ from django.utils import timezone
 from accounts import signals
 from accounts.models import ApiKey, ProfilePhoto, UserPreferences
 from accounts.tests.conftest import HOST, REAUTHENTICATE, age_sign_in, api_get, api_post, sign_in
-from hubs.tests.conftest import add_member, create_business, plans  # noqa: F401 - the plans fixture
+from hubs.tests.conftest import add_member, create_business, plans, platform_row  # noqa: F401 - the plans fixture
 
 pytestmark = pytest.mark.django_db
 
@@ -73,6 +73,20 @@ class TestOwnersFirstHandTheirBusinessesOver:
             {"id": str(other.pk), "name": "Café Central"},
             {"id": str(business.pk), "name": "Panadería López"},
         ]
+        assert _exists(ana)
+
+    def test_the_owner_of_erploras_own_business_is_refused_too(self, signed_in, ana):
+        """Nobody deletes that business, so it is handed over before its owner's account may go."""
+        from hubs.models import HubMember
+
+        business = platform_row()
+        add_member(business, ana, HubMember.Role.OWNER)
+
+        response = api_post(signed_in, DELETE)
+
+        error = response.json()["error"]
+        assert (response.status_code, error["code"]) == (409, "accounts.owns_businesses")
+        assert error["businesses"] == [{"id": str(business.pk), "name": "ERPlora"}]
         assert _exists(ana)
 
     def test_refused_before_the_password_is_asked(self, signed_in_long_ago, ana, plans):  # noqa: F811

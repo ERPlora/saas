@@ -25,7 +25,7 @@ from fiscal.documents import MAX_DOCUMENT_BYTES
 from fiscal.models import RepresentationGrant
 from fiscal.tests.conftest import PDF, pdf_b64, submission
 from hubs.models import Hub
-from hubs.tests.conftest import SECRET
+from hubs.tests.conftest import SECRET, platform_row
 
 pytestmark = pytest.mark.django_db
 
@@ -345,6 +345,14 @@ def test_an_unknown_business_is_404(client, plans):
     response = post(client, uuid.uuid7(), submission())
 
     assert error_of(response) == (404, "not_found")
+
+
+def test_erploras_own_business_files_no_authorisation(client, plans):
+    """It is ERPlora itself, so it is represented by nobody: unknown here, as before erplora.com had its row."""
+    response = post(client, platform_row().id, submission())
+
+    assert error_of(response) == (404, "not_found")
+    assert not RepresentationGrant.objects.exists()
 
 
 def test_a_deleted_business_is_404(client, business):

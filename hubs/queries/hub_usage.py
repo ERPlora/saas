@@ -103,6 +103,8 @@ def usage_get(ctx: OperationContext, data: UsageGetIn) -> dict[str, Any]:
     """The last day the Hub measured of a business (the «Usage» card of its Summary): its owner and admins."""
     user = account_of(ctx)
     hub = access(user, data.business_id, Role.ADMIN).hub
+    if hub.is_platform:
+        raise NotFound(_("The usage of ERPlora's own business is not collected."), code="hubs.usage_not_collected")
     now = timezone.now()
     usage = usage_of(hub, plan_in_force(hub, now), now)
     if usage is None:

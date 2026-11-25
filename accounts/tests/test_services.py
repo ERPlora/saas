@@ -5,6 +5,7 @@ from datetime import timedelta
 import pytest
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from live.slugs import RESERVED_HUB_SLUGS
 
 from accounts.models import AuthExchangeCode
 from accounts.services import demo_accounts, hub_jump, mailbox_proof, platform_staff
@@ -18,6 +19,14 @@ pytestmark = pytest.mark.django_db
 def member(ana):
     enter(ana, "a", "hub_manager")
     return ana
+
+
+@pytest.fixture
+def make_staff(db):
+    def make(email: str, **extra):
+        return get_user_model().objects.create_user(email=email, password=None, is_staff=True, **extra)
+
+    return make
 
 
 def _later(monkeypatch, seconds):
@@ -444,6 +453,43 @@ def test_the_platform_host_is_no_customer_hub_either(member):
         hub_jump.issue_code(member, "hubs")
 
     assert not AuthExchangeCode.objects.exists()
+
+
+class TestErplorasOwnBusiness:
+    """Its name is the one reserved name the jump takes (who enters it: ``hubs/tests/test_platform_business_people.py``)."""
+
+    OWN = "erp"
+
+    def test_its_name_is_a_hub_s_and_no_other_reserved_one_is(self):
+        taken = {slug for slug in RESERVED_HUB_SLUGS if hub_jump.is_hub_slug(slug)}
+
+        assert taken == {self.OWN}
+
+    @pytest.mark.parametrize("slug", ["ERP", "Erp", " erp", "erp ", "erp.", "erp-", "xn--erp", None, 42, ["erp"]])
+    def test_nothing_that_only_looks_like_it_is(self, slug):
+        assert hub_jump.is_hub_slug(slug) is False
+
+    @pytest.mark.parametrize("slug", ["erplora", "test", "hubs"])
+    def test_no_other_reserved_name_gets_a_code_with_a_membership_row(self, member, slug):
+        enter(member, slug, "hub_owner")
+
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(member, slug)
+        with pytest.raises(hub_jump.InvalidCode):
+            hub_jump.redeem_code("a-code", slug)
+
+    def test_the_staff_open_it_in_the_hub_admin_as_any_other(self, make_staff):
+        staff = make_staff("root@example.com", is_superuser=True)
+
+        code = hub_jump.issue_code(staff, self.OWN, audience="hub-admin")
+
+        assert hub_jump.redeem_code(code, self.OWN, audience="hub-admin").role == "platform_admin"
+
+    def test_the_staff_enter_it_by_no_other_door(self, make_staff):
+        staff = make_staff("root@example.com", is_superuser=True)
+
+        with pytest.raises(hub_jump.HubAccessDenied):
+            hub_jump.issue_code(staff, self.OWN)
 
 
 class TestReleaseUnprovenAccount:

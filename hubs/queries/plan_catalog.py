@@ -9,7 +9,7 @@ from live.context import OperationContext
 from live.operations import AI, operation
 
 from apps.models import Module
-from hubs.models import Plan, Subscription
+from hubs.models import Hub, Plan, Subscription
 from hubs.schemas.plan_catalog import PlanListIn, PlanListOut
 
 
@@ -128,6 +128,9 @@ def _effective_plan(subscription: Subscription | None, now: datetime) -> Plan | 
 
 def effective_plan(hub_id: UUID, now: datetime) -> Plan | None:
     """The plan whose rights the business has at ``now`` (its trial's while it lasts; Free without a subscription):
-    the one its snapshot carries, and whose ``whatsapp_messages_per_month`` erplora.com counts its sends against."""
+    the one its snapshot carries, and whose ``whatsapp_messages_per_month`` erplora.com counts its sends against.
+    ``None`` for ERPlora's own business, which has none."""
     subscription = Subscription.objects.select_related("plan", "trial_plan").filter(hub_id=hub_id).first()
+    if subscription is None and Hub.objects.filter(pk=hub_id, is_platform=True).exists():
+        return None
     return _effective_plan(subscription, now)

@@ -12,6 +12,7 @@
 // Modules: turning apps on and off is the Hub's, so the tab says so and the header's «Open»,
 // solid there as on the Summary, is its one action (no second «Open» in the card).
 // Settings: «General», the own domain of its public website (CustomDomainCard, HUBS-F17) and the danger zone, last.
+// ERPlora's own business (`is_platform`) has its Summary and its Members alone.
 // Members fills the page between the topbar and the tabbar (`detail-fill` + `.panel-fill`). Its states are
 // truthful (`useLiveState`): no answer in time is an error with «Retry», never a skeleton
 // for ever; an error or a deleted business has no tabbar (its sections would only repeat it), and a
@@ -60,6 +61,9 @@ const SECTIONS: Array<{ id: Tab; icon: string }> = [
   { id: 'settings', icon: 'ion:settings-outline' },
 ];
 
+/** The sections of ERPlora's own business: it has no plan, its apps are not chosen here and its settings never change. */
+const PLATFORM_SECTIONS: readonly Tab[] = ['summary', 'members'];
+
 const { t, locale } = useI18n();
 const { inApp } = useSurface();
 const live = useLive('hubs.business.get', () => ({ id: props.id }));
@@ -73,17 +77,20 @@ const business = computed(() => live.data.value);
 /** The business could not be loaded: the page says why, with nothing else (no tabbar, no section). */
 const loadFailed = computed(() => load.failed.value && !business.value);
 const deleted = computed(() => business.value?.status === 'deleting');
+const sections = computed(() => SECTIONS.filter((one) => !business.value?.is_platform || PLATFORM_SECTIONS.includes(one.id)));
 /** No tabbar on an error or a deleted business: every section would only repeat it. */
 const tabs = computed<ShellTab[]>(() =>
-  deleted.value || loadFailed.value ? [] : SECTIONS.map((section) => ({
+  deleted.value || loadFailed.value ? [] : sections.value.map((section) => ({
     id: section.id,
     label: t(`hubs.business.tabs.${section.id}`),
     icon: section.icon,
     to: `${BUSINESSES}/${props.id}/${section.id}`,
   })),
 );
-/** The section on screen: a deleted business only has its Summary (with the way to recover it). */
-const section = computed<Tab>(() => (deleted.value ? 'summary' : props.tab));
+/** The section on screen: the Summary for one the business does not have; a deleted one only has it. */
+const section = computed<Tab>(() =>
+  deleted.value || !sections.value.some((one) => one.id === props.tab) ? 'summary' : props.tab,
+);
 /** Members is a list: it fills the page between the topbar and the tabbar. */
 const fills = computed(() => section.value === 'members');
 const opensAtAll = computed(() => !!business.value && business.value.status !== 'suspended' && !deleted.value);

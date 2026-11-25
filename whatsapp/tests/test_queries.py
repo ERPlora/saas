@@ -3,6 +3,7 @@
 import pytest
 
 from hubs.models import Hub
+from hubs.tests.conftest import platform_row
 from whatsapp import queries
 
 pytestmark = pytest.mark.django_db
@@ -35,6 +36,14 @@ def test_a_business_being_deleted_can_still_be_forgotten(business):
     assert queries.known_hub("bar-manolo", live=False) == business
     Hub.objects.filter(pk=business.pk).update(status=Hub.Status.DELETED)
     assert queries.known_hub("bar-manolo", live=False) is None
+
+
+@pytest.mark.parametrize("live", [True, False])
+def test_erploras_own_business_has_no_whatsapp(db, live):
+    own = platform_row()
+
+    assert queries.known_hub(own.slug, live=live) is None
+    assert queries.known_hub(str(own.id), live=live) is None
 
 
 # --- The channel the Hub learns in its snapshot (door 4) -------------------------------------------------------

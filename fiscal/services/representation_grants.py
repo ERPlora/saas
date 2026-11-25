@@ -55,8 +55,9 @@ def representation_submit(ctx: OperationContext, data: RepresentationSubmitIn) -
     """``POST /internal/hubs/{id}/representation``: file the business's authorisation for review.
 
     Only the platform runs it (``fiscal.internal``, in the owner's channel). The rules of the documents answer
-    422 with a ``fiscal.*`` code; a business that does not exist or was deleted, 404. The waiting one it
-    replaces is returned with ``SUPERSEDED``; an approved one stays in force until a person approves this one.
+    422 with a ``fiscal.*`` code; a business that does not exist or was deleted, or ERPlora's own (represented by
+    nobody), 404. The waiting one it replaces is returned with ``SUPERSEDED``; an approved one stays in force until
+    a person approves this one.
     """
     if ctx.actor != "system":
         raise PermissionDenied(
@@ -66,7 +67,7 @@ def representation_submit(ctx: OperationContext, data: RepresentationSubmitIn) -
         checked = _checked(data)
     hub = (
         Hub.objects.select_for_update()
-        .filter(pk=data.hub_id)
+        .filter(pk=data.hub_id, is_platform=False)
         .exclude(status__in=[Hub.Status.DELETING, Hub.Status.DELETED])
         .first()
     )

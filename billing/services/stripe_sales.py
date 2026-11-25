@@ -71,8 +71,7 @@ def _owned(ctx: OperationContext, hub_id) -> tuple[Hub, Subscription | None]:
     card first («Keep it with my card», ``billing.plan.take_over``)."""
     user = access_control.account_of(ctx)
     member = access_control.access(user, hub_id, HubMember.Role.OWNER, lock=True)
-    if not access_control.is_writable(member.hub):
-        raise refusals.business_deleted()
+    refusals.refuse_to_change(member.hub)
     hub = Hub.objects.select_related("billing_profile").get(pk=member.hub_id)
     subscription = (
         Subscription.objects.select_related("plan", "trial_plan")

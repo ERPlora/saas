@@ -4,7 +4,8 @@
   «Hubs» of the SaaS admin: every hub with members, each with the jump to
   its deep link in the Hub admin (`hubs.erplora.com/admin/hub/<slug>/`) and
   the jump into the business's app as ERPlora's support, one above the other
-  so that neither button breaks on a phone. Both come from the same slug check.
+  so that neither button breaks on a phone. ERPlora's own business has only the
+  first: it takes no support.
 {% endcomment %}
 {% block breadcrumbs %}
 <ol class="breadcrumbs">
@@ -31,7 +32,7 @@
 <td>{{ hub.members }}</td>
 <td>{% if hub.url %}
 <p><a class="button nowrap" href="{{ hub.url }}">{{ open_in_hub_admin }}</a></p>
-<p><a class="button nowrap" href="{{ hub.support }}">{{ enter_as_support }}</a></p>
+{% if hub.support %}<p><a class="button nowrap" href="{{ hub.support }}">{{ enter_as_support }}</a></p>{% endif %}
 {% else %}-{% endif %}</td>
 </tr>
 {% endfor %}

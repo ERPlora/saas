@@ -32,7 +32,8 @@ Solo lo que necesita el salto al Hub (PLAN-SAAS §2.1 y §3.1, pasos 4–6; PLAN
   de las plantillas que sustituye.
 - `GET /hub-login/?hub=<slug>&next=<ruta>`: slug no válido → `/login/error?code=invalid_hub` (regla
   compartida con el Hub, `live.slugs`: una etiqueta DNS de 3 a 63 caracteres —1 en local, por los
-  hubs `a` y `b`— y nunca un nombre reservado como `hub`, `www` o `admin`); sin sesión →
+  hubs `a` y `b`— y nunca un nombre reservado como `hub`, `www` o `admin`, salvo `erp`, el del negocio propio de
+  ERPlora, solo para sus miembros); sin sesión →
   `/launch?next=…` (también mientras el código del login sigue pendiente); sin ser miembro → `/login/error?code=not_a_member&hub=<slug>`; si no, acuña un `AuthExchangeCode` (32 bytes, guardado como SHA-256, audiencia
   `hub-session`, 60 s, un uso) y responde un formulario auto-enviado (`POST` a
   `HUB_CALLBACK_TEMPLATE`, campos `code` y `next`).
@@ -44,7 +45,7 @@ Solo lo que necesita el salto al Hub (PLAN-SAAS §2.1 y §3.1, pasos 4–6; PLAN
   con `"hub-admin"` canjea el salto del personal al admin del Hub (ronda 13, PLAN §18). 200 →
   `{user_id, email, name, locale, role}` (`hub_*` del miembro, o `platform_admin`/`platform_support`
   con `hub-admin`); 401 `unauthorized`; 400 `invalid_code` (también si `hub` no es un slug válido,
-  es reservado o es `hubs`, o si el código es de la otra audiencia) o `invalid_request`.
+  es reservado (salvo `erp`) o es `hubs`, o si el código es de la otra audiencia) o `invalid_request`.
 - **«Abrir en el admin del Hub»** (admin del SaaS, ronda 13, PLAN §18.1.6): en cada fila de
   `/admin/hubs/hubmember/` y en la página «Hubs» (`/admin/accounts/hubs/`, un hub por fila). El botón abre
   `<HUB_ADMIN_ORIGIN>/auth/login?hub=<slug>&next=/admin/hub/<slug>/`: el Hub ata el salto al navegador con su cookie
@@ -545,6 +546,7 @@ cp .env.example .env                     # la primera vez: DEBUG=True y los valo
 uv run python manage.py migrate
 uv run python manage.py demo_seed        # (de hubs) negocios a y b adoptados; owner@example.com / owner (hub_owner de a y b, sin admin), employee@example.com / employee (hub_employee de a y b: solo ve Demo, DEMO-F06) y platform@example.com / platform (superusuario, sin hubs)
 uv run python manage.py create_platform_user <email> --role admin|support [--password …]   # staff de plataforma
+uv run python manage.py create_platform_business <id en el Hub> --owner <email> [--execute]   # el negocio propio de ERPlora, para sus personas (HUBS-F39)
 uv run python manage.py runserver 127.0.0.1:8001   # también Vite (`pnpm run dev`) en :5174 (`--novite` lo omite)
 VITE_DEV_PORT=5224 uv run python manage.py runserver 127.0.0.1:8051   # un segundo SaaS (otro worktree): su Vite en :5224 (runserver se lo pasa a su Vite; vale también en .env)
 # http://localhost:8001/launch   (el código de cada login, en saas/.mail/)

@@ -253,12 +253,15 @@ class HubAdmin(PlatformActions):
     def enter_as_support(self, obj):
         return jump_button(enter_as_support_url(obj.slug), ENTER_AS_SUPPORT, self.get_empty_value_display())
 
+    def _with_a_plan(self, request, queryset):
+        return platform_actions.with_a_plan(queryset, lambda said: self.message_user(request, said, messages.WARNING))
+
     @admin.action(description=_("Attach its payer to a Stripe test clock (test keys only)"), permissions=["sync"])
     @traced
     def attach_test_clock(self, request, queryset):
         from billing.services import staff_test_clocks
 
-        for hub in queryset:
+        for hub in self._with_a_plan(request, queryset):
             try:
                 clock = staff_test_clocks.attach_test_clock(hub.id)
             except staff_test_clocks.TestClockRefused as refused:
@@ -273,7 +276,7 @@ class HubAdmin(PlatformActions):
     def advance_test_clock(self, request, queryset):
         from billing.services import staff_test_clocks
 
-        for hub in queryset:
+        for hub in self._with_a_plan(request, queryset):
             try:
                 reached = staff_test_clocks.advance_test_clock_of(hub.id)
             except staff_test_clocks.TestClockRefused as refused:
@@ -288,7 +291,7 @@ class HubAdmin(PlatformActions):
     @admin.action(description=_("Let its owner buy the internal plans"), permissions=["sync"])
     @traced
     def allow_internal_plans(self, request, queryset):
-        changed = platform_actions.mark_for_internal_plans(list(queryset.values_list("id", flat=True)), allowed=True)
+        changed = platform_actions.mark_for_internal_plans(self._with_a_plan(request, queryset), allowed=True)
         self.message_user(
             request, _("%(count)d business(es): its owner now sees the internal plans in the Store.") % {"count": changed}
         )
@@ -296,7 +299,7 @@ class HubAdmin(PlatformActions):
     @admin.action(description=_("Stop selling it the internal plans"), permissions=["sync"])
     @traced
     def stop_internal_plans(self, request, queryset):
-        changed = platform_actions.mark_for_internal_plans(list(queryset.values_list("id", flat=True)), allowed=False)
+        changed = platform_actions.mark_for_internal_plans(self._with_a_plan(request, queryset), allowed=False)
         self.message_user(
             request,
             _("%(count)d business(es): the Store no longer offers it the internal plans; a plan already bought stays.")

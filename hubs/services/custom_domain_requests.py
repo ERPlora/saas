@@ -17,14 +17,14 @@ from live.outbox import record_event
 
 from base.refusals import fields_refused
 from hubs import domain_checks, domain_names, edge_client, events
-from hubs.models import CustomDomain, Hub, new_certificate_token
+from hubs.models import CustomDomain, new_certificate_token
 from hubs.queries import access_control, custom_domains, plan_catalog
 from hubs.queries.access_control import Role
 from hubs.schemas.common import ByIdIn
 from hubs.schemas.custom_domains import CustomDomainOut, CustomDomainRequestIn, CustomDomainStatusOut
 from hubs.services.custom_domain_checks import _check_custom_domain
 from hubs.services.hub_push import bump_state
-from hubs.services.refusals import business_deleted
+from hubs.services.refusals import refuse_to_change
 
 logger = logging.getLogger(__name__)
 
@@ -100,8 +100,7 @@ def custom_domain_request(ctx: OperationContext, data: CustomDomainRequestIn) ->
     user = access_control.account_of(ctx)
     hub = access_control.access(user, data.id, Role.OWNER).hub
     _custom_domains_on()
-    if hub.status in (Hub.Status.DELETING, Hub.Status.DELETED):
-        raise business_deleted()
+    refuse_to_change(hub)
     plan = plan_catalog.effective_plan(hub.id, timezone.now())
     if plan is None or not plan.includes_custom_domain:
         raise Conflict(_("The plan of this business does not include an own domain."), code="hubs.custom_domain_not_in_plan")

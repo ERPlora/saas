@@ -1,5 +1,6 @@
 """Fixtures of the hubs tests: the Hub double, accounts, contexts and a business with its four roles."""
 
+import uuid
 from decimal import Decimal
 
 import boto3
@@ -7,7 +8,7 @@ import pytest
 from botocore.exceptions import StubResponseError
 from botocore.stub import ANY, Stubber
 from django.contrib.auth import get_user_model
-from live.context import OperationContext, Scope
+from live.context import OperationContext, Scope, system_context
 from live.meta import all_live_app_configs, permissions_for_role
 
 from base.operations import ACCOUNT_ROLE
@@ -194,6 +195,48 @@ def member_of(hub, user):
     from hubs.models import HubMember
 
     return HubMember.objects.get(hub=hub, user=user)
+
+
+# --- ERPlora's own business -------------------------------------------------------------------------
+
+
+def platform_hub_in(hub_double, **answer):
+    """ERPlora's own hub as the Hub registers it: its id, for the row of erplora.com to bear."""
+    hub_id = uuid.uuid7()
+    hub_double.registry[str(hub_id)] = {"slug": "erp", "status": "ready", "is_demo": False, **answer}
+    return hub_id
+
+
+def create_platform_business(hub_id, owner):
+    """The row of ERPlora's own business, made as its command makes it."""
+    from hubs.models import Hub
+    from hubs.schemas.platform_business import PlatformBusinessIn
+    from hubs.services.platform_business import platform_business_create
+
+    ctx = system_context(Scope("user", "system"))
+    platform_business_create(ctx, PlatformBusinessIn(id=hub_id, owner_email=owner.email))
+    return Hub.objects.get(pk=hub_id)
+
+
+def platform_row():
+    """The row of ERPlora's own business, straight into the database, for the tests of other apps."""
+    from django.utils import timezone
+
+    from hubs.models import Hub
+
+    return Hub.objects.create(
+        slug="erp", name="ERPlora", country="ES", is_platform=True, status=Hub.Status.ACTIVE, ready_at=timezone.now()
+    )
+
+
+@pytest.fixture
+def founder(make_user):
+    return make_user("founder@example.com", first_name="Fina", last_name="Founder", language="es")
+
+
+@pytest.fixture
+def platform_business(hub_double, founder, plans):
+    return create_platform_business(platform_hub_in(hub_double), founder)
 
 
 # --- A business's own domain (HUBS-F17): AWS through botocore's Stubber, and a DNS with no real name in it --------------

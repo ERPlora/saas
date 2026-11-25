@@ -2,15 +2,24 @@
 
 import logging
 from collections import Counter
+from collections.abc import Callable
 
-from django.db.models import F
+from django.db.models import F, QuerySet
 from django.utils import timezone
 
 from hubs.models import Hub
+from hubs.services import refusals
 from hubs.services.hub_push import DELIVERED, LIVE_STATUSES, REFUSED, bump_state, sync_outcome
 from hubs.services.session_revocations import deliver_revocation
 
 logger = logging.getLogger(__name__)
+
+
+def with_a_plan(hubs: QuerySet, tell: Callable) -> QuerySet:
+    """The businesses of ``hubs`` that have a plan to act on: ERPlora's own has none, and ``tell`` hears it."""
+    if hubs.filter(is_platform=True).exists():
+        tell(refusals.PLATFORM_BUSINESS)
+    return hubs.filter(is_platform=False)
 
 
 def mark_for_internal_plans(hub_ids, allowed: bool) -> int:

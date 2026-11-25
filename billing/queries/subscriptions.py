@@ -389,8 +389,7 @@ def _cancellable(ctx: OperationContext, hub_id) -> tuple[Hub, Subscription]:
     that cannot be done reaches the model as the refusal, never as a card. Read without locking: nothing is written."""
     user = access_control.account_of(ctx)
     member = access_control.access(user, hub_id, HubMember.Role.OWNER)
-    if not access_control.is_writable(member.hub):
-        raise refusals.business_deleted()
+    refusals.refuse_to_change(member.hub)
     hub = Hub.objects.select_related("billing_profile").get(pk=member.hub_id)
     subscription = Subscription.objects.select_related("plan", "trial_plan").filter(hub=hub).first()
     profile = hub.billing_profile

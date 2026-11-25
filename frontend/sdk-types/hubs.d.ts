@@ -87,6 +87,8 @@ export interface BusinessRowOut {
   host: string;
   status: BusinessStatusCode;
   status_label: string;
+  /** ERPlora's own business: no plan nor payments, and only its people are managed here. */
+  is_platform: boolean;
   plan: PlanRefOut | null;
   role: HubRole;
   role_label: string;
@@ -184,6 +186,8 @@ export interface BusinessDetailOut {
   slug: string;
   name: string;
   host: string;
+  /** As in `BusinessRowOut`. */
+  is_platform: boolean;
   country: string;
   /** The country no longer changes: the business is ready and may invoice (409 `hubs.country_locked`). */
   country_locked: boolean;

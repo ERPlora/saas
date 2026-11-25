@@ -11,7 +11,8 @@
 //     active that day and in the 30 days up to it (UsageCounter); «yesterday» or the day measured. Before
 //     the first night, that there is no data yet. The people against the places stay a line of the plan.
 //   - «On your devices» (DeviceAccessCard) and the business's details.
-// Deleted, only the plan (cancelled with the deletion) and the details are left.
+// Deleted, only the plan (cancelled with the deletion) and the details are left. ERPlora's own business has neither plan
+// nor usage.
 import { formatDateTime, StatusPill, UsageCounter, UsageMeter } from '@erplora/ui/components';
 import { WebOnly } from '@erplora/ui/shell';
 import { IonButton, IonCard, IonCardContent } from '@ionic/vue';
@@ -75,7 +76,10 @@ const dayHint = computed(() =>
 
 <template>
   <div class="card-grid">
-    <ion-card data-testid="summary-plan">
+    <ion-card
+      v-if="!business.is_platform"
+      data-testid="summary-plan"
+    >
       <ion-card-content class="ion-padding">
         <div class="page-eyebrow">
           {{ $t('hubs.business.plan.eyebrow') }}
@@ -142,7 +146,7 @@ const dayHint = computed(() =>
     </ion-card>
 
     <ion-card
-      v-if="!deleted"
+      v-if="!deleted && !business.is_platform"
       data-testid="summary-usage"
     >
       <ion-card-content class="ion-padding">

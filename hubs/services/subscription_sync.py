@@ -16,6 +16,7 @@ from hubs.models import BillingProfile, Hub, Plan, Subscription, SubscriptionIte
 from hubs.queries import access_control, hub_sync, plan_catalog
 from hubs.schemas.subscriptions import SubscriptionApplyIn, SubscriptionApplyOut
 from hubs.services.hub_push import LIVE_STATUSES, bump_state, push_after_commit
+from hubs.services.refusals import refuse_platform_business
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,7 @@ def subscription_apply(ctx: OperationContext, data: SubscriptionApplyIn) -> dict
     hub = Hub.objects.select_for_update().filter(pk=data.hub_id).first()
     if hub is None:
         raise access_control.not_found()
+    refuse_platform_business(hub)
     sent = data.model_dump(exclude_unset=True, exclude={"hub_id"})
     seen_before = _what_the_hub_sees(hub.id)
     subscription = Subscription.objects.select_for_update().filter(hub=hub).first()

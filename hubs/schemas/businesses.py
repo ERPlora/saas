@@ -37,7 +37,7 @@ class BusinessListIn(PageIn):
 class BusinessRowCanOut(Schema):
     """What the row's buttons do for this account, computed by the server (the page never deduces it from
     the role): ``open`` (it serves now), ``manage`` (owner and administrators, not deleted), ``restore``
-    (the owner, deleted and within its 90 days) and ``delete`` (the owner, not deleted)."""
+    (the owner, deleted and within its 90 days) and ``delete`` (the owner, not deleted; never ERPlora's own)."""
 
     open: bool
     manage: bool
@@ -54,6 +54,8 @@ class BusinessRowOut(Schema):
     host: str
     status: str
     status_label: str
+    #: ERPlora's own business: it has no plan nor payments, and only its people are managed here.
+    is_platform: bool
     plan: PlanRefOut | None
     role: Role
     role_label: str
@@ -124,6 +126,8 @@ class BusinessDetailOut(Schema):
     slug: str
     name: str
     host: str
+    #: As in ``BusinessRowOut``.
+    is_platform: bool
     country: str
     #: The country no longer changes: the business is ready, and may invoice (``hubs.country_locked``).
     country_locked: bool
