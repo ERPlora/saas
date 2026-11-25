@@ -749,8 +749,9 @@ Implicados: accounts (el pase de entrada y la cuenta de su propietario), billing
   `GET /internal/hubs/{id}` antes de escribir. La fila lleva `Hub.is_platform`: la base admite una sola, siempre activa,
   sin llamada pendiente y sin pagador (`hubs_hub_one_platform`, `hubs_hub_platform_only_its_people`), y `Hub.save` deja el
   nombre reservado `settings.PLATFORM_HUB_SLUG` solo a ella. Las puertas la rechazan con
-  `services.refusals.refuse_platform_business` (409 `hubs.platform_business`), `hub_sync.hub_snapshot` manda solo
-  `members` y `plan_catalog.effective_plan` da `None`. El salto acepta el nombre (`hub_jump.is_hub_slug`) y quién entra lo
+  `services.refusals.refuse_platform_business` o `refuse_to_change`, que rechaza también un negocio eliminado (409
+  `hubs.platform_business`), `hub_sync.hub_snapshot` manda solo `members`, `plan_catalog.effective_plan` da `None` y
+  `Plan.objects.offered_to`, ningún plan. El salto acepta el nombre (`hub_jump.is_hub_slug`) y quién entra lo
   decide `membership._who_enters`, que bajo ese nombre solo admite la fila `is_platform`. Las puertas que el Hub llama
   (`assistant.caller.resolve`, `whatsapp.queries.known_hub`, `fiscal.representation.submit`,
   `fiscal_gateway.queries.hub_id_for`) la dejan fuera. Tests: `hubs/tests/test_platform_business*.py`,
