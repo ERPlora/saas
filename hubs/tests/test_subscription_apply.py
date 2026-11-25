@@ -14,18 +14,22 @@ Businesses row («Pay» stays disabled while the card was
 declined), and the invoice to pay only to the owner.
 """
 
+import logging
 from datetime import timedelta
 
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from live.context import Scope, system_context
 from live.errors import InvalidPayload, NotFound, PermissionDenied
 from live.models import OutboxEvent
 
+from apps.models import Module
 from hubs import events
 from hubs.services import deletion, hub_callbacks, subscription_sync
 from hubs.queries import businesses, hub_sync
-from hubs.models import Hub, HubMember, Subscription, SubscriptionItem
+from hubs.models import BillingProfile, Hub, HubMember, Subscription, SubscriptionItem
 from hubs.schemas.businesses import BusinessListIn
 from hubs.schemas.common import ByIdIn
 from hubs.schemas.subscriptions import ModuleRightIn, SubscriptionApplyIn
@@ -105,6 +109,43 @@ def test_an_unknown_plan_is_an_invalid_field(business):
     assert refused.value.message == refused.value.fields["plan"]
 
 
+def test_a_plan_cannot_be_cleared(business):
+    with pytest.raises(InvalidPayload) as refused:
+        apply(business, plan=None)
+
+    assert set(refused.value.fields) == {"plan"}
+
+
+@pytest.mark.parametrize("table", ["hubs_hub", "hubs_subscription"])
+def test_it_takes_the_row_so_two_answers_of_stripe_never_interleave(business, table):
+    with CaptureQueriesContext(connection) as seen:
+        apply(business, status="active")
+
+    assert any(f'FROM "{table}"' in query["sql"] and "FOR UPDATE" in query["sql"] for query in seen.captured_queries)
+
+
+def test_it_answers_for_the_business_it_was_asked_about(business):
+    assert apply(business, status="active").hub_id == business.id
+
+
+def test_a_business_without_a_subscription_gets_one_on_free(business):
+    Subscription.objects.filter(hub=business).delete()
+
+    result = apply(business, standing="good")
+
+    assert subscription_of(business).plan.slug == "free"
+    assert result.changed is True
+
+
+def test_a_business_without_a_subscription_gets_the_one_stripe_says(business):
+    Subscription.objects.filter(hub=business).delete()
+
+    apply(business, **paid_starter())
+
+    subscription = subscription_of(business)
+    assert (subscription.plan.slug, subscription.stripe_subscription_id) == ("starter", "sub_1")
+
+
 # --- The plan ----------------------------------------------------------------------------------------
 
 
@@ -140,13 +181,30 @@ def test_paying_ends_the_free_trial_of_the_sign_up(business):
     assert subscription.effective_plan(timezone.now()).slug == "standard"
 
 
+@pytest.mark.usefixtures("signup_trial")
 def test_a_module_bought_on_free_keeps_the_sign_up_trial(business):
     """A subscription of modules alone leaves the business on Free: its Starter trial goes on."""
     trial = subscription_of(business).trial_plan
+    assert trial is not None
 
     apply(business, **paid_starter(plan="free"), modules=[ModuleRightIn(module_slug="inventory")])
 
     assert subscription_of(business).trial_plan == trial
+
+
+@pytest.mark.usefixtures("signup_trial")
+def test_a_stripe_subscription_that_says_no_plan_keeps_the_sign_up_trial(business):
+    apply(business, stripe_subscription_id="sub_1")
+
+    assert subscription_of(business).trial_plan.slug == "starter"
+
+
+@pytest.mark.usefixtures("signup_trial")
+def test_a_paid_plan_without_a_stripe_subscription_keeps_the_sign_up_trial(business):
+    """Only a subscription of Stripe carries a trial of its own."""
+    apply(business, plan="standard")
+
+    assert subscription_of(business).trial_plan.slug == "starter"
 
 
 def test_a_stripe_trial_is_kept_as_stripe_says(business):
@@ -254,14 +312,74 @@ def test_a_payer_keeps_the_customer_it_already_has(business):
     assert business.billing_profile.stripe_customer_id == "cus_first"
 
 
+def test_another_customer_than_the_payers_is_logged(business, caplog):
+    BillingProfile.objects.filter(pk=business.billing_profile_id).update(stripe_customer_id="cus_first")
+
+    with caplog.at_level(logging.WARNING, logger="hubs.services.subscription_sync"):
+        apply(business, stripe_customer_id="cus_first")
+        assert caplog.messages == []
+        apply(business, stripe_customer_id="cus_other")
+
+    assert caplog.messages == [
+        f"hubs.subscription.customer_differs hub={business.id} payer=cus_first subscription=cus_other"
+    ]
+
+
+def test_a_customer_alone_never_replaces_the_one_a_live_subscription_charges(business):
+    apply(business, **paid_starter())
+
+    apply(business, stripe_customer_id="cus_2")
+
+    assert subscription_of(business).stripe_customer_id == "cus_1"
+
+
+def test_stripe_itself_replaces_the_customer_of_a_live_subscription(business):
+    apply(business, **paid_starter())
+
+    apply(business, stripe_subscription_id="sub_1", stripe_customer_id="cus_2")
+
+    assert subscription_of(business).stripe_customer_id == "cus_2"
+
+
+def test_the_first_customer_of_a_new_payer_is_told_though_the_subscription_keeps_its_own(business):
+    apply(business, **paid_starter())
+    profile = BillingProfile.objects.get(pk=business.billing_profile_id)
+    BillingProfile.objects.filter(pk=profile.pk).update(stripe_customer_id="")
+    events_before = OutboxEvent.objects.filter(name=events.SUBSCRIPTION_CHANGED).count()
+
+    result = apply(business, stripe_customer_id="cus_2")
+
+    written = BillingProfile.objects.get(pk=profile.pk)
+    assert written.stripe_customer_id == "cus_2"
+    assert written.updated_at > profile.updated_at
+    assert subscription_of(business).stripe_customer_id == "cus_1"
+    assert result.changed is True
+    assert OutboxEvent.objects.filter(name=events.SUBSCRIPTION_CHANGED).count() == events_before + 1
+
+
+def test_a_business_without_a_payer_keeps_its_customer_on_the_subscription(business):
+    Hub.objects.filter(pk=business.pk).update(billing_profile=None)
+
+    apply(business, stripe_customer_id="cus_1")
+
+    assert subscription_of(business).stripe_customer_id == "cus_1"
+
+
+def test_the_ids_of_stripe_sent_empty_are_cleared(business):
+    apply(business, **paid_starter())
+
+    apply(business, stripe_customer_id=None, stripe_subscription_id=None)
+
+    subscription = subscription_of(business)
+    assert (subscription.stripe_customer_id, subscription.stripe_subscription_id) == ("", "")
+
+
 # --- The modules -------------------------------------------------------------------------------------
 
 
 def test_the_bought_modules_are_the_ones_stripe_bills(
     business, hub_double, django_capture_on_commit_callbacks
 ):
-    from apps.models import Module
-
     # Starter includes the basic tier (hubs.services.subscription_sync.sync_plan_modules, test_plan_modules.py).
     Module.objects.create(slug="loyalty", tier=Module.Tier.BASIC)
     business = ready(business)
@@ -318,6 +436,34 @@ def test_a_cancelled_module_lasts_until_its_end_and_then_leaves_the_snapshot(bus
     assert hub_sync.hub_snapshot(business.id)["modules"] == []
 
 
+def test_modules_left_out_are_left_as_they_are(business):
+    apply(business, **paid_starter(), modules=[ModuleRightIn(module_slug="inventory", stripe_item_id="si_inv")])
+
+    apply(business, status="past_due")
+
+    assert [item.module_slug for item in subscription_of(business).items.all()] == ["inventory"]
+
+
+@pytest.mark.parametrize("nothing", [None, []])
+def test_modules_sent_empty_are_gone_and_told(business, nothing):
+    apply(business, **paid_starter(), modules=[ModuleRightIn(module_slug="inventory", stripe_item_id="si_inv")])
+
+    result = apply(business, modules=nothing)
+
+    assert not subscription_of(business).items.exists()
+    assert result.changed is True
+
+
+def test_a_module_the_plan_includes_since_the_last_time_is_told(business):
+    apply(business, **paid_starter())
+    Module.objects.create(slug="inventory", tier=Module.Tier.BASIC)
+
+    result = apply(business, **paid_starter())
+
+    assert [(item.module_slug, item.source) for item in subscription_of(business).items.all()] == [("inventory", "plan")]
+    assert result.changed is True
+
+
 def test_the_end_of_a_subscription_takes_the_business_back_to_free(business):
     apply(
         business,
@@ -367,6 +513,16 @@ def test_the_standing_moves_the_business(business, before, standing, after):
     apply(business, standing=standing)
 
     assert fresh(business).status == after
+
+
+def test_a_standing_alone_is_told(business):
+    business = ready(business)
+    events_before = OutboxEvent.objects.filter(name=events.SUBSCRIPTION_CHANGED).count()
+
+    result = apply(business, standing="suspended")
+
+    assert result.changed is True
+    assert OutboxEvent.objects.filter(name=events.SUBSCRIPTION_CHANGED).count() == events_before + 1
 
 
 def test_a_payment_wakes_only_a_suspension_for_not_paying(business):

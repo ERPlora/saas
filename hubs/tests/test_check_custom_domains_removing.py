@@ -6,7 +6,7 @@ from django.utils import timezone
 from live.errors import Conflict
 
 from hubs import edge_client, services
-from hubs.models import CustomDomain, Plan, Subscription
+from hubs.models import CustomDomain, Hub, Plan, Subscription
 from hubs.schemas.custom_domains import CustomDomainRequestIn
 from hubs.tests.conftest import DOMAIN, create_business, ctx_for
 from hubs.tests.custom_domain_states import (
@@ -90,6 +90,17 @@ def test_a_removal_with_nothing_on_aws_only_goes(standard_business, world):
 
     run_pass(world)
 
+    assert not CustomDomain.objects.exists()
+
+
+@pytest.mark.parametrize("status", [Hub.Status.DELETING, Hub.Status.DELETED])
+def test_a_removal_goes_on_though_its_business_was_deleted(standard_business, world, status):
+    removing(standard_business)
+    Hub.objects.filter(pk=standard_business.pk).update(status=status)
+
+    counts = run_pass(world)
+
+    assert counts["removed"] == 1
     assert not CustomDomain.objects.exists()
 
 
