@@ -5,6 +5,8 @@ wait is a ``select`` on the connection and on a pipe a stop request writes to.
 - a NOTIFY on its channel wakes it before its time, and one on another channel does not;
 - the time up, it returns ``False`` having sent nothing: neither through Django's connection nor through its own;
 - ``interrupt`` (the stop request's signal handler) wakes it at once, also when it came before the wait;
+- an interrupt goes before a notification that came with it, which waits for the next wait;
+- what reaches its socket and is no notification neither wakes it nor lengthens the wait;
 - a lost connection wakes it (what was notified meanwhile is unknown: the worker looks), and the next wait connects
   again;
 - a database it cannot reach is logged (``saas.worker.listen_failed``) and tried again after a pause that grows up to
@@ -15,6 +17,7 @@ import logging
 import select
 import threading
 import time
+from types import SimpleNamespace
 
 import psycopg
 import pytest
@@ -115,6 +118,34 @@ def test_an_interrupt_before_the_wait_is_not_lost(listener):
     assert timed(listener.wait, 30)[1] < 1
 
 
+def test_an_interrupt_wakes_one_wait_only(listener):
+    listener.start()
+    listener.interrupt()
+    assert listener.wait(30) is False
+
+    woke, took = timed(listener.wait, 0.3)
+
+    assert woke is False and took >= 0.25
+
+
+def test_an_interrupt_goes_before_a_notification_that_waits_for_the_next_wait(listener, other_session):
+    listener.start()
+    other_session.execute(f"NOTIFY {CHANNEL}")
+    assert on_its_socket(listener, 10)
+    listener.interrupt()
+
+    assert listener.wait(10) is False
+    assert listener.wait(10) is True
+
+
+def test_a_wait_of_less_than_nothing_returns_at_once(listener):
+    listener.start()
+
+    woke, took = timed(listener.wait, -20)
+
+    assert woke is False and took < 5
+
+
 def test_a_lost_connection_wakes_it_and_the_next_wait_listens_again(listener, other_session, caplog):
     listener.start()
     lost = listener.pid
@@ -179,6 +210,19 @@ def test_a_pause_never_outlasts_the_wait_asked_for(caplog):
         ear.close()
 
 
+def test_without_a_connection_a_wait_of_less_than_nothing_does_not_pause(caplog):
+    def unreachable():
+        raise psycopg.OperationalError("connection refused")
+
+    ear = Listener(CHANNEL, connect=unreachable, backoff=(30.0, 60.0))
+    try:
+        woke, took = timed(ear.wait, -20)
+    finally:
+        ear.close()
+
+    assert woke is False and took < 5
+
+
 def test_the_wait_connects_when_the_start_could_not(other_session):
     calls = []
 
@@ -195,6 +239,152 @@ def test_the_wait_connects_when_the_start_could_not(other_session):
         other_session.execute(f"NOTIFY {CHANNEL}")
         assert ear.wait(10) is True
     finally:
+        ear.close()
+
+
+SOCKET = object()
+
+
+class Wire:
+    """What the listener hears through, as a test scripts it turn by turn: a connection (psycopg's part of it), the
+    clock and ``select``, which answers at once and notes the wait it was asked for. A turn reads as ``(seconds it
+    took, what came of it)``: a number of notifications, ``"closed"``, an error, or ``None`` when nothing came."""
+
+    def __init__(self, monkeypatch):
+        self.now = 0.0
+        self.turns = []
+        self.asked = []
+        self.came = None
+        self.closed = False
+        self.info = SimpleNamespace(backend_pid=1)
+        self.pgconn = SimpleNamespace(consume_input=self.consume_input, notifies=self.notifies)
+        monkeypatch.setattr("base.listener.time", SimpleNamespace(monotonic=lambda: self.now))
+        monkeypatch.setattr("base.listener.select", SimpleNamespace(select=self.select))
+
+    def fileno(self):
+        return SOCKET
+
+    def execute(self, query):
+        pass
+
+    def close(self):
+        self.closed = True
+
+    def select(self, readers, _writers, _failed, timeout):
+        self.asked.append(timeout)
+        took, self.came = self.turns.pop(0)
+        self.now += took
+        return ([] if self.came is None else [SOCKET]), [], []
+
+    def consume_input(self):
+        if isinstance(self.came, Exception):
+            raise self.came
+        self.closed = self.came == "closed"
+
+    def notifies(self):
+        if isinstance(self.came, int) and self.came > 0:
+            self.came -= 1
+            return object()
+        return None
+
+
+class TestWhatReachesItsSocket:
+    @pytest.fixture
+    def wire(self, monkeypatch):
+        return Wire(monkeypatch)
+
+    @pytest.fixture
+    def ear(self, wire):
+        ear = Listener(CHANNEL, connect=lambda: wire)
+        ear.start()
+        yield ear
+        ear.close()
+
+    def test_the_wait_asked_for_is_the_one_waited(self, wire, ear):
+        wire.turns = [(10, None)]
+
+        assert ear.wait(10) is False
+        assert wire.asked == [10]
+
+    def test_what_is_no_notification_neither_wakes_it_nor_lengthens_the_wait(self, wire, ear):
+        wire.turns = [(4, 0), (5, 0), (1, None)]
+
+        assert ear.wait(10) is False
+        assert wire.asked == [10, 6, 1]
+
+    def test_a_notification_after_something_else_wakes_it(self, wire, ear):
+        wire.turns = [(4, 0), (1, 1)]
+
+        assert ear.wait(10) is True
+        assert wire.asked == [10, 6]
+
+    def test_past_its_time_it_looks_once_more(self, wire, ear):
+        wire.turns = [(12, 0), (0, 1)]
+
+        assert ear.wait(10) is True
+        assert wire.asked == [10, 0]
+
+    def test_a_socket_that_never_goes_quiet_does_not_hold_it_past_its_time(self, wire, ear):
+        wire.turns = [(0, 0), (0, 1)]
+
+        assert ear.drain() is False
+        assert wire.asked == [0]
+
+    def test_every_notification_that_came_is_taken_at_once(self, wire, ear):
+        wire.turns = [(1, 3), (9, None)]
+
+        assert ear.wait(10) is True
+        assert wire.came == 0
+
+    def test_a_connection_the_server_closed_wakes_it_and_the_next_wait_listens_again(self, wire, ear, caplog):
+        wire.turns = [(1, "closed")]
+
+        with caplog.at_level(logging.INFO, logger="base.listener"):
+            assert ear.wait(10) is True
+            assert ear.pid is None
+            assert ear.wait(10) is True
+
+        assert ear.pid == 1
+        assert [(record.levelno, record.getMessage()) for record in caplog.records] == [
+            (logging.ERROR, f"saas.worker.listen_lost channel={CHANNEL}: the server closed the connection"),
+            (logging.INFO, f"saas.worker.listening channel={CHANNEL} pid=1"),
+        ]
+
+    def test_a_connection_that_breaks_wakes_it_closed_and_logged(self, wire, ear, caplog):
+        wire.turns = [(1, psycopg.OperationalError("the network went"))]
+
+        with caplog.at_level(logging.INFO, logger="base.listener"):
+            assert ear.wait(10) is True
+
+        assert (ear.pid, wire.closed) == (None, True)
+        assert [(record.levelno, record.getMessage()) for record in caplog.records] == [
+            (logging.ERROR, f"saas.worker.listen_lost channel={CHANNEL}: the network went")
+        ]
+
+    def test_an_error_that_is_not_the_connection_s_is_raised(self, wire, ear):
+        wire.turns = [(1, RuntimeError("a bug"))]
+
+        with pytest.raises(RuntimeError):
+            ear.wait(10)
+
+    def test_connected_again_the_pause_starts_over(self, wire, caplog):
+        answers = [psycopg.OperationalError("refused"), psycopg.OperationalError("refused"), wire]
+
+        def connect():
+            answer = answers.pop(0)
+            if isinstance(answer, Exception):
+                raise answer
+            return answer
+
+        ear = Listener(CHANNEL, connect=connect, backoff=(1.0, 60.0))
+        wire.turns = [(1, None), (2, None), (1, "closed"), (1, None)]
+        assert [ear.wait(10), ear.wait(10)] == [False, False]
+        assert (ear.wait(10), ear.wait(10)) == (True, True)
+        answers.append(psycopg.OperationalError("refused"))
+
+        assert ear.wait(10) is False
+
+        assert wire.asked == [1, 2, 10, 1]
         ear.close()
 
 
