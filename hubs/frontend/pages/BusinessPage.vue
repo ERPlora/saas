@@ -77,8 +77,7 @@ const business = computed(() => live.data.value);
 /** The business could not be loaded: the page says why, with nothing else (no tabbar, no section). */
 const loadFailed = computed(() => load.failed.value && !business.value);
 const deleted = computed(() => business.value?.status === 'deleting');
-const platform = computed(() => !!business.value?.is_platform);
-const sections = computed(() => SECTIONS.filter((one) => !platform.value || PLATFORM_SECTIONS.includes(one.id)));
+const sections = computed(() => SECTIONS.filter((one) => !business.value?.is_platform || PLATFORM_SECTIONS.includes(one.id)));
 /** No tabbar on an error or a deleted business: every section would only repeat it. */
 const tabs = computed<ShellTab[]>(() =>
   deleted.value || loadFailed.value ? [] : sections.value.map((section) => ({
@@ -96,14 +95,12 @@ const section = computed<Tab>(() =>
 const fills = computed(() => section.value === 'members');
 const opensAtAll = computed(() => !!business.value && business.value.status !== 'suspended' && !deleted.value);
 /** The authorisation for ERPlora to file its invoices with the AEAT (VeriFactu): a Spanish business's, while it lives. */
-const files = computed(() => business.value?.country === 'ES' && !deleted.value && !platform.value);
+const files = computed(() => business.value?.country === 'ES' && !deleted.value);
 /**
  * The own domain is its owner's and its administrators' (`hubs.custom_domain.get`, `Role.ADMIN`). Asked with the page
  * while the role is not known yet, so it rides the first stream; once the business says another role, it goes.
  */
-const readsDomain = computed(
-  () => !business.value || (!platform.value && (business.value.role === 'hub_owner' || business.value.role === 'hub_admin')),
-);
+const readsDomain = computed(() => !business.value || business.value.role === 'hub_owner' || business.value.role === 'hub_admin');
 const state = computed(() => {
   const now = business.value;
   if (!now || deleted.value) return '';
