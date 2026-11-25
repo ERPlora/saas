@@ -99,6 +99,67 @@ def offered_plans(hub, paying: bool):
     return plans.order_by("display_order", "price_monthly")
 
 
+def _owned_modules(subscription: Subscription | None) -> dict[str, SubscriptionItem]:
+    """The modules the business has now, by slug: bought or included in its plan, a cancelled one until it ends."""
+    if subscription is None:
+        return {}
+    now = timezone.now()
+    items = SubscriptionItem.objects.filter(subscription=subscription).order_by("module_slug")
+    return {item.module_slug: item for item in items if item.is_live(now)}
+
+
+def _store_module(module: Module, item: SubscriptionItem | None, card: dict | None) -> dict:
+    """A module as the Store paints it: ``item``, what the business has of it; ``card``, its app's texts and icon."""
+    return {
+        "slug": module.slug,
+        "tier": module.tier,
+        "price_monthly_cents": module.price_monthly_cents,
+        "price_annual_cents": module.price_annual_cents,
+        "owned": item is not None,
+        "source": item.source if item is not None else None,
+        "valid_until": item.valid_until if item is not None else None,
+        "on_sale": module.is_active,
+        "name": card["name"] if card else module.slug,
+        "summary": card["summary"] if card else "",
+        "icon_svg": card["icon_svg"] if card else FALLBACK_ICON_SVG,
+    }
+
+
+def _store_modules(subscription: Subscription | None, language: str) -> list[dict]:
+    """The modules on sale, and the ones the business has although they are not any more (taking a module off sale
+    stops new purchases, never the charge of who has it, so its owner still sees it to cancel it)."""
+    owned = _owned_modules(subscription)
+    rows = Module.objects.filter(Q(is_active=True) | Q(slug__in=owned)).order_by("slug")
+    cards = app_queries.cards_of([row.slug for row in rows], language)
+    return [_store_module(row, owned.get(row.slug), cards.get(row.slug)) for row in rows]
+
+
+def _store_subscription(subscription: Subscription | None) -> dict | None:
+    """The plan of the business, its billing and whether Stripe bills it already."""
+    if subscription is None:
+        return None
+    return {
+        "plan": subscription.plan.slug,
+        "billing_interval": subscription.billing_interval,
+        "status": subscription.status,
+        "paying": is_paying(subscription),
+        "cancel_at_period_end": subscription.cancel_at_period_end,
+        "current_period_end": subscription.current_period_end,
+        "trial_plan": subscription.trial_plan.slug if subscription.trial_plan_id else None,
+        "trial_end": subscription.trial_end,
+        "scheduled_change": scheduled_change_of(subscription.hub_id),
+    }
+
+
+def _internal_plans(subscription: Subscription | None, offered: list[Plan]) -> list[Plan]:
+    """The internal plans the business is offered, and the one it has even once it is not offered any more:
+    ``hubs.plan.list`` lists only the public ones, so these come with their card."""
+    internal = [plan for plan in offered if plan.internal_only]
+    if subscription is not None and subscription.plan.internal_only and subscription.plan not in internal:
+        internal.append(subscription.plan)
+    return internal
+
+
 @operation(
     "billing.store.catalog",
     kind="query",
@@ -134,60 +195,15 @@ def store_catalog(ctx: OperationContext, params: StoreCatalogIn) -> dict:
     subscription = (
         Subscription.objects.select_related("plan", "trial_plan").filter(hub_id=member.hub_id).first()
     )
-    now = timezone.now()
-    owned = {}
-    if subscription is not None:
-        for item in SubscriptionItem.objects.filter(subscription=subscription).order_by("module_slug"):
-            if item.is_live(now):
-                owned[item.module_slug] = item
-    # On sale, and the ones the business has although they are not any more (taking a module off
-    # sale stops new purchases, never the charge of who has it, so its owner still sees it to cancel it).
-    rows = Module.objects.filter(Q(is_active=True) | Q(slug__in=owned)).order_by("slug")
-    cards = app_queries.cards_of([row.slug for row in rows], ctx.language or "")
-    modules = []
-    for module in rows:
-        item = owned.get(module.slug)
-        card = cards.get(module.slug)
-        modules.append(
-            {
-                "slug": module.slug,
-                "tier": module.tier,
-                "price_monthly_cents": module.price_monthly_cents,
-                "price_annual_cents": module.price_annual_cents,
-                "owned": item is not None,
-                "source": item.source if item is not None else None,
-                "valid_until": item.valid_until if item is not None else None,
-                "on_sale": module.is_active,
-                "name": card["name"] if card else module.slug,
-                "summary": card["summary"] if card else "",
-                "icon_svg": card["icon_svg"] if card else FALLBACK_ICON_SVG,
-            }
-        )
-    plan = None
-    paying = is_paying(subscription)
-    if subscription is not None:
-        plan = {
-            "plan": subscription.plan.slug,
-            "billing_interval": subscription.billing_interval,
-            "status": subscription.status,
-            "paying": paying,
-            "cancel_at_period_end": subscription.cancel_at_period_end,
-            "current_period_end": subscription.current_period_end,
-            "trial_plan": subscription.trial_plan.slug if subscription.trial_plan_id else None,
-            "trial_end": subscription.trial_end,
-            "scheduled_change": scheduled_change_of(member.hub_id),
-        }
-    offered = list(offered_plans(member.hub, paying))
-    # ``hubs.plan.list`` lists only the public plans: the internal ones the business is offered, and the one it
-    # has even once it is not offered any more, come with their card.
-    internal = [row for row in offered if row.internal_only]
-    if subscription is not None and subscription.plan.internal_only and subscription.plan not in internal:
-        internal.append(subscription.plan)
+    language = ctx.language or ""
+    modules = _store_modules(subscription, language)
+    current = _store_subscription(subscription)
+    offered = list(offered_plans(member.hub, is_paying(subscription)))
     return {
         "hub_id": member.hub_id,
-        "subscription": plan,
+        "subscription": current,
         "modules": modules,
         "offered_plans": [row.slug for row in offered],
         "sold_intervals": {row.slug: sold_intervals(row) for row in offered},
-        "internal_plans": [plan_catalog.plan_card(row, ctx.language or "") for row in internal],
+        "internal_plans": [plan_catalog.plan_card(row, language) for row in _internal_plans(subscription, offered)],
     }

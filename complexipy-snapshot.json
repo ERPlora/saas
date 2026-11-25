@@ -156,16 +156,6 @@
     ]
   },
   {
-    "path": "billing/queries/catalog.py",
-    "file_name": "catalog.py",
-    "functions": [
-      {
-        "name": "store_catalog",
-        "complexity": 25
-      }
-    ]
-  },
-  {
     "path": "billing/queries/subscriptions.py",
     "file_name": "subscriptions.py",
     "functions": [
@@ -182,46 +172,6 @@
       {
         "name": "seed_tax_data",
         "complexity": 17
-      }
-    ]
-  },
-  {
-    "path": "billing/services/invoice_webhooks.py",
-    "file_name": "invoice_webhooks.py",
-    "functions": [
-      {
-        "name": "_record_failure",
-        "complexity": 21
-      }
-    ]
-  },
-  {
-    "path": "billing/services/oss_notices.py",
-    "file_name": "oss_notices.py",
-    "functions": [
-      {
-        "name": "note_oss_threshold",
-        "complexity": 16
-      }
-    ]
-  },
-  {
-    "path": "billing/services/rectifying_invoices.py",
-    "file_name": "rectifying_invoices.py",
-    "functions": [
-      {
-        "name": "_rectifying_lines",
-        "complexity": 26
-      }
-    ]
-  },
-  {
-    "path": "billing/services/stripe_sales.py",
-    "file_name": "stripe_sales.py",
-    "functions": [
-      {
-        "name": "_recurring_net",
-        "complexity": 23
       }
     ]
   },
