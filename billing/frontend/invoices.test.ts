@@ -62,6 +62,11 @@ describe('invoiceBusinesses', () => {
     ];
     expect(invoiceBusinesses(rows, 'es').map((row) => row.id)).toEqual(['plaza', 'norte', 'bakery']);
   });
+
+  it('leaves out ERPlora’s own business: it has no invoices of ours', () => {
+    const own = businessRow('erp', 'ERPlora', { is_platform: true, plan: null, is_payer: false });
+    expect(invoiceBusinesses([own, businessRow('plaza', 'Bar La Plaza')], 'es').map((row) => row.id)).toEqual(['plaza']);
+  });
 });
 
 describe('formatAmount', () => {

@@ -70,6 +70,11 @@ describe('ownedBusinesses', () => {
     const deleted = businessRow('gone', 'Gone', { status: 'deleting' });
     expect(ownedBusinesses([BAKERY, SALON, CAFE, deleted]).map((row) => row.id)).toEqual(['bakery', 'cafe']);
   });
+
+  it('leaves out ERPlora’s own business: it buys nothing', () => {
+    const own = businessRow('erp', 'ERPlora', { is_platform: true, plan: null });
+    expect(ownedBusinesses([own, BAKERY]).map((row) => row.id)).toEqual(['bakery']);
+  });
 });
 
 describe('blockOf', () => {

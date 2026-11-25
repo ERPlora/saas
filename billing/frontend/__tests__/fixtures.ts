@@ -19,6 +19,7 @@ export function businessRow(id: string, name: string, extra: Partial<BusinessRow
     host: `${id}.localhost:8000`,
     status: 'active',
     status_label: 'Active',
+    is_platform: false,
     plan: { slug: 'starter', name: 'Starter', price_monthly: '29.99', max_devices: 0, max_apps: 0 },
     role: 'hub_owner',
     role_label: 'Owner',

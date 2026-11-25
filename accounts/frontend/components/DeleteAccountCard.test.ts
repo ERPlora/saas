@@ -3,7 +3,7 @@
 // enters their own payment details) — named in one line, each linked to its Settings, and keeps «Delete account»
 // off meanwhile. The
 // server decides in the end (409 with the same businesses, DeleteAccountDialog). Read from `hubs.business.list`, the
-// operation the server reads too (`can.delete`: the owner; `is_payer`: it pays for it). While that list is not known
+// operation the server reads too (`role`: the owner; `is_payer`: it pays for it). While that list is not known
 // (loading, failed, or no answer in time) nothing says the account is free to go: deletion stays off, and a failure
 // is said with «Retry».
 // clock: data only — no code under test compares these dates with now.
@@ -26,6 +26,7 @@ function business(id: string, name: string, overrides: Partial<BusinessRowOut> =
     host: `${id}.erplora.com`,
     status: 'active',
     status_label: 'Active',
+    is_platform: false,
     plan: null,
     role: 'hub_owner',
     role_label: 'Owner',
@@ -91,6 +92,20 @@ describe('DeleteAccountCard', () => {
     ]);
     expect(s.q('profile-danger')?.textContent).toContain('You pay for 1 business of other people');
     expect([...document.querySelectorAll('[data-testid="profile-danger-business"]')].map((a) => a.textContent?.trim())).toEqual(['Bar Norte']);
+  });
+
+  it('names ERPlora’s own business to its owner, who hands it over in its Members', async () => {
+    const s = await setup([
+      business('erp', 'ERPlora', {
+        is_platform: true,
+        is_payer: false,
+        payer_id: null,
+        can: { open: true, manage: true, restore: false, delete: false },
+      }),
+    ]);
+    const link = s.q('profile-danger-business');
+    expect([link?.textContent?.trim(), link?.getAttribute('href')]).toEqual(['ERPlora', '/dashboard/businesses/erp/members']);
+    expect(ionProps(s.q('profile-delete'), 'disabled')).toEqual({ disabled: true });
   });
 
   it('lets a business in its 90 days of deletion go', async () => {
