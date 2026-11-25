@@ -126,7 +126,7 @@ class TestWhenMetaSaysNo:
         counts = token_renewal.renew_tokens()
 
         number.refresh_from_db()
-        assert counts["needs_reconnect"] == 1
+        assert counts == {"due": 1, "renewed": 0, "needs_reconnect": 1, "unverified": 0, "alerted": 1, "failed": 0}
         assert number.needs_reconnect is True and number.reconnect_alerted_at is not None
         assert [message.to for message in mail.outbox] == [[owner.email]]
         assert "+34 910 00 00 00" in mail.outbox[0].subject
@@ -148,10 +148,44 @@ class TestWhenMetaSaysNo:
         meta_refuses()
         monkeypatch.setattr("django.core.mail.EmailMessage.send", lambda *a, **k: (_ for _ in ()).throw(OSError("down")))
 
-        token_renewal.renew_tokens()
+        counts = token_renewal.renew_tokens()
 
         number.refresh_from_db()
         assert number.needs_reconnect is True and number.reconnect_alerted_at is None
+        assert (counts["needs_reconnect"], counts["alerted"]) == (1, 0)
+
+    @respx.mock
+    def test_each_owner_is_told_of_their_own_number(self, whatsapp_on, business, other_business):
+        numbers = [make_number(business), make_number(other_business, display_phone="+34 911 11 11 11")]
+        meta_refuses()
+
+        counts = token_renewal.renew_tokens()
+
+        for number in numbers:
+            number.refresh_from_db()
+            assert number.reconnect_alerted_at is not None
+        assert counts["alerted"] == 2
+        assert len({message.to[0] for message in mail.outbox}) == 2
+
+    @respx.mock
+    def test_a_surprise_telling_the_owner_is_not_a_renewal_that_crashed(
+        self, whatsapp_on, business, monkeypatch, caplog
+    ):
+        """What Meta answered is written by then: the round stops where it can be seen."""
+        number = make_number(business)
+        meta_refuses()
+
+        def broken(**alert):
+            raise RuntimeError("surprise")
+
+        monkeypatch.setattr(token_renewal.emails, "send_reconnect", broken)
+
+        with pytest.raises(RuntimeError, match="surprise"):
+            token_renewal.renew_tokens()
+
+        number.refresh_from_db()
+        assert number.needs_reconnect is True and number.reconnect_alerted_at is None
+        assert "whatsapp.token.renewal_crashed" not in caplog.text
 
     @respx.mock
     def test_the_mail_goes_in_the_owners_language(self, whatsapp_on, business, owner):
@@ -173,7 +207,7 @@ class TestWhenMetaDoesNotAnswer:
          httpx.Response(200, json={})],
     )
     @respx.mock
-    def test_no_verdict_is_not_a_dead_token(self, whatsapp_on, business, answer):
+    def test_no_verdict_is_not_a_dead_token(self, whatsapp_on, business, caplog, answer):
         number = make_number(business, days=10)
         route = respx.get(EXCHANGE)
         route.mock(side_effect=answer) if isinstance(answer, Exception) else route.mock(return_value=answer)
@@ -184,6 +218,7 @@ class TestWhenMetaDoesNotAnswer:
         assert counts["unverified"] == 1
         assert number.needs_reconnect is False and number.access_token == "EAAG-old"
         assert mail.outbox == []
+        assert "running_out" not in caplog.text, "ten days are more than the last week"
 
     @pytest.mark.parametrize("days", [2, -1])
     @respx.mock
@@ -210,14 +245,32 @@ class TestWhenMetaDoesNotAnswer:
         assert number.token_expires_at > timezone.now() + timedelta(days=59)
 
     @respx.mock
-    def test_a_number_still_not_renewed_inside_the_last_week_is_an_error_in_the_log(self, whatsapp_on, business, caplog):
+    def test_numbers_still_not_renewed_inside_the_last_week_are_an_error_in_the_log(
+        self, whatsapp_on, business, other_business, caplog
+    ):
         make_number(business, days=5)
+        make_number(other_business, days=6)
         respx.get(EXCHANGE).mock(side_effect=httpx.ConnectError("down"))
 
         token_renewal.renew_tokens()
 
-        assert "whatsapp.token.running_out" in caplog.text
+        assert "whatsapp.token.running_out numbers=2 days_left_under=7" in caplog.text
         assert "EAAG" not in caplog.text
+
+    def test_a_number_whose_renewal_crashes_inside_the_last_week_is_one_of_them(
+        self, whatsapp_on, business, monkeypatch, caplog
+    ):
+        number = make_number(business, days=5)
+
+        def renew(token):
+            raise RuntimeError("surprise")
+
+        monkeypatch.setattr(token_renewal, "_renew", renew)
+
+        token_renewal.renew_tokens()
+
+        assert f"whatsapp.token.renewal_crashed number_id={number.id}" in caplog.text
+        assert "whatsapp.token.running_out numbers=1 days_left_under=7" in caplog.text
 
     @respx.mock
     def test_a_clean_round_stays_quiet(self, whatsapp_on, business, caplog):
