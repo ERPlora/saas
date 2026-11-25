@@ -125,6 +125,17 @@ def test_a_pending_domain_without_a_plan_asks_for_nothing(standard_business, wor
     assert row.reason == Reason.NOT_IN_PLAN
 
 
+def test_with_no_plan_at_all_nothing_includes_a_domain(standard_business, world, dns_world):
+    pending(standard_business)
+    Subscription.objects.filter(hub=standard_business).delete()
+    Plan.objects.filter(slug="free").delete()
+
+    counts = run_pass(world)
+
+    assert counts["crashed"] == 0
+    assert row_of(standard_business).reason == Reason.NOT_IN_PLAN
+
+
 def test_the_plan_back_and_the_cname_there_bring_it_back(standard_business, world, dns_world):
     lapsed(standard_business, reason=Reason.NOT_IN_PLAN)
     pointing(dns_world, standard_business)

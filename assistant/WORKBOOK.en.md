@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:4f5413f18649215baba70f93d4bb2f2827df94c12baf4f3adf230a51a7e05a54 -->
+<!-- generated from WORKBOOK.md sha256:869b3575a780d00f79c3b55b34f97316fb2041e0d52af3bee5247d2e06bf3ede -->
 
 ## What it is for and who uses it
 
@@ -363,7 +363,7 @@ Screen: none
 Steps:
 1. In each turn, the model can use the business's tools (those the Hub sends: find a customer, create an appointment…) and erplora.com's: today's date, time and weekday; what one currency is worth in another, at the European Central Bank's reference rate and its date; and, if erplora.com has the search engine's key, searching the web in the person's language (in Spanish, in Spain). Searching the web belongs only to the chat, the Hub's and the panel's: an automation does not search (see ASSISTANT-F13).
 2. If the model asks for a tool of erplora.com, erplora.com runs it and gives it the result without the Hub seeing anything.
-3. If it asks for one of the business, the turn passes it to the Hub to run it (see ASSISTANT-F12).
+3. If it asks for one of the business, the turn passes it to the Hub to run it (see ASSISTANT-F12); if it asks for several in the same answer (count the products and the customers), it passes them all at once. If the same answer mixes tools of erplora.com with the business's, erplora.com runs its own and tells the model the business's were not done, for it to ask for them again on their own: none is lost.
 4. The model is asked again at most five times in a turn; in the last one erplora.com's tools are no longer offered and it has to answer.
 5. An answer with what the exchange rate or the search gave says where it comes from: if the model names no source, erplora.com writes its address below the answer. The model only gives the web addresses a tool returned in the turn, and erplora.com tells the Hub and its panel which ones its tools looked up, so that the chat flags an address that does not come from there.
 In: the business's tools and the model's questions.

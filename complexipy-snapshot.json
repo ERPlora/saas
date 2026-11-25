@@ -226,46 +226,12 @@
     ]
   },
   {
-    "path": "hubs/services/custom_domain_checks.py",
-    "file_name": "custom_domain_checks.py",
-    "functions": [
-      {
-        "name": "custom_domain_record",
-        "complexity": 23
-      },
-      {
-        "name": "_check_pending",
-        "complexity": 25
-      }
-    ]
-  },
-  {
     "path": "hubs/services/member_management.py",
     "file_name": "member_management.py",
     "functions": [
       {
         "name": "member_invite",
         "complexity": 16
-      }
-    ]
-  },
-  {
-    "path": "hubs/services/reconciliation.py",
-    "file_name": "reconciliation.py",
-    "functions": [
-      {
-        "name": "reconcile",
-        "complexity": 33
-      }
-    ]
-  },
-  {
-    "path": "hubs/services/subscription_sync.py",
-    "file_name": "subscription_sync.py",
-    "functions": [
-      {
-        "name": "subscription_apply",
-        "complexity": 39
       }
     ]
   },

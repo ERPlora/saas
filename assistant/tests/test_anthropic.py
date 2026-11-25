@@ -64,7 +64,8 @@ async def test_a_turn_streams_its_text_its_usage_and_its_end(fake_provider):
     assert (sent.body["max_tokens"], sent.body["stream"], sent.body["temperature"]) == (4096, True, 0.3)
 
 
-async def test_tools_go_as_input_schema_one_per_answer_and_a_tool_call_comes_out_whole(fake_provider):
+async def test_tools_go_as_input_schema_and_the_tool_calls_of_one_answer_come_out_whole_in_order(fake_provider):
+    """Anthropic may ask for several tools in one answer (``tool_choice`` left at its default): each comes out."""
     fake_provider.reply(
         "POST",
         "/v1/messages",
@@ -74,22 +75,27 @@ async def test_tools_go_as_input_schema_one_per_answer_and_a_tool_call_comes_out
             {"type": "content_block_delta", "index": 0, "delta": {"type": "input_json_delta", "partial_json": '{"name": '}},
             {"type": "content_block_delta", "index": 0, "delta": {"type": "input_json_delta", "partial_json": '"Ana"}'}},
             {"type": "content_block_stop", "index": 0},
+            {"type": "content_block_start", "index": 1, "content_block": {"type": "tool_use", "id": "toolu_2", "name": "list_orders", "input": {}}},
+            {"type": "content_block_delta", "index": 1, "delta": {"type": "input_json_delta", "partial_json": "{}"}},
+            {"type": "content_block_stop", "index": 1},
             {"type": "message_delta", "delta": {"stop_reason": "tool_use"}, "usage": {"output_tokens": 12}},
             {"type": "message_stop"},
         ),
     )
     tool = ToolSpec(name="find_customer", description="Find a customer", parameters={"type": "object", "properties": {"name": {"type": "string"}}})
+    orders = ToolSpec(name="list_orders", description="List orders", parameters={"type": "object", "properties": {}})
 
-    events = await collect(client(fake_provider), TurnRequest(model_id="claude-sonnet-4-6", messages=[{"role": "user", "content": "Ana?"}], tools=[tool]))
+    events = await collect(client(fake_provider), TurnRequest(model_id="claude-sonnet-4-6", messages=[{"role": "user", "content": "Ana?"}], tools=[tool, orders]))
 
     assert [(e.type, e.payload) for e in events] == [
         ("tool_call", {"call_id": "toolu_1", "name": "find_customer", "arguments": '{"name": "Ana"}'}),
+        ("tool_call", {"call_id": "toolu_2", "name": "list_orders", "arguments": "{}"}),
         ("usage", {"input_tokens": 40, "output_tokens": 12, "cache_read_tokens": 0, "cache_write_tokens": 0}),
         ("finish", {"reason": "tool_use"}),
     ]
     sent = fake_provider.requests[0].body
-    assert sent["tools"] == [{"name": "find_customer", "description": "Find a customer", "input_schema": tool.parameters, "cache_control": {"type": "ephemeral"}}]
-    assert sent["tool_choice"] == {"type": "auto", "disable_parallel_tool_use": True}
+    assert sent["tools"][0] == {"name": "find_customer", "description": "Find a customer", "input_schema": tool.parameters}
+    assert "tool_choice" not in sent
 
 
 async def test_the_cache_is_marked_after_the_last_tool_the_instructions_and_the_whole_conversation(fake_provider):
@@ -157,6 +163,41 @@ async def test_the_conversation_is_translated_to_anthropic_blocks(fake_provider)
         {"role": "user", "content": [{"type": "text", "text": "Look"}, {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": "iVBOR"}}]},
         {"role": "assistant", "content": [{"type": "text", "text": "Let me check."}, {"type": "tool_use", "id": "toolu_1", "name": "find_customer", "input": {"name": "Ana"}}]},
         {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "toolu_1", "content": '{"found": true}'}, {"type": "text", "text": "And now?"}]},
+    ]
+
+
+async def test_the_results_of_several_tools_go_in_one_user_turn_in_the_order_they_were_asked(fake_provider):
+    """Anthropic wants every result of one answer's tools in the user turn right after it, before any text."""
+    fake_provider.reply("POST", "/v1/messages", sse=stream({"type": "message_stop"}))
+    asked = [
+        {"id": "toolu_b", "type": "function", "function": {"name": "list_products", "arguments": "{}"}},
+        {"id": "toolu_a", "type": "function", "function": {"name": "list_customers", "arguments": "{}"}},
+    ]
+    conversation = [
+        {"role": "user", "content": "How many products and customers?"},
+        {"role": "assistant", "content": "", "tool_calls": asked},
+        {"role": "tool", "tool_call_id": "toolu_b", "content": '{"count": 12}'},
+        {"role": "tool", "tool_call_id": "toolu_a", "content": '{"count": 30}'},
+    ]
+
+    await collect(client(fake_provider), TurnRequest(model_id="claude-haiku-5-5", messages=conversation))
+
+    assert fake_provider.requests[0].body["messages"] == [
+        {"role": "user", "content": "How many products and customers?"},
+        {
+            "role": "assistant",
+            "content": [
+                {"type": "tool_use", "id": "toolu_b", "name": "list_products", "input": {}},
+                {"type": "tool_use", "id": "toolu_a", "name": "list_customers", "input": {}},
+            ],
+        },
+        {
+            "role": "user",
+            "content": [
+                {"type": "tool_result", "tool_use_id": "toolu_b", "content": '{"count": 12}'},
+                {"type": "tool_result", "tool_use_id": "toolu_a", "content": '{"count": 30}'},
+            ],
+        },
     ]
 
 

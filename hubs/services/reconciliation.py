@@ -2,8 +2,9 @@
 
 import logging
 from collections import Counter
-from collections.abc import Callable
-from datetime import timedelta
+from collections.abc import Callable, Iterable, Iterator
+from datetime import datetime, timedelta
+from functools import partial
 from uuid import UUID
 
 from django.db.models import Exists, F, OuterRef, Q
@@ -82,6 +83,27 @@ DATA_COPY_CLOCK_SKEW = timedelta(minutes=1)
 #: How many passes the mail «the copy is ready» is tried before it is given up (a recipient refused for good: SES in
 #: its sandbox, an address gone). A mail is logged, never raised (``emails``): it never fails a pass.
 DATA_COPY_MAIL_ATTEMPTS = 6
+#: What a pass counts, in the order the command prints it.
+PASS_COUNTS = (
+    "purged",
+    "trials_ended",
+    "delivered",
+    "owed",
+    "refused",
+    "ready",
+    "re_registered",
+    "preparing",
+    "provision_failed",
+    "unexpected",
+    "unreachable",
+    "failed",
+    "data_copies_told",
+    "data_copy_unsent",
+    "data_copy_none",
+    "sessions_ended",
+    "sessions_pending",
+    "cut_short",
+)
 #: Counts that make a run end with an error (the ``task_failed`` alarm), after its whole pass.
 FAILING_COUNTS = (
     "owed",
@@ -119,40 +141,40 @@ def reconcile_exclusively(stuck_after: timedelta = STUCK_AFTER, go_on: Callable[
         return reconcile(stuck_after=stuck_after, go_on=go_on) if mine else None
 
 
-def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER, go_on: Callable[[], bool] | None = None) -> Counter:  # noqa: C901, PLR0912
+def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER, go_on: Callable[[], bool] | None = None) -> Counter:
     """One pass of ``reconcile_hub_states``; the counts of what it did (each key is always present).
 
     ``go_on`` (the ``saas-worker``'s stop request and the round's time budget) is asked before each call to the Hub:
     once it says no, the pass ends after the business in course and ``cut_short`` is 1; what is left is still owed in
     the database, and the next pass does it. The steps that only touch the database always run."""
     now = now or timezone.now()
-    keys = (
-        "purged",
-        "trials_ended",
-        "delivered",
-        "owed",
-        "refused",
-        "ready",
-        "re_registered",
-        "preparing",
-        "provision_failed",
-        "unexpected",
-        "unreachable",
-        "failed",
-        "data_copies_told",
-        "data_copy_unsent",
-        "data_copy_none",
-        "sessions_ended",
-        "sessions_pending",
-        "cut_short",
-    )
-    counts = Counter({key: 0 for key in keys})
+    counts = Counter(dict.fromkeys(PASS_COUNTS, 0))
+    in_time = partial(_in_time, counts=counts, go_on=go_on)
+    _purge_expired(now, counts)
+    _end_trials(now, counts)
+    for hub_id in in_time(_owed_hubs()):
+        _sync_counted(hub_id, counts)
+    for hub_id in in_time(_stuck_sign_ups(now - stuck_after)):
+        _counting_crashes(_settle_stuck, "hubs.reconcile.crashed hub=%s", hub_id, counts)
+    for hub_id in in_time(_untold_data_copies()):
+        _counting_crashes(_tell_data_copy, "hubs.data_copy.crashed hub=%s", hub_id, counts)
+    for revocation_id in in_time(_due_revocations(now)):
+        _end_sessions_counted(revocation_id, counts)
+    return counts
 
-    def more() -> bool:
-        if not counts["cut_short"] and go_on is not None and not go_on():
+
+def _in_time(ids: Iterable[UUID], counts: Counter, go_on: Callable[[], bool] | None) -> Iterator[UUID]:
+    """``ids`` while ``go_on`` says yes before each; once it says no, neither these nor the next steps' are read."""
+    if counts["cut_short"]:
+        return
+    for one in ids:
+        if go_on is not None and not go_on():
             counts["cut_short"] = 1
-        return not counts["cut_short"]
+            return
+        yield one
 
+
+def _purge_expired(now: datetime, counts: Counter) -> None:
     cutoff = now - Hub.RETENTION
     for hub_id in businesses.expired_deletions(cutoff):
         # Re-checked by the UPDATE itself: a business restored since the read is left alone.
@@ -161,6 +183,9 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER, go_on: Callable[[]
         )
         if purged:
             counts["purged"] += 1
+
+
+def _end_trials(now: datetime, counts: Counter) -> None:
     for subscription in Subscription.objects.filter(status=Subscription.Status.TRIALING, trial_end__lte=now):
         ended = Subscription.objects.filter(pk=subscription.pk, status=Subscription.Status.TRIALING).update(
             status=Subscription.Status.ACTIVE, updated_at=now
@@ -169,26 +194,25 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER, go_on: Callable[[]
             sync_plan_modules(Subscription.objects.get(pk=subscription.pk), now)
             bump_state(subscription.hub_id)
             counts["trials_ended"] += 1
+
+
+def _owed_hubs() -> Iterable[UUID]:
     owed = Hub.objects.exclude(status=Hub.Status.DELETED).filter(
         ~Q(pending_hub_call="") | Q(pushed_state_version__lt=F("state_version"), status__in=LIVE_STATUSES)
     )
-    for hub_id in owed.order_by("updated_at").values_list("id", flat=True):
-        if not more():
-            break
-        _sync_counted(hub_id, counts)
+    return owed.order_by("updated_at").values_list("id", flat=True)
+
+
+def _stuck_sign_ups(requested_by: datetime) -> Iterable[UUID]:
     stuck = Hub.objects.filter(
-        status=Hub.Status.PREPARING, ready_at__isnull=True, pending_hub_call="", provision_requested_at__lte=now - stuck_after
+        status=Hub.Status.PREPARING, ready_at__isnull=True, pending_hub_call="", provision_requested_at__lte=requested_by
     )
-    for hub_id in () if counts["cut_short"] else stuck.values_list("id", flat=True):
-        if not more():
-            break
-        try:
-            _settle_stuck(hub_id, counts)
-        except Exception:  # noqa: BLE001 - one business never stops the pass
-            logger.exception("hubs.reconcile.crashed hub=%s", hub_id)
-            counts["failed"] += 1
-    # Deleted, not told since this deletion, the mail not given up, and somebody to tell: an owner whose account was
-    # deleted since (``HubMember.user`` cascades) leaves nobody, so the Hub is not asked.
+    return stuck.values_list("id", flat=True)
+
+
+def _untold_data_copies() -> Iterable[UUID]:
+    """Deleted, not told since this deletion, the mail not given up, and somebody to tell: an owner whose account was
+    deleted since (``HubMember.user`` cascades) leaves nobody, so the Hub is not asked."""
     untold = Hub.objects.filter(
         Q(data_copy_mailed_at__isnull=True) | Q(data_copy_mailed_at__lt=F("deletion_requested_at")),
         Exists(HubMember.objects.filter(hub=OuterRef("pk"), role=Role.OWNER)),
@@ -196,25 +220,29 @@ def reconcile(now=None, stuck_after: timedelta = STUCK_AFTER, go_on: Callable[[]
         deletion_requested_at__isnull=False,
         data_copy_mail_attempts__lt=DATA_COPY_MAIL_ATTEMPTS,
     )
-    for hub_id in () if counts["cut_short"] else untold.values_list("id", flat=True):
-        if not more():
-            break
-        try:
-            _tell_data_copy(hub_id, counts)
-        except Exception:  # noqa: BLE001 - one business never stops the pass
-            logger.exception("hubs.data_copy.crashed hub=%s", hub_id)
-            counts["failed"] += 1
+    return untold.values_list("id", flat=True)
+
+
+def _due_revocations(now: datetime) -> Iterable[UUID]:
     due = SessionRevocation.objects.filter(delivered_at__isnull=True, next_attempt_at__lte=now)
-    for revocation_id in () if counts["cut_short"] else due.order_by("next_attempt_at").values_list("id", flat=True):
-        if not more():
-            break
-        try:
-            outcome = deliver_revocation(revocation_id)
-        except Exception:  # noqa: BLE001 - one revocation never stops the pass; it stays queued
-            logger.exception("hubs.revoke.crashed revocation=%s", revocation_id)
-            outcome = None
-        counts["sessions_ended" if outcome == DELIVERED else "sessions_pending"] += 1
-    return counts
+    return due.order_by("next_attempt_at").values_list("id", flat=True)
+
+
+def _counting_crashes(step: Callable[[UUID, Counter], None], crashed: str, hub_id: UUID, counts: Counter) -> None:
+    try:
+        step(hub_id, counts)
+    except Exception:  # noqa: BLE001 - one business never stops the pass
+        logger.exception(crashed, hub_id)
+        counts["failed"] += 1
+
+
+def _end_sessions_counted(revocation_id: UUID, counts: Counter) -> None:
+    try:
+        outcome = deliver_revocation(revocation_id)
+    except Exception:  # noqa: BLE001 - one revocation never stops the pass; it stays queued
+        logger.exception("hubs.revoke.crashed revocation=%s", revocation_id)
+        outcome = None
+    counts["sessions_ended" if outcome == DELIVERED else "sessions_pending"] += 1
 
 
 def _settle_stuck(hub_id: UUID, counts: Counter) -> None:

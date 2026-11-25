@@ -1,5 +1,5 @@
 """The client of DeepSeek (``assistant.providers.deepseek``): OpenAI's format at DeepSeek's address,
-against ``fake_provider``. DeepSeek does not take ``parallel_tool_calls`` and every model it lists is a chat model."""
+against ``fake_provider``. Every model DeepSeek lists is a chat model."""
 
 import pytest
 
@@ -16,7 +16,7 @@ def client(fake) -> DeepSeekProvider:
     return DeepSeekProvider(api_key=KEY, base_url=fake.url)
 
 
-async def test_a_turn_goes_in_openai_format_without_parallel_tool_calls(fake_provider):
+async def test_a_turn_goes_in_openai_format(fake_provider):
     fake_provider.reply(
         "POST",
         "/chat/completions",
@@ -33,7 +33,6 @@ async def test_a_turn_goes_in_openai_format_without_parallel_tool_calls(fake_pro
     ]
     sent = fake_provider.requests[0]
     assert sent.headers["authorization"] == f"Bearer {KEY}"
-    assert "parallel_tool_calls" not in sent.body
     assert sent.body["tools"][0]["function"]["name"] == "t"
     assert sent.body["max_tokens"] == 4096
 
