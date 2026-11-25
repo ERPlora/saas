@@ -4,13 +4,14 @@ card, and what the model hears of what did not run. Only ``base.assistant.turn``
 import json
 
 import pytest
+from django.contrib.auth import get_user_model
 from live import assistant as assistant_shared
 from live.operations import Operation, registry
 from live.operations import get as get_operation
 from ninja import Schema
 
 from base.services import NOT_CONFIRMED_CODE
-from hubs.tests.conftest import create_business, ctx_for, make_user, plans  # noqa: F401 - shared fixtures
+from hubs.tests.conftest import create_business, ctx_for, put_the_catalogue_back
 
 pytestmark = pytest.mark.django_db
 
@@ -20,8 +21,9 @@ NOT_FROM_THE_CHAT = ("cancelled", "base.assistant_not_from_chat")
 
 
 @pytest.fixture
-def account(make_user, plans):  # noqa: F811
-    return make_user("lena@example.com", first_name="Lena", language="en")
+def account(db):
+    put_the_catalogue_back()
+    return get_user_model().objects.create_user(email="lena@example.com", password=None, language="en")
 
 
 def call(call_id: str, name: str, arguments: str = "{}") -> dict:
