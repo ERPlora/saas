@@ -2,13 +2,9 @@
 // chosen here and nobody changes its settings, so those sections are not offered, and an address to one shows the
 // Summary.
 import { AppPage, applySurface } from '@erplora/ui/shell';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-vi.mock('@ionic/vue', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@ionic/vue')>()),
-  IonModal: (await import('../__tests__/ion-modal-stub')).IonModalStub,
-}));
-
+import { BUSINESS } from '../__tests__/business-page';
 import { describeCall, mountHubs } from '../__tests__/mount-hubs';
 import BusinessSettings from '../components/BusinessSettings.vue';
 import BusinessSummary from '../components/BusinessSummary.vue';
@@ -18,42 +14,13 @@ import MembersTab from '../components/MembersTab.vue';
 import BusinessPage from './BusinessPage.vue';
 
 const OWN = {
+  ...BUSINESS,
   id: 'p1',
   slug: 'erp',
   name: 'ERPlora',
-  host: 'erp.erplora.com',
   is_platform: true,
-  country: 'ES',
-  timezone: 'Europe/Madrid',
-  language: 'es',
-  business_type: null,
-  status: 'active',
-  status_label: 'Active',
-  hub_error: null,
-  ready_at: '2026-03-02T10:00:00Z',
-  created_at: '2026-03-02T10:00:00Z',
-  deletion_requested_at: null,
-  purge_after: null,
-  role: 'hub_owner',
-  role_label: 'Owner',
   plan: null,
-  trial_plan: null,
-  trial_end: null,
-  seats: { used: 1, limit: null },
-  pending_transfer: null,
-  can: {
-    open: true,
-    manage: true,
-    manage_members: true,
-    manage_settings: false,
-    manage_billing: false,
-    transfer: true,
-    restore: false,
-    delete: false,
-    change_address: false,
-    download_data: true,
-  },
-  usage: null,
+  can: { ...BUSINESS.can, manage: true, manage_settings: false, manage_billing: false, delete: false },
 };
 
 afterEach(() => {

@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy
 from live.errors import Conflict
 
 from hubs.models import Hub
+from hubs.queries import access_control
 
 PLATFORM_BUSINESS = gettext_lazy(
     "ERPlora's own business has no plan or payments, and it cannot be changed, deleted or recovered here."
@@ -19,6 +20,13 @@ def refuse_platform_business(hub: Hub) -> None:
     """409 ``hubs.platform_business`` for ERPlora's own business: erplora.com keeps it only for its people."""
     if hub.is_platform:
         raise Conflict(str(PLATFORM_BUSINESS), code="hubs.platform_business")
+
+
+def refuse_to_change(hub: Hub) -> None:
+    """409 for a business that takes no change nor payment: ERPlora's own or a deleted one."""
+    refuse_platform_business(hub)
+    if not access_control.is_writable(hub):
+        raise business_deleted()
 
 
 class SeatLimitReached(Conflict):
