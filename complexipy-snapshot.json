@@ -1,15 +1,5 @@
 [
   {
-    "path": "accounts/api_auth.py",
-    "file_name": "api_auth.py",
-    "functions": [
-      {
-        "name": "install_api_key_auth",
-        "complexity": 24
-      }
-    ]
-  },
-  {
     "path": "accounts/photos.py",
     "file_name": "photos.py",
     "functions": [
@@ -116,42 +106,12 @@
     ]
   },
   {
-    "path": "base/listener.py",
-    "file_name": "listener.py",
-    "functions": [
-      {
-        "name": "Listener::_wait",
-        "complexity": 16
-      }
-    ]
-  },
-  {
     "path": "base/tests/test_admin_django_catalog.py",
     "file_name": "test_admin_django_catalog.py",
     "functions": [
       {
         "name": "entries",
         "complexity": 26
-      }
-    ]
-  },
-  {
-    "path": "billing/queries/subscriptions.py",
-    "file_name": "subscriptions.py",
-    "functions": [
-      {
-        "name": "_subscription_row",
-        "complexity": 17
-      }
-    ]
-  },
-  {
-    "path": "hubs/services/member_management.py",
-    "file_name": "member_management.py",
-    "functions": [
-      {
-        "name": "member_invite",
-        "complexity": 16
       }
     ]
   },
