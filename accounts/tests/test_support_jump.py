@@ -227,6 +227,17 @@ class TestEnterAsSupport:
         assert html.count(f'href="{escape(self.ENTRY)}"') == 1
         assert "Enter as support" in html
 
+    def test_on_the_hubs_page_it_sits_under_open_in_the_hub_admin_so_no_button_breaks_on_a_phone(
+        self, signed_in_support
+    ):
+        html = signed_in_support.get(HUBS_PAGE).content.decode()
+
+        assert re.search(
+            r'<td>\s*<p><a class="button nowrap" href="[^"]+">Open in the Hub admin</a></p>\s*'
+            rf'<p><a class="button nowrap" href="{re.escape(escape(self.ENTRY))}">Enter as support</a></p>\s*</td>',
+            html,
+        )
+
     def test_the_record_of_the_business_has_it(self, signed_in_support):
         from hubs.models import Hub
 
@@ -240,4 +251,6 @@ class TestEnterAsSupport:
     def test_it_is_said_in_spanish(self, signed_in_support):
         response = signed_in_support.get(HUBS_PAGE, headers={"Accept-Language": "es"})
 
-        assert "Entrar como soporte" in response.content.decode()
+        html = response.content.decode()
+        assert "Entrar como soporte" in html
+        assert '<th scope="col">Abrir el hub</th>' in html
