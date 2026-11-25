@@ -25,54 +25,65 @@ def _target(url: str) -> tuple[str, str]:
     return (parts.hostname or "").lower(), parts.path or "/"
 
 
+def _stray(endpoint: dict, url: str) -> str:
+    """What is wrong with an ``endpoint`` that does not deliver to our webhook at ``url``."""
+    host, _ = _target(url)
+    if _target(endpoint.get("url") or "")[0] == host:
+        return (
+            f"Stripe endpoint {endpoint['id']} delivers to {endpoint['url']}, a route this SaaS does not serve: "
+            f"every delivery gets a 404 and Stripe disables it. Point it at {url}."
+        )
+    return (
+        f"Stripe endpoint {endpoint['id']} delivers to {endpoint['url']}, another environment than {host}: "
+        "it rejects the events this account signs. Delete it from this Stripe account."
+    )
+
+
+def _how_many(ours: list[dict], url: str) -> list[str]:
+    """Exactly one endpoint delivers to our webhook at ``url``: none or several of ``ours`` is a problem."""
+    if not ours:
+        return [
+            f"No enabled Stripe endpoint delivers to {url}: its events are lost. Create it in Stripe (or enable it) "
+            "with the events of billing.services.webhook_dispatch.STRIPE_WEBHOOK_EVENTS and put its whsec_ in STRIPE_WEBHOOK_SECRET."
+        ]
+    if len(ours) > 1:
+        return [
+            f"{len(ours)} enabled Stripe endpoints deliver to {url} ({', '.join(e['id'] for e in ours)}): keep one, "
+            "only its whsec_ fits STRIPE_WEBHOOK_SECRET and the others' deliveries are refused."
+        ]
+    return []
+
+
+def _events_off(endpoint: dict, events: tuple[str, ...]) -> list[str]:
+    """Our ``endpoint`` sends exactly ``events``: what is missing and what is extra is a problem, by name."""
+    enabled = set(endpoint.get("enabled_events") or [])
+    if "*" in enabled:
+        return [
+            f"Stripe endpoint {endpoint['id']} subscribes to every event (*): subscribe it exactly to the "
+            f"{len(events)} of billing.services.webhook_dispatch.STRIPE_WEBHOOK_EVENTS."
+        ]
+    wanted = set(events)
+    differing = (("missing", sorted(wanted - enabled)), ("extra", sorted(enabled - wanted)))
+    found = [f"{what}: {', '.join(names)}" for what, names in differing if names]
+    if not found:
+        return []
+    return [f"Stripe endpoint {endpoint['id']} does not send the events the webhook handles ({'; '.join(found)})."]
+
+
 def endpoint_problems(endpoints: list[dict], url: str, events: tuple[str, ...]) -> list[str]:
     """What is wrong between the account's ``endpoints`` and our webhook at ``url`` that handles ``events``."""
-    host, _ = _target(url)
     problems: list[str] = []
     ours: list[dict] = []
     for endpoint in endpoints:
         if endpoint.get("status") != "enabled":
             continue
-        target = _target(endpoint.get("url") or "")
-        if target == _target(url):
+        if _target(endpoint.get("url") or "") == _target(url):
             ours.append(endpoint)
-        elif target[0] == host:
-            problems.append(
-                f"Stripe endpoint {endpoint['id']} delivers to {endpoint['url']}, a route this SaaS does not serve: "
-                f"every delivery gets a 404 and Stripe disables it. Point it at {url}."
-            )
         else:
-            problems.append(
-                f"Stripe endpoint {endpoint['id']} delivers to {endpoint['url']}, another environment than {host}: "
-                "it rejects the events this account signs. Delete it from this Stripe account."
-            )
-    if not ours:
-        problems.append(
-            f"No enabled Stripe endpoint delivers to {url}: its events are lost. Create it in Stripe (or enable it) "
-            "with the events of billing.services.webhook_dispatch.STRIPE_WEBHOOK_EVENTS and put its whsec_ in STRIPE_WEBHOOK_SECRET."
-        )
-    elif len(ours) > 1:
-        problems.append(
-            f"{len(ours)} enabled Stripe endpoints deliver to {url} ({', '.join(e['id'] for e in ours)}): keep one, "
-            "only its whsec_ fits STRIPE_WEBHOOK_SECRET and the others' deliveries are refused."
-        )
-    wanted = set(events)
+            problems.append(_stray(endpoint, url))
+    problems += _how_many(ours, url)
     for endpoint in ours:
-        enabled = set(endpoint.get("enabled_events") or [])
-        if "*" in enabled:
-            problems.append(
-                f"Stripe endpoint {endpoint['id']} subscribes to every event (*): subscribe it exactly to the "
-                f"{len(events)} of billing.services.webhook_dispatch.STRIPE_WEBHOOK_EVENTS."
-            )
-            continue
-        missing, extra = sorted(wanted - enabled), sorted(enabled - wanted)
-        if missing or extra:
-            found = ([f"missing: {', '.join(missing)}"] if missing else []) + (
-                [f"extra: {', '.join(extra)}"] if extra else []
-            )
-            problems.append(
-                f"Stripe endpoint {endpoint['id']} does not send the events the webhook handles ({'; '.join(found)})."
-            )
+        problems += _events_off(endpoint, events)
     return problems
 
 

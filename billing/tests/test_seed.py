@@ -45,12 +45,13 @@ def test_the_seed_copies_the_rates_instead_of_reading_the_live_backstop():
     } == EU_VAT_RATES
 
 
-def test_an_empty_database_gets_everything():
-    TaxRule.objects.all().delete()
-    TaxCategory.objects.all().delete()
-    FiscalPolicy.objects.all().delete()
-    CompanyConfig.objects.all().delete()
+@pytest.fixture
+def empty():
+    for model in (TaxRule, TaxCategory, FiscalPolicy, CompanyConfig):
+        model.objects.all().delete()
 
+
+def test_an_empty_database_gets_everything(empty):
     created = seed.seed_tax_data(**MODELS)
 
     assert created == {"categories": 6, "rules": 31, "fiscal_policy": 1, "company": 1}
@@ -76,6 +77,36 @@ def test_an_empty_database_gets_everything():
         "28822",
         "Madrid",
     )
+
+
+def test_every_row_says_what_the_seed_says_of_it(empty):
+    seed.seed_tax_data(**MODELS)
+
+    assert sorted(TaxCategory.objects.values_list("key", "name", "description")) == sorted(seed.CATEGORIES)
+    general = {(country, ""): (Decimal(rate), True, date(2020, 1, 1)) for country, rate in seed.EU_VAT_RATES.items()}
+    outside = {territory: (Decimal("0"), False, date(2020, 1, 1)) for territory in seed.NON_VAT_TERRITORIES}
+    written = TaxRule.objects.filter(category_id="service.generic", is_active=True)
+    assert {
+        (rule.country_code, rule.region_code): (rule.rate_pct, rule.is_subject, rule.valid_from) for rule in written
+    } == {**general, **outside, ("GB", ""): (Decimal("0"), False, date(2021, 1, 1))}
+    assert FiscalPolicy.objects.count() == CompanyConfig.objects.count() == 1
+
+
+def test_a_dry_run_counts_what_is_missing_and_writes_nothing(empty):
+    would_create = seed.seed_tax_data(**MODELS, dry_run=True)
+
+    assert would_create == {"categories": 6, "rules": 31, "fiscal_policy": 1, "company": 1}
+    assert not any(model.objects.exists() for model in MODELS.values())
+
+
+@pytest.mark.parametrize(("model", "kind"), [(FiscalPolicy, "fiscal_policy"), (CompanyConfig, "company")])
+def test_the_policy_and_the_company_are_put_back_each_on_its_own(model, kind):
+    model.objects.all().delete()
+
+    created = seed.seed_tax_data(**MODELS)
+
+    assert created == {"categories": 0, "rules": 0, "fiscal_policy": 0, "company": 0, kind: 1}
+    assert model.objects.count() == 1
 
 
 def test_a_second_run_creates_nothing():
@@ -118,3 +149,20 @@ def test_a_uk_rule_written_by_hand_is_left_alone():
     seed.seed_tax_data(**MODELS)
 
     assert TaxRule.objects.filter(country_code="GB").count() == 1
+
+
+def test_a_rule_switched_off_in_the_admin_is_left_alone():
+    TaxRule.objects.filter(country_code="DE").update(is_active=False)
+
+    seed.seed_tax_data(**MODELS)
+
+    assert [rule.is_active for rule in TaxRule.objects.filter(country_code="DE")] == [False]
+
+
+def test_a_rule_of_another_category_does_not_stand_for_the_generic_one():
+    TaxRule.objects.filter(country_code="DE").update(category_id="service.support")
+
+    created = seed.seed_tax_data(**MODELS)
+
+    assert created["rules"] == 1
+    assert TaxRule.objects.filter(country_code="DE", category_id="service.generic").exists()

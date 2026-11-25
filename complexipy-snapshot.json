@@ -126,16 +126,6 @@
     ]
   },
   {
-    "path": "base/services.py",
-    "file_name": "services.py",
-    "functions": [
-      {
-        "name": "_answer",
-        "complexity": 17
-      }
-    ]
-  },
-  {
     "path": "base/tests/test_admin_django_catalog.py",
     "file_name": "test_admin_django_catalog.py",
     "functions": [
@@ -146,31 +136,11 @@
     ]
   },
   {
-    "path": "billing/management/commands/audit_stripe_webhooks.py",
-    "file_name": "audit_stripe_webhooks.py",
-    "functions": [
-      {
-        "name": "endpoint_problems",
-        "complexity": 23
-      }
-    ]
-  },
-  {
     "path": "billing/queries/subscriptions.py",
     "file_name": "subscriptions.py",
     "functions": [
       {
         "name": "_subscription_row",
-        "complexity": 17
-      }
-    ]
-  },
-  {
-    "path": "billing/seed.py",
-    "file_name": "seed.py",
-    "functions": [
-      {
-        "name": "seed_tax_data",
         "complexity": 17
       }
     ]
@@ -192,16 +162,6 @@
       {
         "name": "HubDouble::_default",
         "complexity": 38
-      }
-    ]
-  },
-  {
-    "path": "public/demo.py",
-    "file_name": "demo.py",
-    "functions": [
-      {
-        "name": "status",
-        "complexity": 16
       }
     ]
   },

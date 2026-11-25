@@ -109,26 +109,24 @@ def _rules():
     yield country, "", Decimal("0.00"), False, in_force_from
 
 
-def seed_tax_data(  # noqa: C901
-    *, TaxCategory, TaxRule, FiscalPolicy, CompanyConfig, dry_run: bool = False
-) -> dict[str, int]:
-    """Create what is missing of today's tax data; return how many rows of each kind it (would) create."""
-    created = {"categories": 0, "rules": 0, "fiscal_policy": 0, "company": 0}
-
+def _seed_categories(TaxCategory, *, dry_run: bool) -> int:
     known = set(TaxCategory.objects.values_list("key", flat=True))
-    for key, name, description in CATEGORIES:
-        if key not in known:
-            created["categories"] += 1
-            if not dry_run:
-                TaxCategory.objects.create(key=key, name=name, description=description)
+    missing = [category for category in CATEGORIES if category[0] not in known]
+    if not dry_run:
+        for key, name, description in missing:
+            TaxCategory.objects.create(key=key, name=name, description=description)
+    return len(missing)
 
+
+def _seed_rules(TaxRule, *, dry_run: bool) -> int:
+    created = 0
     for country, region, rate, subject, valid_from in _rules():
         # A territory that already has a generic rule (seeded or written in the admin) keeps it.
         if TaxRule.objects.filter(
             country_code=country, region_code=region, category_id=GENERIC
         ).exists():
             continue
-        created["rules"] += 1
+        created += 1
         if not dry_run:
             TaxRule.objects.create(
                 category_id=GENERIC,
@@ -139,15 +137,25 @@ def seed_tax_data(  # noqa: C901
                 valid_from=valid_from,
                 is_active=True,
             )
-
-    if not FiscalPolicy.objects.exists():
-        created["fiscal_policy"] += 1
-        if not dry_run:
-            FiscalPolicy.objects.create()
-
-    if not CompanyConfig.objects.exists():
-        created["company"] += 1
-        if not dry_run:
-            CompanyConfig.objects.create(**ERPLORA)
-
     return created
+
+
+def _seed_only_row(model, values: dict, *, dry_run: bool) -> int:
+    """The one row of ``model``, with ``values``, unless it has one already."""
+    if model.objects.exists():
+        return 0
+    if not dry_run:
+        model.objects.create(**values)
+    return 1
+
+
+def seed_tax_data(
+    *, TaxCategory, TaxRule, FiscalPolicy, CompanyConfig, dry_run: bool = False
+) -> dict[str, int]:
+    """Create what is missing of today's tax data; return how many rows of each kind it (would) create."""
+    return {
+        "categories": _seed_categories(TaxCategory, dry_run=dry_run),
+        "rules": _seed_rules(TaxRule, dry_run=dry_run),
+        "fiscal_policy": _seed_only_row(FiscalPolicy, {}, dry_run=dry_run),
+        "company": _seed_only_row(CompanyConfig, ERPLORA, dry_run=dry_run),
+    }
