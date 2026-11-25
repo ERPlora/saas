@@ -14,6 +14,9 @@ PHONE_NUMBER_ID = "106540352242922"
 BUSINESS = "34910000000"
 CUSTOMER = "34600111222"
 WABA = "102290129340398"
+NULLS = dict.fromkeys(
+    ["id", "title", "type", "body", "caption", "mime_type", "filename", "payload", "text", "emoji", "message_id"]
+)
 
 
 def webhook(field: str, value: dict, *, waba: str = WABA) -> dict:
@@ -191,7 +194,11 @@ class TestACustomersMessage:
 
         assert (message.body["type"], message.body["text"], message.body["sent_at"]) == ("text", "Hola", None)
 
-    @pytest.mark.parametrize("content", [None, "x", {}, {"type": "list_reply", "list_reply": "x"}])
+    @pytest.mark.parametrize(
+        "content",
+        [None, "x", {}, {"type": "list_reply", "list_reply": "x"}, NULLS, {"type": "list_reply", "list_reply": NULLS}],
+        ids=["null", "text", "empty", "reply_not_an_object", "nulls", "reply_of_nulls"],
+    )
     @pytest.mark.parametrize(
         ("kind", "reply"),
         [
@@ -207,6 +214,7 @@ class TestACustomersMessage:
 
         assert (message.body["text"], message.body["reply_to"], message.media_id) == ("", "", "")
         assert message.body["reply"] == reply
+        assert message.body["media"] in (None, {"mime_type": "", "filename": "", "caption": ""})
 
     @pytest.mark.parametrize("raw", ["x", {"id": "wamid.N", "type": "text"}, {"from": CUSTOMER, "type": "text"}])
     def test_a_message_without_id_or_sender_is_skipped(self, raw):
