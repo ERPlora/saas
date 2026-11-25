@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:883be92bfc2ac0170a0a57b5c342ca3316a6e607e7d63a734b634eefdcac2c6a -->
+<!-- generated from WORKBOOK.md sha256:5393bbec73cbb38f319ba6d56690bb47afec67c5a5d77d168b038484849b6735 -->
 
 ## What it is for and who it is for
 
@@ -191,6 +191,7 @@ last access, with a search by business or by email and a filter by role; it is o
 | HUBS-F35 | Recognise the businesses' service when it calls erplora.com | done |
 | HUBS-F36 | Keep the sectors and the business types in the admin | done |
 | HUBS-F37 | Read the sectors and the business types | done |
+| HUBS-F38 | Enter as support the app of a business that allows it | done |
 
 ### HUBS-F01 Create the free business with a single question
 Status: done
@@ -686,3 +687,17 @@ In: the language of whoever asks and, if they want, a sector.
 Out: both lists; nothing is stored.
 If it fails: a sector that does not exist gives an empty list; a deactivated sector or type is not in its list. An API key of the account reads them too.
 Involved: public (the pages of each sector), accounts (the business sign-up at the Entrance)
+
+### HUBS-F38 Enter as support the app of a business that allows it
+Status: done
+Actor: ERPlora's staff
+Screen: admin › Businesses (the record of the business), admin › Businesses › Hubs, the business
+Steps:
+1. A business asks ERPlora's support for help setting it up and, in its app, turns on support access (BASE-F126 of the Hub).
+2. The person of support enters erplora.com's admin with their own account and presses "Enter as support" on the record of the business or on its row of "Hubs".
+3. The business sends them to erplora.com with the mark of that browser, as in any entry (ACCOUNTS-F28), and erplora.com, which checks that they are ERPlora's staff, sends them back to the business with a single-use pass that says they come in as support, with their name and their email.
+4. With the access on, they appear inside the business's app as an administrator, without showing in its team, and the business notes the entry (BASE-F126).
+In: the staff account (a superuser or one of the support group) and the business of the record.
+Out: a pass that lasts one minute, works only once and only for that business, and a line in erplora.com's log with the account and the business. On erplora.com nobody is added to the business and no seat of its plan is taken.
+If it fails: with the access off, the business opens no session and shows "This business does not let support in" with "Try again". An account without a platform role (a customer who is no member, staff without a role or a deactivated account) gets no pass: "You don't have access to this hub". Whoever is a member of the business enters with their member's role. With two-step verification turned on in the platform, it first asks for the code of the authenticator app. The support pass does not open the Hub admin, nor the Hub admin's the business's app.
+Involved: accounts (the pass of the entry, ACCOUNTS-F28), the business (BASE-F126 of the Hub: the support access and its refusal page), HUBS-F23
