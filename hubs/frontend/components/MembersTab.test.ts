@@ -30,6 +30,7 @@ import { viewport } from '../../../packages/ui/src/components/DataTable/__tests_
 const BUSINESS = {
   id: 'h1',
   name: 'Panadería López',
+  is_platform: false,
   status: 'active',
   pending_transfer: null,
   can: { open: true, manage_members: true, manage_settings: true, manage_billing: true, transfer: true, delete: true },
@@ -168,6 +169,19 @@ describe('MembersTab: the list', () => {
     expect(s.testid('members-roles').text()).toContain('What can each one do?');
     expect(s.testid('members-roles').text()).toContain('Owner: everything, also the plan, transferring and deleting the business.');
     expect(s.testid('members-roles').text()).toContain('Accountant: the accountancy firm that keeps the books.');
+    expect(s.testid('members-roles').text()).toContain('it takes no place on the plan.');
+  });
+
+  it('says what each role may do in ERPlora’s own business, which has no plan and is never deleted', async () => {
+    const s = await setup({ is_platform: true });
+    await s.show(page(ROWS, { seats: { used: 2, limit: null } }));
+    expect(s.wrapper.findAll('.roles-line').map((line) => line.text())).toEqual([
+      'Owner: everything, also transferring the business.',
+      'Admin: the team, the modules and the settings.',
+      'Manager and employee: they work inside the business. Employees who only use a PIN at the till are managed inside the business.',
+      'Accountant: the accountancy firm that keeps the books. It only reads sales and invoices, with their taxes, and downloads the invoices.',
+    ]);
+    expect(s.testid('members-seats').exists()).toBe(false);
   });
 
   it('an error is the table’s, with «Retry»', async () => {

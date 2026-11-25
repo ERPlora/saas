@@ -309,7 +309,7 @@ class TestItsOwnersAccount:
     def test_it_holds_the_account_of_its_owner(self, platform_business, founder):
         owned, paid = account_businesses.businesses_holding(ctx_for(founder))
 
-        assert (owned, paid) == ([{"id": str(platform_business.id), "name": "ERPlora"}], [])
+        assert (owned, paid) == ([{"id": str(platform_business.id), "name": "ERPlora", "is_platform": True}], [])
 
     def test_it_does_not_hold_the_account_of_another_member(self, platform_business, make_user):
         admin = make_user("ana@example.com")

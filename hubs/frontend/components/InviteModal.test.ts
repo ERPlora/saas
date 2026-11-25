@@ -26,7 +26,7 @@ async function setup(api: () => Response, extra: Record<string, unknown> = {}) {
   const Host = {
     render: () =>
       h(InviteModal, {
-        business: { id: 'h1', name: 'Panadería López' },
+        business: { id: 'h1', name: 'Panadería López', is_platform: false },
         invitableRoles: ['hub_admin', 'hub_manager', 'hub_employee', 'hub_accountant'],
         freeRoles: ['hub_accountant'],
         seats: { used: 2, limit: 3 },
@@ -145,5 +145,21 @@ describe('InviteModal', () => {
     await s.fire('invite-role', 'ionChange', 'hub_accountant');
     expect(s.q('invite-full')).toBeNull();
     expect(s.q('invite-modal-submit').disabled).toBe(false);
+  });
+
+  it('says nothing of the plan when it invites the accountancy firm to ERPlora’s own business', async () => {
+    const s = await setup(() => Response.json({}), {
+      business: { id: 'p1', name: 'ERPlora', is_platform: true },
+      seats: { used: 2, limit: null },
+    });
+    await s.fire('invite-role', 'ionChange', 'hub_accountant');
+    expect(s.q('invite-free-role')).toBeNull();
+    expect(s.q('invite-modal').textContent).not.toMatch(/plan/i);
+  });
+
+  it('says the accountancy firm takes no place, also on a plan without a cap of places', async () => {
+    const s = await setup(() => Response.json({}), { seats: { used: 2, limit: null } });
+    await s.fire('invite-role', 'ionChange', 'hub_accountant');
+    expect(s.q('invite-free-role').textContent).toBe('An accountancy firm takes no place on the plan.');
   });
 });

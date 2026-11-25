@@ -70,12 +70,13 @@ class TestOwnersFirstHandTheirBusinessesOver:
         error = response.json()["error"]
         assert error["code"] == "accounts.owns_businesses"
         assert sorted(error["businesses"], key=lambda row: row["name"]) == [
-            {"id": str(other.pk), "name": "Café Central"},
-            {"id": str(business.pk), "name": "Panadería López"},
+            {"id": str(other.pk), "name": "Café Central", "is_platform": False},
+            {"id": str(business.pk), "name": "Panadería López", "is_platform": False},
         ]
+        assert error["message"] == "You own businesses: transfer or delete them before deleting your account."
         assert _exists(ana)
 
-    def test_the_owner_of_erploras_own_business_is_refused_too(self, signed_in, ana):
+    def test_the_owner_of_erploras_own_business_is_only_told_to_transfer_it(self, signed_in, ana):
         """Nobody deletes that business, so it is handed over before its owner's account may go."""
         from hubs.models import HubMember
 
@@ -86,8 +87,22 @@ class TestOwnersFirstHandTheirBusinessesOver:
 
         error = response.json()["error"]
         assert (response.status_code, error["code"]) == (409, "accounts.owns_businesses")
-        assert error["businesses"] == [{"id": str(business.pk), "name": "ERPlora"}]
+        assert error["businesses"] == [{"id": str(business.pk), "name": "ERPlora", "is_platform": True}]
+        assert error["message"] == "You own ERPlora's business: transfer it before deleting your account."
         assert _exists(ana)
+
+    def test_the_owner_of_another_business_too_is_told_what_to_do_with_each(self, signed_in, ana, plans):  # noqa: F811
+        from hubs.models import HubMember
+
+        create_business(ana, name="Panadería López")
+        add_member(platform_row(), ana, HubMember.Role.OWNER)
+
+        response = api_post(signed_in, DELETE)
+
+        assert response.json()["error"]["message"] == (
+            "You own businesses: transfer or delete them before deleting your account. "
+            "You own ERPlora's business: transfer it before deleting your account."
+        )
 
     def test_refused_before_the_password_is_asked(self, signed_in_long_ago, ana, plans):  # noqa: F811
         """A refusal never tests a password: the 409 comes before the reauthentication."""

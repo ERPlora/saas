@@ -69,8 +69,8 @@ describe('DeleteAccountDialog', () => {
     const s = await setup(() =>
       apiError(409, 'accounts.owns_businesses', 'You own businesses: transfer or delete them before deleting your account.', {
         businesses: [
-          { id: 'b1', name: 'Panadería López' },
-          { id: 'b2', name: 'Café Central' },
+          { id: 'b1', name: 'Panadería López', is_platform: false },
+          { id: 'b2', name: 'Café Central', is_platform: false },
         ],
       }),
     );
@@ -83,6 +83,17 @@ describe('DeleteAccountDialog', () => {
     ]);
     expect(leave).not.toHaveBeenCalled();
     expect(s.open.value).toBe(true);
+  });
+
+  it('links ERPlora’s own business to its Members, where it is transferred', async () => {
+    const s = await setup(() =>
+      apiError(409, 'accounts.owns_businesses', "You own ERPlora's business: transfer it before deleting your account.", {
+        businesses: [{ id: 'erp', name: 'ERPlora', is_platform: true }],
+      }),
+    );
+    await confirmWithEmail(s);
+    expect(s.q('delete-account-blocked')?.textContent).toContain("You own ERPlora's business: transfer it before deleting your account.");
+    expect(s.q('delete-account-business')?.getAttribute('href')).toBe('/dashboard/businesses/erp/members');
   });
 
   it('asks «Confirm it’s you» when the server wants it, then deletes', async () => {

@@ -64,7 +64,9 @@ async function setup(rows: BusinessRowOut[]) {
 describe('DeleteAccountCard', () => {
   it('names the businesses the account owns in one line, each linked to its Settings, and keeps deletion off', async () => {
     const s = await setup([business('b1', 'Panadería López'), business('b2', 'Café Central'), business('b6', 'Bar La Plaza')]);
-    expect(s.q('profile-danger')?.textContent).toContain('You own 3 businesses: transfer or delete them before deleting your account.');
+    expect([...s.q('profile-danger')!.querySelectorAll('.card-text')].map((p) => p.textContent?.trim())).toEqual([
+      'You own 3 businesses: transfer or delete them before deleting your account.',
+    ]);
     // One line, not a stack of links: the page stays clean.
     expect(s.q('profile-danger-businesses')?.textContent?.trim()).toBe('Panadería López, Café Central, and Bar La Plaza');
     expect(s.q('profile-danger')?.querySelector('ul, li')).toBeNull();
@@ -94,18 +96,45 @@ describe('DeleteAccountCard', () => {
     expect([...document.querySelectorAll('[data-testid="profile-danger-business"]')].map((a) => a.textContent?.trim())).toEqual(['Bar Norte']);
   });
 
-  it('names ERPlora’s own business to its owner, who hands it over in its Members', async () => {
-    const s = await setup([
-      business('erp', 'ERPlora', {
-        is_platform: true,
-        is_payer: false,
-        payer_id: null,
-        can: { open: true, manage: true, restore: false, delete: false },
-      }),
-    ]);
+  /** ERPlora's own business, which is only transferred: nobody deletes it, nor pays for it. */
+  const platform = () =>
+    business('erp', 'ERPlora', {
+      is_platform: true,
+      is_payer: false,
+      payer_id: null,
+      can: { open: true, manage: true, restore: false, delete: false },
+    });
+  const texts = (s: Awaited<ReturnType<typeof setup>>) =>
+    [...s.q('profile-danger')!.querySelectorAll('.card-text')].map((p) => p.textContent?.trim());
+
+  it('tells the owner of ERPlora’s own business only to transfer it, in its Members', async () => {
+    const s = await setup([platform()]);
+    expect(texts(s)).toEqual(["You own ERPlora's business: transfer it before deleting your account."]);
     const link = s.q('profile-danger-business');
     expect([link?.textContent?.trim(), link?.getAttribute('href')]).toEqual(['ERPlora', '/dashboard/businesses/erp/members']);
     expect(ionProps(s.q('profile-delete'), 'disabled')).toEqual({ disabled: true });
+  });
+
+  it('says it in Spanish', async () => {
+    const s = await mountPanel(DeleteAccountCard, { props: { profile: profile() }, locale: 'es' });
+    await s.result(await s.live(), 'hubs.business.list', page([platform()]));
+    expect(texts(s)).toEqual(['Eres propietario del negocio de ERPlora: transfiérelo antes de borrar la cuenta.']);
+  });
+
+  it('tells the owner of other businesses too what to do with each, counting only those that can be deleted', async () => {
+    const s = await setup([business('b1', 'Panadería López'), platform()]);
+    expect(texts(s)).toEqual([
+      'You own 1 business: transfer or delete it before deleting your account.',
+      "You own ERPlora's business: transfer it before deleting your account.",
+    ]);
+    expect(s.q('profile-danger-businesses')?.textContent?.trim()).toBe('Panadería López and ERPlora');
+    expect(ionProps(s.q('profile-delete'), 'disabled')).toEqual({ disabled: true });
+  });
+
+  it('says nothing of ERPlora’s own business to a member who does not own it', async () => {
+    const s = await setup([{ ...platform(), role: 'hub_admin' }]);
+    expect(texts(s)).toEqual([expect.stringContaining('Your account and what is in it go for good.')]);
+    expect(ionProps(s.q('profile-delete'), 'disabled')).toEqual({ disabled: false });
   });
 
   it('lets a business in its 90 days of deletion go', async () => {
