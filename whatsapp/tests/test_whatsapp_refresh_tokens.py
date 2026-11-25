@@ -245,9 +245,17 @@ class TestWhenMetaDoesNotAnswer:
         assert number.token_expires_at > timezone.now() + timedelta(days=59)
 
     @respx.mock
-    def test_numbers_still_not_renewed_inside_the_last_week_are_an_error_in_the_log(
-        self, whatsapp_on, business, other_business, caplog
-    ):
+    def test_a_number_still_not_renewed_inside_the_last_week_is_an_error_in_the_log(self, whatsapp_on, business, caplog):
+        make_number(business, days=5)
+        respx.get(EXCHANGE).mock(side_effect=httpx.ConnectError("down"))
+
+        token_renewal.renew_tokens()
+
+        assert "whatsapp.token.running_out" in caplog.text
+        assert "EAAG" not in caplog.text
+
+    @respx.mock
+    def test_the_error_says_how_many_numbers_are_running_out(self, whatsapp_on, business, other_business, caplog):
         make_number(business, days=5)
         make_number(other_business, days=6)
         respx.get(EXCHANGE).mock(side_effect=httpx.ConnectError("down"))
@@ -255,7 +263,6 @@ class TestWhenMetaDoesNotAnswer:
         token_renewal.renew_tokens()
 
         assert "whatsapp.token.running_out numbers=2 days_left_under=7" in caplog.text
-        assert "EAAG" not in caplog.text
 
     def test_a_number_whose_renewal_crashes_inside_the_last_week_is_one_of_them(
         self, whatsapp_on, business, monkeypatch, caplog
