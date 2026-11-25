@@ -75,7 +75,6 @@ def platform_business_create(ctx: OperationContext, data: PlatformBusinessIn) ->
     HubMember.objects.create(hub=hub, user=owner, role=Role.OWNER, joined_at=now, accepted_at=now)
     record_event(system_ctx_for(hub.id), events.BUSINESS_CREATED, {"id": str(hub.id)})
     push_after_commit(hub.id)
-    logger.info("hubs.platform_business.created hub=%s owner=%s", hub.id, owner.pk)
     return {"id": hub.id, "slug": hub.slug, "created": True}
 
 
@@ -88,6 +87,8 @@ def take_platform_business(hub_id: UUID, owner_email: str, *, execute: bool) -> 
         )
         if not execute:
             transaction.set_rollback(True)
+    if execute and made.created:
+        logger.info("hubs.platform_business.created hub=%s", made.id)
     return made
 
 

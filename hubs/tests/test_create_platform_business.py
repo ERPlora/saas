@@ -24,13 +24,14 @@ def run(*args) -> str:
 
 
 def test_without_execute_nothing_is_written_and_it_says_what_it_would_do(
-    hub_double, founder, django_capture_on_commit_callbacks
+    hub_double, founder, caplog, django_capture_on_commit_callbacks
 ):
     hub_id = platform_hub_in(hub_double)
 
-    with django_capture_on_commit_callbacks(execute=True):
+    with caplog.at_level("INFO"), django_capture_on_commit_callbacks(execute=True):
         out = run(str(hub_id), "--owner", founder.email)
 
+    assert "platform_business.created" not in caplog.text
     assert "Dry run" in out
     assert str(hub_id) in out
     assert not Hub.objects.exists()
@@ -38,13 +39,14 @@ def test_without_execute_nothing_is_written_and_it_says_what_it_would_do(
 
 
 def test_with_execute_the_row_its_owner_and_its_people_are_made(
-    hub_double, founder, django_capture_on_commit_callbacks
+    hub_double, founder, caplog, django_capture_on_commit_callbacks
 ):
     hub_id = platform_hub_in(hub_double)
 
-    with django_capture_on_commit_callbacks(execute=True):
+    with caplog.at_level("INFO"), django_capture_on_commit_callbacks(execute=True):
         out = run(str(hub_id), "--owner", founder.email, "--execute")
 
+    assert "platform_business.created" in caplog.text
     hub = Hub.objects.get(is_platform=True)
     assert (hub.id, hub.slug) == (hub_id, "erp")
     assert HubMember.objects.get(hub=hub).user == founder
