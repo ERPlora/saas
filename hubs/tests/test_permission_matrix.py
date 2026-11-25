@@ -184,6 +184,8 @@ def test_every_operation_on_a_business_has_its_row():
         "hubs.usage.prune",
         # The platform's (the hourly check): ``test_check_custom_domains.py``.
         "hubs.custom_domain.record",
+        # The platform's (its command): ``test_platform_business.py``.
+        "hubs.platform_business.create",
         # The platform's (the clock of a suspended business): ``test_suspended_lifecycle.py``.
         "hubs.business.age_suspension",
         "hubs.address.propose",

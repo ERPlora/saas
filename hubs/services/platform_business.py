@@ -5,10 +5,11 @@ from uuid import UUID
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.translation import gettext as _
-from live.context import OperationContext
+from live.context import OperationContext, Scope, system_context
 from live.errors import Conflict, OperationError, PermissionDenied
 from live.operations import INTERNAL, operation
 from live.outbox import record_event
@@ -76,6 +77,18 @@ def platform_business_create(ctx: OperationContext, data: PlatformBusinessIn) ->
     push_after_commit(hub.id)
     logger.info("hubs.platform_business.created hub=%s owner=%s", hub.id, owner.pk)
     return {"id": hub.id, "slug": hub.slug, "created": True}
+
+
+def take_platform_business(hub_id: UUID, owner_email: str, *, execute: bool) -> PlatformBusinessOut:
+    """``manage.py create_platform_business``: the platform creates it or, without ``execute``, takes every step and
+    then takes them back."""
+    with transaction.atomic():
+        made = platform_business_create(
+            system_context(Scope("user", "system")), PlatformBusinessIn(id=hub_id, owner_email=owner_email)
+        )
+        if not execute:
+            transaction.set_rollback(True)
+    return made
 
 
 def _require_platform_hub(hub_id: UUID) -> None:

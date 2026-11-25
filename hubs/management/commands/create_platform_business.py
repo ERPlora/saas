@@ -9,12 +9,9 @@ unless ``--execute``: the same steps, taken back.
 from uuid import UUID
 
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
-from live.context import Scope, system_context
 from live.errors import OperationError
 
-from hubs.schemas.platform_business import PlatformBusinessIn
-from hubs.services.platform_business import platform_business_create
+from hubs.services.platform_business import take_platform_business
 
 
 class Command(BaseCommand):
@@ -27,12 +24,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, hub_id, owner, execute, **options):
         try:
-            with transaction.atomic():
-                made = platform_business_create(
-                    system_context(Scope("user", "system")), PlatformBusinessIn(id=hub_id, owner_email=owner)
-                )
-                if not execute:
-                    transaction.set_rollback(True)
+            made = take_platform_business(hub_id, owner, execute=execute)
         except OperationError as refused:
             raise CommandError(f"{refused.code}: {refused.message} Nothing was written.") from refused
         if not made.created:
