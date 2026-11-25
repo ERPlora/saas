@@ -392,6 +392,10 @@ msgstr "Has cancelado el inicio de sesión con Google. Vuelve a intentarlo o ent
 msgid "Open in the Hub admin"
 msgstr "Abrir en el admin del Hub"
 
+#: accounts/admin/hub_admin_jump.py
+msgid "Enter as support"
+msgstr "Entrar como soporte"
+
 #: accounts/templates/accounts/hub_login_form.html
 msgid "Opening the Hub admin…"
 msgstr "Abriendo el admin del Hub…"

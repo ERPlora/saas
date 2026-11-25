@@ -2,7 +2,8 @@
 {% load i18n %}
 {% comment %}
   «Hubs» of the SaaS admin: every hub with members, each with the jump to
-  its deep link in the Hub admin (`hubs.erplora.com/admin/hub/<slug>/`).
+  its deep link in the Hub admin (`hubs.erplora.com/admin/hub/<slug>/`) and
+  the jump into the business's app as ERPlora's support.
 {% endcomment %}
 {% block breadcrumbs %}
 <ol class="breadcrumbs">
@@ -20,6 +21,7 @@
 <th scope="col">{% translate "Hub" %}</th>
 <th scope="col">{% translate "Members" %}</th>
 <th scope="col">{% translate "Hub admin" %}</th>
+<th scope="col">{% translate "Support" %}</th>
 </tr>
 </thead>
 <tbody>
@@ -28,6 +30,7 @@
 <td>{{ hub.slug }}</td>
 <td>{{ hub.members }}</td>
 <td>{% if hub.url %}<a class="button" href="{{ hub.url }}">{{ open_in_hub_admin }}</a>{% else %}-{% endif %}</td>
+<td>{% if hub.support %}<a class="button" href="{{ hub.support }}">{{ enter_as_support }}</a>{% else %}-{% endif %}</td>
 </tr>
 {% endfor %}
 </tbody>

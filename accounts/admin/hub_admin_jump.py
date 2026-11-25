@@ -1,21 +1,30 @@
-"""«Open in the Hub admin», on every member row and on the «Hubs» page (``hubs.admin``,
-``/admin/accounts/hubs/``, routed in ``config/urls.py``): the staff jump from ``erplora.com/admin``
-to the hub's deep link ``hubs.erplora.com/admin/hub/<slug>/``. The jump starts at the Hub
+"""The staff's jumps from ``erplora.com/admin`` into a hub.
+
+«Open in the Hub admin», on every member row and on the «Hubs» page (``hubs.admin``,
+``/admin/accounts/hubs/``, routed in ``config/urls.py``): the jump to the hub's deep link
+``hubs.erplora.com/admin/hub/<slug>/``. The jump starts at the Hub
 (``<HUB_ADMIN_ORIGIN>/auth/login?hub=<slug>&next=/admin/hub/<slug>/``), which binds it to the browser
 with its ``state`` cookie and sends it to ``/hub-login/?audience=hub-admin`` (``accounts.handoff``):
 there the one-time ``hub-admin`` code is minted and auto-posted to ``HUB_ADMIN_CALLBACK_URL``. The
 staff never type ``hubs.erplora.com``.
+
+«Enter as support», on the «Hubs» page and on the record of a business: the jump into the business's own app as
+ERPlora's support, started at the business like any member's (``hub_links.hub_start_url``). ``/hub-login/`` gives
+the staff a ``hub_support`` code (``hub_jump``), and the business lets them in only while its support access is on;
+otherwise the business answers with a page of its own that says so.
 """
 
 from urllib.parse import urlencode
 
 from django.conf import settings
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 from accounts.queries import hub_links
 from accounts.services import hub_jump
 
 OPEN_IN_HUB_ADMIN = _("Open in the Hub admin")
+ENTER_AS_SUPPORT = _("Enter as support")
 
 #: Why the jump to the Hub admin failed, by the ``?error=`` the Hub sends back to «Hubs»:
 #: the codes of the Hub's ``base/auth.py`` and ``auth_views.py``, and the 400s of ``/internal/auth/redeem``
@@ -49,3 +58,20 @@ def open_hub_admin_url(slug: str) -> str | None:
         return None
     query = urlencode({"hub": slug, "next": hub_links.hub_admin_path(slug)}, safe="/")
     return f"{settings.HUB_ADMIN_ORIGIN}{hub_links.HUB_START_PATH}?{query}"
+
+
+def enter_as_support_url(slug: str) -> str | None:
+    """The admin's jump into the app of the business ``slug`` as support, or ``None`` if ``slug`` is no hub.
+
+    ``http://a.localhost:8000/auth/login?next=/`` locally, ``https://a.erplora.com/auth/login?next=/`` in production.
+    """
+    if not hub_jump.is_hub_slug(slug):
+        return None
+    return hub_links.hub_start_url(slug)
+
+
+def jump_button(url: str | None, label, empty: str) -> str:
+    """A jump of the admin as a button, or ``empty`` when ``url`` is ``None`` (no hub to jump to)."""
+    if url is None:
+        return empty
+    return format_html('<a class="button" href="{}">{}</a>', url, label)

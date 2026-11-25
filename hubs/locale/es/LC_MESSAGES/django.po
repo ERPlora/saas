@@ -1497,6 +1497,10 @@ msgstr "No se ha podido consultar la copia de los datos ahora mismo. Vuelve a in
 msgid "Hub admin"
 msgstr "Admin del Hub"
 
+#: hubs/admin.py hubs/templates/admin/hubs/hubs.html
+msgid "Support"
+msgstr "Soporte"
+
 #: hubs/admin.py hubs/templates/admin/hubs/hubmember/change_list.html
 msgid "Hubs"
 msgstr "Hubs"
