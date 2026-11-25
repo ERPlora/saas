@@ -1,10 +1,10 @@
 """Schemas of base's operations. ``SessionMeOut`` mirrors ``SessionMe`` of packages/ui (shell/session.ts)
 and the Hub's: one shell for both SPAs."""
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from ninja import Schema
-from pydantic import Field
+from pydantic import Field, StringConstraints
 
 from assistant.schemas import DictationIn, ReportFields, SpeechIn
 
@@ -193,6 +193,21 @@ class AssistantUsageOut(Schema):
     resets_at: str | None = Field(None, description="When the allowance comes back (UTC): the first of next month.")
     #: Always false here: the panel's assistant is never a demo's (the Hub's reads the same shape).
     demo: bool
+
+
+class FindToolsIn(Schema):
+    query: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)] = Field(
+        description="The task, in a few words: «change the theme», «list my invoices»."
+    )
+
+
+class FoundToolOut(Schema):
+    name: str = Field(description="The tool's name, to call it.")
+    description: str = Field(description="What the tool does.")
+
+
+class FindToolsOut(Schema):
+    tools: list[FoundToolOut] = Field(description="The tools found, best first.")
 
 
 class AssistantReportIn(ReportFields):

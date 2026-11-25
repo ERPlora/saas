@@ -15,6 +15,7 @@ from django.utils.translation import gettext
 from live.context import OperationContext
 from live.errors import OperationError, Unauthorized
 from live.operations import INTERNAL, operation
+from live.operations import get as get_operation
 
 from assistant import media as gateway_media
 from assistant import services as gateway_services
@@ -66,6 +67,13 @@ def _asked(messages: list[dict]) -> list[str]:
     """What the person wrote, message by message. A file alone says nothing: the words written before it still count."""
     said = (_words(m.get("content")) for m in messages if m.get("role") == "user")
     return [words for words in said if words]
+
+
+def _recent(messages: list[dict]) -> list[dict]:
+    """The messages from the person's second-to-last one on: a turn offers the tools of what they asked there and of
+    what the model searched for since (``base.assistant.relevant``)."""
+    said = [at for at, m in enumerate(messages) if m.get("role") == "user" and _words(m.get("content"))]
+    return messages[said[-2] :] if len(said) >= 2 else messages
 
 
 def _ran(ctx: OperationContext, tools: dict, call, outcome: assistant.ToolOutcome) -> dict:
@@ -187,6 +195,8 @@ def assistant_turn(ctx: OperationContext, data: AssistantTurnIn) -> dict:
     if ctx.actor is None:
         raise Unauthorized(gettext("Sign in to talk to the assistant."))
     tools = assistant.catalog(ctx)
+    # The assistant's own search of the account's tools runs as one of them, but never ranks among them.
+    runs = {**tools, assistant.FIND_TOOLS: get_operation(assistant.FIND_TOOLS)}
     pending = list(data.pending)
     decision = data.decision
     stopped = False
@@ -201,17 +211,17 @@ def assistant_turn(ctx: OperationContext, data: AssistantTurnIn) -> dict:
             append.append({"role": "tool", "tool_call_id": call.call_id, "content": content})
             pending.pop(0)
             continue
-        outcome, card = _answer(ctx, tools, call, decision, stopped=stopped)
+        outcome, card = _answer(ctx, runs, call, decision, stopped=stopped)
         if outcome is None:
             break
         if decision is not None and decision.call_id == call.call_id:
             stopped = decision.stop
             decision = None
         append.append({"role": "tool", "tool_call_id": call.call_id, "content": outcome.content})
-        executed.append(_ran(ctx, tools, call, outcome))
+        executed.append(_ran(ctx, runs, call, outcome))
         pending.pop(0)
     messages = [*data.messages, *append]
-    asked = _asked(data.messages)
+    recent = _recent(data.messages)
     if card is not None:
         card["money"] = {"currency": "EUR", "decimals": 2}
     text = assistant.instructions(
@@ -230,7 +240,10 @@ def assistant_turn(ctx: OperationContext, data: AssistantTurnIn) -> dict:
         "executed": executed,
         "confirm": card,
         "pending": [p.model_dump() for p in pending],
-        "tools": [assistant.tool_spec(op) for op in assistant.relevant(tools, asked[-2:], ctx.language)],
+        "tools": [
+            assistant.tool_spec(op)
+            for op in assistant.relevant(tools, _asked(recent), ctx.language, searched=assistant.searched(recent))
+        ],
         "instructions": text,
         "continuation": data.continuation,
         "stop": stop,

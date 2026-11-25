@@ -5,15 +5,16 @@ from typing import Any
 
 from django.utils import timezone, translation
 from django.utils.translation import gettext
+from live import assistant as shared
 from live.context import OperationContext
 from live.errors import Unauthorized
-from live.operations import INTERNAL, operation
+from live.operations import AI, INTERNAL, operation
 
 from accounts.queries.account_preferences import preferences_of
 from assistant import queries as gateway_queries
 from assistant.schemas import Caller
-from base import navigation
-from base.schemas import AssistantUsageIn, AssistantUsageOut, SessionMeIn, SessionMeOut
+from base import assistant, navigation
+from base.schemas import AssistantUsageIn, AssistantUsageOut, FindToolsIn, FindToolsOut, SessionMeIn, SessionMeOut
 
 logger = logging.getLogger(__name__)
 
@@ -131,3 +132,25 @@ def assistant_usage(ctx: OperationContext, data: AssistantUsageIn) -> dict[str, 
         raise Unauthorized(gettext("Sign in to talk to the assistant."))
     usage = gateway_queries.usage.usage_of(Caller(user_id=ctx.actor.pk), timezone.now())
     return {**usage, "resets_at": usage["resets_at"].isoformat().replace("+00:00", "Z") if usage["resets_at"] else None}
+
+
+@operation(
+    assistant.FIND_TOOLS,
+    kind="query",
+    permission="assistant.ask",
+    input=FindToolsIn,
+    output=FindToolsOut,
+    ai=AI(
+        description=(
+            "Finds the tools for a task when none of the tools you were given does it: describe the task in a few "
+            "words («change the theme», «list my invoices», «invite someone to a business»). Returns up to "
+            f"{shared.FOUND} tools, best first, with what each does; from your next step you can call them. Search "
+            "before you say that something cannot be done here; if none fits, search again in other words."
+        ),
+    ),
+)
+def find_tools(ctx: OperationContext, data: FindToolsIn) -> dict[str, Any]:
+    """The tools of the account's catalogue that do the task ``data.query`` describes (``base.assistant.found``):
+    none it may not use, and none of the store's where nothing is sold."""
+    found = assistant.found(assistant.catalog(ctx), data.query, ctx.language)
+    return {"tools": [{"name": shared.tool_name(op.name), "description": shared.description(op)} for op in found]}
