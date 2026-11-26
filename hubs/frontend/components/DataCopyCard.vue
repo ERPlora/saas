@@ -23,7 +23,7 @@ const props = defineProps<{
   business: { id: string; status: string; can: { download_data: boolean } };
 }>();
 
-const { locale } = useI18n();
+const { t, locale } = useI18n();
 const { text } = useErrorText();
 const list = useCommand('hubs.data_copy.list');
 const link = useCommand('hubs.data_copy.link');
@@ -34,6 +34,8 @@ const available = shallowRef(true);
 const failed = shallowRef<ApiError | null>(null);
 /** The copy whose link is being asked (one at a time). */
 const opening = shallowRef<string | null>(null);
+
+const downloadName = (copy: DataCopyOut) => t('hubs.business.dataCopy.downloadName', { date: formatDateTime(copy.created_at, locale.value) });
 
 const deleted = computed(() => props.business.status === 'deleting');
 /** A deleted business always has the card; a live one only with a copy to download. */
@@ -156,22 +158,22 @@ onMounted(load);
             fill="outline"
             data-testid="data-copy-download"
             :disabled="opening !== null"
-            :aria-label="$t('hubs.business.dataCopy.downloadName', { date: formatDateTime(copy.created_at, locale) })"
+            :aria-label="downloadName(copy)"
+            :title="downloadName(copy)"
             @click="download(copy)"
           >
             <ion-spinner
               v-if="opening === copy.id"
-              slot="start"
+              slot="icon-only"
               name="crescent"
               aria-hidden="true"
             />
             <HubIcon
               v-else
-              slot="start"
+              slot="icon-only"
               name="ion:download-outline"
               aria-hidden="true"
             />
-            {{ $t('hubs.business.dataCopy.download') }}
           </ion-button>
         </li>
       </ul>

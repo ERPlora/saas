@@ -75,13 +75,15 @@ describe('DataCopyCard', () => {
     expect(rows[1].text()).toContain('1.5 kB');
   });
 
-  it('downloads a copy with a link asked on the click, never one kept from before', async () => {
+  it('downloads a copy with a link asked on the click, never one kept from before; the button is its icon, named', async () => {
     const assign = vi.spyOn(browser, 'assign').mockImplementation(() => {});
     const m = await mountIt(DELETED);
     await flush();
 
     const button = m.wrapper.findAll('[data-testid="data-copy-download"]')[0];
+    expect(button.text()).toBe('');
     expect(accessibleName(button)).toMatch(/^Download the copy of .*2026/);
+    expect(button.attributes('title')).toBe(accessibleName(button));
     await button.trigger('click');
     await flush();
 

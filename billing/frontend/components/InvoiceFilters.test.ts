@@ -40,9 +40,11 @@ async function setup(props: Record<string, unknown> = {}, locale: 'en' | 'es' = 
 }
 
 describe('InvoiceFilters: one «Filters» control', () => {
-  it('is a button of the toolbar; its controls only show in its popover', async () => {
+  it('is a button of the toolbar, its funnel alone, named and titled «Filters»; its controls only show in its popover', async () => {
     const s = await setup();
-    expect(s.testid('invoices-filters').text()).toBe('Filters');
+    expect(s.testid('invoices-filters').text()).toBe('');
+    expect(accessibleName(s.testid('invoices-filters'))).toBe('Filters');
+    expect(s.testid('invoices-filters').attributes('title')).toBe('Filters');
     expect(s.testid('invoices-filters-count').exists()).toBe(false);
     expect(s.aria('invoices-filters', 'aria-haspopup')).toBe('dialog');
     expect(s.aria('invoices-filters', 'aria-expanded')).toBe('false');
@@ -100,8 +102,9 @@ describe('InvoiceFilters: one «Filters» control', () => {
 
   it('shows the filters that are on: on the button, in the controls, and «Clear filters»', async () => {
     const s = await setup({ business: 'bakery', status: 'paid', year: 2025 });
-    expect(s.testid('invoices-filters-count').text()).toBe('3');
+    expect(s.testid('invoices-filters').text()).toBe('3');
     expect(accessibleName(s.testid('invoices-filters'))).toBe('Filters: 3 on');
+    expect(s.testid('invoices-filters').attributes('title')).toBe('Filters: 3 on');
     await s.open();
     expect((s.testid('invoices-business').element as HTMLElement & { value?: unknown }).value).toBe('bakery');
     expect((s.testid('invoices-status').element as HTMLElement & { value?: unknown }).value).toBe('paid');
@@ -115,12 +118,12 @@ describe('InvoiceFilters: one «Filters» control', () => {
     const s = await setup();
     await s.open();
     expect(s.testid('invoices-filters-clear').exists()).toBe(false);
-    expect(accessibleName(s.testid('invoices-filters'))).toBeNull();
+    expect(accessibleName(s.testid('invoices-filters'))).toBe('Filters');
   });
 
   it('speaks Spanish', async () => {
     const s = await setup({ status: 'open' }, 'es');
-    expect(s.testid('invoices-filters').text()).toContain('Filtros');
+    expect(s.testid('invoices-filters').text()).toBe('1');
     expect(accessibleName(s.testid('invoices-filters'))).toBe('Filtros: 1 activo');
     await s.open();
     expect(s.testid('invoices-status').findAll('ion-segment-button').map((b) => b.text())).toEqual(['Todas', 'Pagadas', 'No cobradas']);

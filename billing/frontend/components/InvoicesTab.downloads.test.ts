@@ -9,7 +9,7 @@ import { toastError, toastInfo } from '@erplora/ui/shell';
 import { invoiceRow, unpaidRow } from '../__tests__/billing-fixtures';
 import { BAKERY } from '../__tests__/fixtures';
 import { ISSUING, OPEN, PAID, setup, setUpInvoicesTab } from '../__tests__/invoices-tab';
-import { flush } from '../__tests__/mount-billing';
+import { accessibleName, flush } from '../__tests__/mount-billing';
 import { browser } from '../browser';
 
 setUpInvoicesTab();
@@ -25,7 +25,8 @@ describe('InvoicesTab: selection', () => {
     s.table().vm.$emit('update:selected', ['00123', '00124']);
     await flush();
     const button = s.testid('invoices-pdf-selected');
-    expect(button.text()).toBe('Download PDF (1)');
+    // Its icon and the count; the whole label names it and is its title.
+    expect([button.text(), accessibleName(button), button.attributes('title')]).toEqual(['1', 'Download PDF (1)', 'Download PDF (1)']);
     expect(s.testid('invoices-selection-note').text()).toBe('1 selected invoice is still being issued: its PDF is ready in a few minutes.');
     await button.trigger('click');
     await flush();
@@ -39,7 +40,7 @@ describe('InvoicesTab: selection', () => {
     await s.show([OPEN, unpaidRow('i10'), PAID]);
     s.table().vm.$emit('update:selected', ['i9', 'i10', '00123']);
     await flush();
-    expect(s.testid('invoices-pdf-selected').text()).toBe('Download PDF (1)');
+    expect(accessibleName(s.testid('invoices-pdf-selected'))).toBe('Download PDF (1)');
     expect(s.testid('invoices-selection-note').text()).toBe('2 selected invoices are unpaid: an unpaid invoice has no PDF until it is paid.');
     await s.testid('invoices-pdf-selected').trigger('click');
     await flush();
@@ -54,7 +55,7 @@ describe('InvoicesTab: selection', () => {
     s.table().vm.$emit('update:selected', ['i9']);
     await flush();
     const button = s.testid('invoices-pdf-selected');
-    expect(button.text()).toBe('Download PDF (0)');
+    expect([button.text(), accessibleName(button)]).toEqual(['0', 'Download PDF (0)']);
     expect((button.element as HTMLElement & { disabled: boolean }).disabled).toBe(true);
     const note = s.testid('invoices-selection-note');
     expect(note.text()).toBe('1 selected invoice is unpaid: an unpaid invoice has no PDF until it is paid.');
@@ -71,7 +72,7 @@ describe('InvoicesTab: selection', () => {
     await s.show([OPEN, PAID]);
     s.table().vm.$emit('update:selected', ['i9', '00123']);
     await flush();
-    expect(s.testid('invoices-pdf-selected').text()).toBe('Descargar PDF (1)');
+    expect(accessibleName(s.testid('invoices-pdf-selected'))).toBe('Descargar PDF (1)');
     expect(s.testid('invoices-selection-note').text()).toBe('1 factura seleccionada está sin pagar: una factura sin pagar no tiene PDF hasta que se paga.');
   });
 
@@ -105,9 +106,9 @@ describe('InvoicesTab: selection', () => {
     await s.show([OPEN, PAID]);
     s.table().vm.$emit('update:selected', ['i9']);
     await flush();
-    expect(s.testid('invoices-pdf-selected').text()).toBe('Download PDF (0)');
+    expect(accessibleName(s.testid('invoices-pdf-selected'))).toBe('Download PDF (0)');
     await s.show([invoiceRow('i9'), PAID], undefined, 2);
-    expect(s.testid('invoices-pdf-selected').text()).toBe('Download PDF (1)');
+    expect(accessibleName(s.testid('invoices-pdf-selected'))).toBe('Download PDF (1)');
     expect(s.testid('invoices-selection-note').exists()).toBe(false);
   });
 });
@@ -332,9 +333,9 @@ describe('InvoicesTab: a file is saved only when it is the file', () => {
 
   it('one the server says is still being issued stops counting for «Download PDF (n)» and joins the note', async () => {
     const { s } = await selectBoth(() => new Response('%PDF', { status: 200, headers: { 'Content-Type': 'application/pdf' } }), notIssued);
-    expect(s.testid('invoices-pdf-selected').text()).toBe('Download PDF (2)');
+    expect(accessibleName(s.testid('invoices-pdf-selected'))).toBe('Download PDF (2)');
     await press(s, 'invoices-pdf-selected');
-    expect(s.testid('invoices-pdf-selected').text()).toBe('Download PDF (1)');
+    expect(accessibleName(s.testid('invoices-pdf-selected'))).toBe('Download PDF (1)');
     expect(s.testid('invoices-selection-note').text()).toBe('1 selected invoice is still being issued: its PDF is ready in a few minutes.');
   });
 

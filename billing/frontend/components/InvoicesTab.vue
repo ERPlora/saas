@@ -4,8 +4,8 @@
 //   - A credit note shows «Credit note» and the invoice it rectifies, with its VeriFactu type and reason.
 //   - The filters (business, status, year) live in the address, so Subscriptions links here with them; an unknown
 //     `?business=` shows every invoice, saying so. They sit in ONE «Filters» control so the toolbar keeps one line.
-//   - «Download PDF (n)» counts only the issued ones; a note above the list names the ones without a PDF: unpaid
-//     (none until it is paid) or still being issued.
+//   - «Download PDF (n)» is its icon and the count of the issued ones; a note above the list names the ones without
+//     a PDF: unpaid (none until it is paid) or still being issued.
 //   - «Download Excel» is the CSV of everything the filters show. When it falls to a second line it folds to its
 //     icon and the search narrows (`toolbar-fit.ts`); on a phone it reads «Excel».
 // Files are saved only when the answer is the file (`browser.ts`): one still being issued (404) says so, the
@@ -258,6 +258,7 @@ function showRectified(number: string): void {
 const selected = shallowRef<string[]>([]);
 const { notIssued, fetching, downloadPdfs } = useInvoicePdfs(rows);
 const { selection, selectionNote } = useSelectedPdfs(rows, selected, notIssued);
+const pdfSelectedName = computed(() => t('billing.invoices.pdfSelected', { count: selection.value.issued.length }));
 
 function downloadSelected(): void {
   if (selection.value.issued.length) void downloadPdfs(selection.value.issued);
@@ -366,6 +367,8 @@ const freeBusiness = computed(() => {
           fill="outline"
           data-testid="invoices-pdf-selected"
           :disabled="!selection.issued.length"
+          :aria-label="pdfSelectedName"
+          :title="pdfSelectedName"
           :aria-describedby="selectionNote ? 'invoices-selection-note' : undefined"
           @click="downloadSelected"
         >
@@ -374,7 +377,7 @@ const freeBusiness = computed(() => {
             name="ion:download-outline"
             aria-hidden="true"
           />
-          {{ $t('billing.invoices.pdfSelected', { count: selection.issued.length }) }}
+          <span aria-hidden="true">{{ selection.issued.length }}</span>
         </ion-button>
         <ion-button
           ref="csvButton"

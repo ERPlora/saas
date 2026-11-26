@@ -21,8 +21,9 @@ const SHOTS = join(SAAS_DIR, 'tests', 'e2e', '.artifacts', 'fix-ui-confirmdialog
 
 const BILLING = qaAccount('BILLING', panelAccount('billing'));
 
-/** The panel's buttons with an icon in `slot="start"` and their own gap rule, by the page they are on. */
-const BUTTONS = { list: ['invoices-csv', 'invoices-filters'], invoice: ['pay-invoice'] } as const;
+/** The panel's buttons with an icon in `slot="start"` and their own gap rule, by the page they are on («Filters», with
+ *  no filter on, is its icon alone). */
+const BUTTONS = { list: ['invoices-csv'], invoice: ['pay-invoice'] } as const;
 
 seededAndSignedInWarm('billing_seed.py', BILLING);
 

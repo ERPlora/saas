@@ -60,7 +60,6 @@ const actions = computed<DataTableAction<ApiKeyRowOut>[]>(() => [
     icon: 'ion:ban-outline',
     color: 'danger',
     pinned: true,
-    showLabel: true,
   },
 ]);
 
