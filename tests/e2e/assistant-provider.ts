@@ -11,6 +11,7 @@
 // - «cancel the plan of <business>» (`cancela el plan de`, `cancel the plan of`): reads the businesses for its id, then
 //   asks for the write `billing__plan__cancel` (whose card first says what cancelling will do), and says when the
 //   person said no;
+// - the panel in the other language (`panel en inglés`, `panel to Spanish`): asks for `accounts__preferences__update`;
 // - what a currency is worth (`dólar`, `dollar`): asks for erplora.com's `currency_rate`, then gives it naming no source;
 // - a law (`ley`, `law`): asks for erplora.com's `web_search`, then answers naming no source; a law and the businesses,
 //   searches the web and then reads the businesses, so the turn goes on after the web (assistant-report.spec.ts);
@@ -137,6 +138,8 @@ const call = (name: string, args: Record<string, unknown>): Answer => ({
 /** A question about the businesses, and one about a law. */
 const BUSINESSES = /negocios|businesses/i;
 const LAW = /\b(?:ley|law)\b/i;
+/** The panel in the other language: «Ponme el panel en inglés», «Switch the panel to Spanish». */
+const OTHER_LANGUAGE = /\bpanel (?:en inglés|to Spanish)/i;
 
 /** The answer to a conversation, as the frames of a stream. */
 export function answerTo(messages: Message[]): Answer {
@@ -186,6 +189,7 @@ export function answerTo(messages: Message[]): Answer {
   const create = /\b(?:crea|create)\b.*?(?:llamado|called)\s+«?([^»?.]+)»?/i.exec(question);
   if (create) return call('hubs__business__create', { name: create[1].trim(), country: 'ES' });
   if (cancelOf(question)) return call('hubs__business__list', {});
+  if (OTHER_LANGUAGE.test(question)) return call('accounts__preferences__update', { language: es ? 'en' : 'es' });
   // A law first: asked with the businesses too, the businesses come after the search (above).
   if (LAW.test(question)) return call('web_search', { query: question, language: es ? 'es' : 'en' });
   if (BUSINESSES.test(question)) return call('hubs__business__list', {});
