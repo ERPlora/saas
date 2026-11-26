@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:ec8e9320a8d00771051f1669f88a8d0bff392e66461b24d5b33fd78832c7b6b0 -->
+<!-- generated from WORKBOOK.md sha256:bfa36d11e577c455353579673dfe6b2a8c76bf1c05e7f29b33cde9b2f5a95098 -->
 
 ## What it is for and who it is for
 
@@ -66,8 +66,9 @@ with one business, "Hello, …" with "Open …" and "Go to the panel"; with seve
 with the last opened on top. A pending invitation shows above.
 
 ### Create business
-The sign-up form: "Business name", "Country" (suggested by the browser's language), "Business type (optional)" with
-"I don't know yet" and "We'll suggest a template on your business's Home; the type helps us choose it. You can leave it blank." and, under the name, "Your address will be …". On the Entrance it is in the "Create your business"
+The sign-up form: "Business name", "Country" (suggested by the browser's language), "Business type (optional)", which
+is searched by typing ("Type to search"), with "I don't know yet" first in its list and the types in alphabetical order
+of the person's language, and "We'll suggest a template on your business's Home; the type helps us choose it. You can leave it blank." and, under the name, "Your address will be …". On the Entrance it is in the "Create your business"
 card; in **Businesses**, in the "Create business" dialog, under "What is your business called?".
 
 ### Preparing
@@ -200,7 +201,7 @@ Actor: anyone with an account
 Screen: Entrance › Create business
 Steps:
 1. After creating the account and signing in without any business, the Entrance shows "Create your business" ("Free and no card: just the name and the country.").
-2. They type the "Business name"; underneath appears "Your address will be …" with the address the name proposes. The "Country" comes suggested by the browser's language and the "Business type (optional)" accepts "I don't know yet"; underneath it says the business's Home will suggest a template and that the type helps choose it.
+2. They type the "Business name"; underneath appears "Your address will be …" with the address the name proposes. The "Country" comes suggested by the browser's language. In the "Business type (optional)" they type part of the name ("hair") and the list keeps the types that contain it; without typing, the list shows "I don't know yet" first and the types in alphabetical order of their language. They can leave it empty or choose "I don't know yet"; underneath it says the business's Home will suggest a template and that the type helps choose it.
 3. They press "Create my business": "Business created: …" shows and the card moves to **Preparing** (HUBS-F04).
 In: the name, the country (one of the 27 of the European Union where ERPlora sells) and, if the person knows it, the business type; the account's session.
 Out: the business on the Free plan (without a card and without a trial), in the account's language (ACCOUNTS-F22), with the person as owner, its address taken from the name (if it is taken it is numbered, `bar-manolo-2`; a reserved word is completed by itself) and who pays, with the business's country. The businesses' service receives the sign-up as soon as it is saved and, with the business type, its sector. The business is born with every app off: its Home proposes starting with a template, its sector's first if there is one (BASE-F38), or turning them on one by one. Records `hubs.business.created`.
@@ -668,8 +669,8 @@ Actor: ERPlora's staff, system
 Screen: admin › Businesses › Sectors and Business types
 Steps:
 1. On every deploy, erplora.com creates the sectors and business types missing from its starting list (12 sectors and 70 types), without touching what the staff already changed.
-2. The staff open "Sectors" or "Business types" in the admin, search by code or name and filter by "Active" (the types, also by "Sector" and by "Vertical"); they change the order and whether it is active from the list itself.
-3. In the form they write the name and the description in English and in Spanish, the icon, the colour, the order and whether it is active; on a business type, also its sector and its "Vertical", the template a business of that type is born with.
+2. The staff open "Sectors" or "Business types" in the admin, search by code or name and filter by "Active" (the types, also by "Sector" and by "Vertical"); they change whether it is active from the list itself and, on a sector, also its order.
+3. In the form they write the name and the description in English and in Spanish, the icon, the colour and whether it is active; on a sector, also its order; on a business type, its sector and its "Vertical", the template a business of that type is born with. A business type has no order: it comes in alphabetical order in each language (HUBS-F37).
 4. They save: the business sign-up, the pages of each sector and whoever reads them through the API get them in their language (HUBS-F37).
 In: what the staff write.
 Out: the sector or the business type, with each text in English and in Spanish.
@@ -682,7 +683,7 @@ Actor: anyone, integration
 Screen: none; Create business and the pages of each sector use them
 Steps:
 1. Anyone, without signing in, asks for the list of sectors or the list of business types, all of them or a sector's.
-2. erplora.com answers with the active ones, in the order the staff set, each with its code, its name and its description in the language of whoever asks (English when the Spanish is missing), its icon and its colour; each business type, with its sector and its template.
+2. erplora.com answers with the active ones: the sectors, in the order the staff set; the business types, in alphabetical order of their name in the language of whoever asks, not grouped by sector; each with its code, its name and its description in the language of whoever asks (English when the Spanish is missing), its icon and its colour; each business type, with its sector and its template.
 3. The Create business form fills its "Business type (optional)" with it, and the public website, its sector pages.
 In: the language of whoever asks and, if they want, a sector.
 Out: both lists; nothing is stored.

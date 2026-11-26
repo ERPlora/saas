@@ -32,8 +32,10 @@ App de plataforma (`LiveAppConfig`, `kind = "platform"`) del plano de cuenta: lo
   (409 `hubs.country_locked`). Una negativa del Hub (o su arreglo) se graba con la operación de sistema
   `hubs.business.record_hub_error` y el evento `hubs.business.hub_error_changed`, que re-ejecuta la lista y la
   página en el canal del propietario.
-- Taxonomía: `hubs.sector.list` y `hubs.business_type.list` ordenan por `display_order` y luego `code`, en
-  global (sin agrupar por sector), como el `catalog` de origen; `?sector=` filtra.
+- Taxonomía: `hubs.sector.list` ordena por `display_order` y luego `code`; `hubs.business_type.list`, por orden
+  alfabético del nombre en el idioma de quien pide (`base.collation.collation_key`, la misma clave que `/compliance/`),
+  en global (sin agrupar por sector), porque es una lista para elegir. El `display_order` de un tipo de negocio ya no
+  se usa y su admin no lo ofrece; `?sector=` filtra.
 - Los comandos de `saas-cron` toman el advisory lock `hashtext('erplora.saas.<comando>')` (el espacio de
   nombres de `base`), de sesión: la pasada abarca muchas transacciones y llamadas al Hub (ver
   `services.exclusive_runs.run_exclusively`).

@@ -5,6 +5,7 @@ from typing import Any
 from live.context import OperationContext
 from live.operations import AI, operation
 
+from base.collation import collation_key
 from hubs.models import BusinessType, Sector
 from hubs.retired_codes import current_business_type_code
 from hubs.schemas.taxonomy import BusinessTypeListIn, BusinessTypeListOut, SectorListIn, SectorListOut
@@ -68,24 +69,23 @@ def sector_list(ctx: OperationContext, data: SectorListIn) -> dict[str, Any]:
 def business_type_list(
     ctx: OperationContext, data: BusinessTypeListIn
 ) -> dict[str, Any]:
-    """The active business types by their display order, then code, across sectors (the origin ``catalog``'s
-    ``ordering = ["order", "code"]``: ``/industries/`` interleaves them as the seed orders them)."""
+    """The active business types in alphabetical order of their names in the caller's language, across sectors:
+    a list to pick one from, where the person looks for a name they already know."""
     business_types = BusinessType.objects.filter(is_active=True).select_related(
         "sector"
     )
     if data.sector:
         business_types = business_types.filter(sector__code=data.sector)
-    ordered = business_types.order_by("display_order", "code")
-    return {
-        "business_types": [
-            {
-                **_entry(business_type, ctx.language),
-                "sector": _sector_ref(business_type.sector, ctx.language),
-                "vertical": business_type.vertical,
-            }
-            for business_type in ordered
-        ]
-    }
+    entries = [
+        {
+            **_entry(business_type, ctx.language),
+            "sector": _sector_ref(business_type.sector, ctx.language),
+            "vertical": business_type.vertical,
+        }
+        for business_type in business_types
+    ]
+    entries.sort(key=lambda entry: (collation_key(entry["name"]), entry["code"]))
+    return {"business_types": entries}
 
 
 def _sector_ref(sector: Sector | None, language: str) -> dict[str, str] | None:

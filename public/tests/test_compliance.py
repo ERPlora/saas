@@ -16,6 +16,7 @@ from django.conf import settings
 from django.urls import reverse
 from django.utils import translation
 
+from base.collation import collation_key
 from hubs.schemas.common import COUNTRIES
 from public import compliance
 from public.tests.conftest import without_tokens
@@ -92,7 +93,7 @@ def test_spain_comes_first_and_the_rest_by_name_in_the_reading_language():
         names = [str(country["name"]) for country in compliance.countries()]
 
     assert names[0] == "España"
-    assert names[1:] == sorted(names[1:], key=compliance.collation_key)
+    assert names[1:] == sorted(names[1:], key=collation_key)
 
 
 def test_the_verifactu_card_says_what_it_does_and_links_the_declaration(client):

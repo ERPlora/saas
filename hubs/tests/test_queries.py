@@ -56,6 +56,43 @@ def test_the_language_is_the_callers_not_the_threads(hospitality):
     )
 
 
+@pytest.fixture
+def mixed_sectors(hospitality):
+    """Types of several sectors whose staff order interleaves them, as the seed does."""
+    services = Sector.objects.create(code="professional_services", name_en="Professional Services")
+    beauty = Sector.objects.create(code="personal_services", name_en="Personal Services")
+    for code, name_en, name_es, sector, order in (
+        ("hair_salon", "Hair Salon", "Peluquería", beauty, 1),
+        ("optician", "Optician", "Óptica", beauty, 2),
+        ("accounting_firm", "Accounting Firm", "Gestoría", services, 1),
+        ("bar", "Bar", "Bar", hospitality, 1),
+        ("ice_cream_shop", "Ice Cream Shop", "", hospitality, 3),
+    ):
+        BusinessType.objects.create(
+            code=code, name_en=name_en, name_es=name_es, sector=sector, display_order=order
+        )
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("en", ["Accounting Firm", "Bar", "Hair Salon", "Ice Cream Shop", "Optician", "Restaurant"]),
+        ("es", ["Bar", "Gestoría", "Ice Cream Shop", "Óptica", "Peluquería", "Restaurante"]),
+    ],
+)
+def test_the_business_types_come_in_alphabetical_order_of_the_callers_language(mixed_sectors, language, expected):
+    """A list to choose from: by the name the caller reads, never by the staff's order inside each sector."""
+    business_types = taxonomy.business_type_list(_anonymous(language), BusinessTypeListIn()).business_types
+
+    assert [row.name for row in business_types] == expected
+
+
+def test_one_sector_keeps_the_alphabetical_order(mixed_sectors):
+    business_types = taxonomy.business_type_list(_anonymous("es"), BusinessTypeListIn(sector="personal_services"))
+
+    assert [row.code for row in business_types.business_types] == ["optician", "hair_salon"]
+
+
 def test_an_inactive_row_is_never_read(hospitality):
     Sector.objects.update(is_active=False)
     BusinessType.objects.update(is_active=False)

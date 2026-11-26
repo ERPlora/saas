@@ -153,7 +153,7 @@ for (const { language, locale } of LANGUAGES) {
       );
       await card.getByTestId('create-name').locator('input').fill('Panadería Dulce');
       await card.getByTestId('create-type').click();
-      await page.locator('ion-popover ion-radio', { hasText: new RegExp(`^${typeName}$`) }).click();
+      await page.getByRole('option', { name: typeName, exact: true }).click();
       await card.getByTestId('create-submit').click();
       await atEverySize(
         page,

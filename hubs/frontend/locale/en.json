@@ -97,6 +97,7 @@
       "country": "Country",
       "type": "Business type (optional)",
       "typeUnknown": "I don't know yet",
+      "typePlaceholder": "Type to search",
       "typeHint": "We'll suggest a template on your business's Home; the type helps us choose it. You can leave it blank.",
       "typesFailed": "The business types could not be loaded right now. You can create the business without one.",
       "address": "Your address will be {host}",

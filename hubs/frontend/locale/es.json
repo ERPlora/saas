@@ -97,6 +97,7 @@
       "country": "País",
       "type": "Tipo de negocio (opcional)",
       "typeUnknown": "Todavía no lo sé",
+      "typePlaceholder": "Escribe para buscar",
       "typeHint": "Te propondremos una plantilla en el Inicio de tu negocio; el tipo nos ayuda a elegirla. Puedes dejarlo en blanco.",
       "typesFailed": "Ahora no se han podido cargar los tipos de negocio. Puedes crear el negocio sin tipo.",
       "address": "Tu dirección será {host}",
