@@ -10,7 +10,7 @@ def test_an_accented_initial_sorts_with_its_letter():
 
 
 def test_capitals_do_not_come_first():
-    assert sorted(["bar", "Bakery", "Árbol"], key=collation_key) == ["Árbol", "Bakery", "bar"]
+    assert sorted(["Café", "bar", "Árbol"], key=collation_key) == ["Árbol", "bar", "Café"]
 
 
 def test_a_letter_with_its_mark_sits_next_to_the_plain_one():
