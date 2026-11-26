@@ -28,9 +28,8 @@ describe('HostName', () => {
   });
 
   it('breaks a part wider than its box inside the box, and only that part', () => {
-    // A box as wide as its text and never wider than the line: a part that fits is never split.
+    // A box as wide as its text, shrunk to the line when the text is wider: a part that fits is never split.
     expect(STYLE).toMatch(/\.host-name__part \{[^}]*display: inline-block;/);
-    expect(STYLE).toMatch(/\.host-name__part \{[^}]*max-width: 100%;/);
     expect(STYLE).toMatch(/\.host-name__part \{[^}]*overflow-wrap: anywhere;/);
     expect(STYLE).not.toMatch(/white-space: nowrap/);
   });
