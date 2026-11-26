@@ -91,3 +91,14 @@ def test_the_card_a_turn_sends_to_the_screen_keeps_the_mark(signed_in, account, 
 
     [shown] = got[0]["card"]["fields"]
     assert (shown["name"], shown["value"], shown.get(CHOICE)) == ("language", "English", True)
+
+
+def test_the_card_a_turn_sends_to_the_screen_marks_no_name(signed_in, account, answering, fake_provider):
+    """A datum ``live`` did not mark leaves the turn unmarked: marked, the screen would read «Nombre: Bar Lena» first."""
+    arguments = json.dumps({"name": "Bar Lena", "country": "ES"})
+    pending = {"call_id": "c1", "name": "hubs__business__create", "arguments": arguments}
+
+    got = frames(post_turn(signed_in, {"messages": [ask("Create Bar Lena")], "pending": [pending]}))
+
+    marks = {shown["name"]: shown.get(CHOICE) for shown in got[0]["card"]["fields"]}
+    assert marks == {"name": False, "country": True}
