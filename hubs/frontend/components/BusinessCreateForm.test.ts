@@ -67,7 +67,21 @@ async function setup(options: { props?: Record<string, unknown>; api?: Handler; 
     get(id).element.dispatchEvent(new CustomEvent('ionChange', { detail: { value } }));
     await flush();
   }
-  return { ...m, created, pending, form, get, type, pick };
+  /** The labels of the type's open list. */
+  const typeOptions = () => m.wrapper.findAll('[data-stub="ion-popover"] [role="option"]').map((o) => o.text().trim());
+  /** Opens the type's list, as a tap on the field does, and reads it. */
+  async function openTypes() {
+    await get('create-type').trigger('click');
+    await flush();
+    return typeOptions();
+  }
+  /** Opens the type's list and taps the option of `code` (`''`: «I don't know yet»). */
+  async function chooseType(code: string) {
+    await openTypes();
+    await get(`create-type-option-${code}`).trigger('click');
+    await flush();
+  }
+  return { ...m, created, pending, form, get, type, pick, typeOptions, openTypes, chooseType };
 }
 
 const props = ionProps;
@@ -102,13 +116,16 @@ describe('BusinessCreateForm: the fields', () => {
     expect((country.element as HTMLElement & { value?: string }).value).toBe('ES');
     expect(country.findAll('ion-select-option')).toHaveLength(27);
     const type = s.get('create-type');
-    expect(props(type, 'mode', 'fill', 'interface', 'label')).toEqual({
+    expect(type.element.tagName).toBe('ION-INPUT');
+    expect(props(type, 'mode', 'fill', 'labelPlacement', 'label', 'placeholder', 'name')).toEqual({
       mode: 'md',
       fill: 'outline',
-      interface: 'popover',
+      labelPlacement: 'floating',
       label: 'Business type (optional)',
+      placeholder: 'Type to search',
+      name: 'business_type',
     });
-    expect(type.findAll('ion-select-option').map((o) => o.text())).toEqual(["I don't know yet", 'Bakery and pastry', 'Hair salon']);
+    expect(await s.openTypes()).toEqual(["I don't know yet", 'Bakery and pastry', 'Hair salon']);
     expect(s.get('create-type-hint').text()).toBe("We'll suggest a template on your business's Home; the type helps us choose it. You can leave it blank.");
   });
 
@@ -121,12 +138,19 @@ describe('BusinessCreateForm: the fields', () => {
     expect(s.get('create-type-hint').text()).toBe(hint);
   });
 
-  // A placeholder would be painted under the floating label: an empty choice is a real value instead.
-  it("starts the type on \"I don't know yet\" as a real value, with no placeholder", async () => {
+  // Seventy types are too many to scroll through: written in, the list keeps only the types that match.
+  it("starts with no type chosen, its list leading with \"I don't know yet\" and filtered by what is typed", async () => {
     const s = await setup();
-    const type = s.get('create-type');
-    expect(props(type, 'placeholder', 'value')).toEqual({ placeholder: undefined, value: '' });
-    expect(optionValue(type.findAll('ion-select-option')[0]!)).toBe('');
+    expect(props(s.get('create-type'), 'value')).toEqual({ value: '' });
+    expect(await s.openTypes()).toEqual(["I don't know yet", 'Bakery and pastry', 'Hair salon']);
+    await s.type('create-type', 'hair');
+    expect(s.typeOptions()).toEqual(['Hair salon']);
+  });
+
+  it('keeps the order the server gives, by name in the person’s language', async () => {
+    const reversed = { business_types: [...TYPES.business_types].reverse() };
+    const s = await setup({ api: (c) => (c.path === '/api/catalog/business-types' ? Response.json(reversed) : undefined) });
+    expect(await s.openTypes()).toEqual(["I don't know yet", 'Hair salon', 'Bakery and pastry']);
   });
 
   it('has no native select: only Ionic controls', async () => {
@@ -139,7 +163,7 @@ describe('BusinessCreateForm: the fields', () => {
 
   it('keeps the form usable without the type catalogue, and says why it is missing', async () => {
     const s = await setup({ api: (c) => (c.path === '/api/catalog/business-types' ? apiError(503, 'unavailable', 'down') : undefined) });
-    expect(s.get('create-type').findAll('ion-select-option').map((o) => o.text())).toEqual(["I don't know yet"]);
+    expect(await s.openTypes()).toEqual(["I don't know yet"]);
     expect(s.get('create-type-hint').text()).toBe('The business types could not be loaded right now. You can create the business without one.');
   });
 
@@ -148,6 +172,8 @@ describe('BusinessCreateForm: the fields', () => {
     expect(props(s.get('create-name'), 'label')).toEqual({ label: 'Nombre del negocio' });
     expect(s.get('create-country').findAll('ion-select-option').find((o) => optionValue(o) === 'ES')?.text()).toBe('España');
     expect(s.get('create-submit').text()).toBe('Crear mi negocio');
+    expect(props(s.get('create-type'), 'label', 'placeholder')).toEqual({ label: 'Tipo de negocio (opcional)', placeholder: 'Escribe para buscar' });
+    expect((await s.openTypes())[0]).toBe('Todavía no lo sé');
   });
 });
 
@@ -203,7 +229,8 @@ describe('BusinessCreateForm: creating', () => {
     const s = await setup({ api: (c) => (c.path === '/api/hubs/businesses' ? Response.json(DETAIL, { status: 201 }) : undefined) });
     await s.type('create-name', '  Pastelería Dulce ');
     await s.pick('create-country', 'PT');
-    await s.pick('create-type', 'bakery');
+    await s.chooseType('bakery');
+    expect(props(s.get('create-type'), 'value')).toEqual({ value: 'Bakery and pastry' });
     await s.get('create-submit').trigger('click');
     await flush();
     const create = s.calls().find((c) => c.path === '/api/hubs/businesses');
@@ -218,14 +245,23 @@ describe('BusinessCreateForm: creating', () => {
   ])('sends no type when %s', async (_when, picks) => {
     const s = await setup({ api: (c) => (c.path === '/api/hubs/businesses' ? Response.json(DETAIL, { status: 201 }) : undefined) });
     await s.type('create-name', 'Bar');
-    for (const code of picks) {
-      await s.pick('create-type', code);
-      expect(props(s.get('create-type'), 'value')).toEqual({ value: code });
-    }
+    for (const code of picks) await s.chooseType(code);
     await s.get('create-submit').trigger('click');
     await flush();
     expect(s.calls().find((c) => c.path === '/api/hubs/businesses')?.body).toEqual({ name: 'Bar', country: 'ES', business_type: null });
     expect(s.created).toHaveBeenCalledWith(DETAIL, { typeName: null });
+  });
+
+  it('sends no type once the chosen one is cleared', async () => {
+    const s = await setup({ api: (c) => (c.path === '/api/hubs/businesses' ? Response.json(DETAIL, { status: 201 }) : undefined) });
+    await s.type('create-name', 'Bar');
+    await s.chooseType('salon');
+    await s.get('create-type-clear').trigger('click');
+    await flush();
+    expect(props(s.get('create-type'), 'value')).toEqual({ value: '' });
+    await s.get('create-submit').trigger('click');
+    await flush();
+    expect(s.calls().find((c) => c.path === '/api/hubs/businesses')?.body).toEqual({ name: 'Bar', country: 'ES', business_type: null });
   });
 
   it('is busy while it creates: the button spins and is disabled, and the parent is told', async () => {
@@ -264,7 +300,10 @@ describe('BusinessCreateForm: creating', () => {
     const s = await setup({
       api: (c) =>
         c.path === '/api/hubs/businesses'
-          ? apiError(422, 'invalid_payload', 'Invalid payload', { country: 'Choose one of the countries ERPlora serves.' })
+          ? apiError(422, 'invalid_payload', 'Invalid payload', {
+              country: 'Choose one of the countries ERPlora serves.',
+              business_type: 'Choose one of the business types.',
+            })
           : undefined,
     });
     await s.type('create-name', 'Bar');
@@ -272,6 +311,8 @@ describe('BusinessCreateForm: creating', () => {
     await flush();
     expect(props(s.get('create-country'), 'errorText')).toEqual({ errorText: 'Choose one of the countries ERPlora serves.' });
     expect(s.get('create-country').classes()).toContain('ion-invalid');
+    expect(props(s.get('create-type'), 'errorText')).toEqual({ errorText: 'Choose one of the business types.' });
+    expect(s.get('create-type').classes()).toContain('ion-invalid');
     expect(s.created).not.toHaveBeenCalled();
   });
 
