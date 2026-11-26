@@ -56,7 +56,7 @@ function pick(key: InvoiceFilterKey, value: unknown): void {
 
 <template>
   <ion-button
-    class="invoice-filters"
+    class="invoice-filters icon-action"
     data-testid="invoices-filters"
     size="small"
     fill="outline"
@@ -190,18 +190,11 @@ function pick(key: InvoiceFilterKey, value: unknown): void {
 </template>
 
 <style scoped>
-/* As tall as the toolbar's other controls (DataTable's 36–38 px); 44 px to tap on a phone or a touch screen. */
+/* As tall as the toolbar's other controls (DataTable's 36–38 px): `icon-action` (panel-chrome.css), 44 px to tap. */
 .invoice-filters {
-  min-height: 36px;
-  min-width: 36px;
   margin: 0;
   text-transform: none;
   --border-radius: 10px;
-}
-@media (max-width: 640px), (pointer: coarse) {
-  .invoice-filters {
-    min-height: 44px;
-  }
 }
 .invoice-filters__icon {
   margin-inline-end: 0.4em;

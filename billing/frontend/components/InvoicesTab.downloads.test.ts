@@ -27,6 +27,7 @@ describe('InvoicesTab: selection', () => {
     const button = s.testid('invoices-pdf-selected');
     // Its icon and the count; the whole label names it and is its title.
     expect([button.text(), accessibleName(button), button.attributes('title')]).toEqual(['1', 'Download PDF (1)', 'Download PDF (1)']);
+    expect(button.classes()).toContain('icon-action');
     expect(s.testid('invoices-selection-note').text()).toBe('1 selected invoice is still being issued: its PDF is ready in a few minutes.');
     await button.trigger('click');
     await flush();

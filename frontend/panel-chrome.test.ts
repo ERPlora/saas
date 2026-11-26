@@ -63,4 +63,10 @@ describe('panel-chrome.css', () => {
     expect(rule('ion-segment-button', touch)).toContain('min-height: 44px');
     expect(rule('ion-chip', touch)).toContain('min-height: 44px');
   });
+
+  // Same weight as the touch rule's `ion-button` and before it: on a phone or a touch screen it is 44 px like any other.
+  it('an action that is its icon (`icon-action`, alone or with its count) is at least a 36 px square to click', () => {
+    expect(rule('ion-button:where(.icon-action)')).toBe('min-width: 36px; min-height: 36px;');
+    expect(CSS.indexOf('ion-button:where(.icon-action)')).toBeLessThan(CSS.indexOf(`@media ${TOUCH}`));
+  });
 });

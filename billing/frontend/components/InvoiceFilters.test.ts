@@ -43,6 +43,7 @@ describe('InvoiceFilters: one «Filters» control', () => {
   it('is a button of the toolbar, its funnel alone, named and titled «Filters»; its controls only show in its popover', async () => {
     const s = await setup();
     expect(s.testid('invoices-filters').text()).toBe('');
+    expect(s.testid('invoices-filters').classes()).toContain('icon-action');
     expect(accessibleName(s.testid('invoices-filters'))).toBe('Filters');
     expect(s.testid('invoices-filters').attributes('title')).toBe('Filters');
     expect(s.testid('invoices-filters-count').exists()).toBe(false);

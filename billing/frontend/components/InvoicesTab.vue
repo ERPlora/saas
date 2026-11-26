@@ -362,7 +362,7 @@ const freeBusiness = computed(() => {
       <template #toolbar>
         <ion-button
           v-if="selected.length"
-          class="invoices-tool"
+          class="invoices-tool icon-action"
           size="small"
           fill="outline"
           data-testid="invoices-pdf-selected"
