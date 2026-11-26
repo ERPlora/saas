@@ -1,6 +1,7 @@
 // flow: HUBS-F09
 // Businesses with a long web address, in Chrome: at every size, in English and in Spanish, each address stays inside
-// its column (or its card) and the «Status» column beside it reads whole, also on a tablet held sideways (1280×665).
+// its column (or its card), also one with no hyphen to break at, and the «Status» column beside it reads whole, also on
+// a tablet held sideways (1280×665).
 import { type Page } from '@playwright/test';
 
 import { createAccountWarm, removeAccountsWarm } from './accounts';
@@ -14,6 +15,10 @@ const PREFIX = 'e2e-longhost-';
 const PASSWORD = 'Masa-madre-y-centeno-26';
 const ACTIVE = 'QA Restaurante 20261125-2101';
 const DELETED = 'Peluquería QA Asistente';
+const CHOSEN = 'Los Amigos del Puerto';
+// The one-word address its owner chose for it: nowhere to break but inside the word.
+const ONE_WORD = 'restaurantelosamigosdelpuerto';
+const ADDRESS = /^(qa-restaurante-20261125-2101|peluqueria-qa-asistente|restaurantelosamigosdelpuerto)\S*\.\S+$/;
 const SIZES = [
   { width: 1280, height: 665 },
   { width: 1280, height: 720 },
@@ -59,8 +64,11 @@ for (const { language, locale } of [
       const email = `${PREFIX}${language}-${Date.now()}@example.com`;
       await createAccountWarm(email, PASSWORD, { language, firstName: 'Ana', lastName: 'López' });
       await signIn(page.request, { email, password: PASSWORD });
-      // Each business is born on Free, which an account holds once: the first moves to Starter.
+      // Each business is born on Free, which an account holds once: all but the last move to a paid plan.
       const gone = await readyBusinessOn(page.request, DELETED, 'starter');
+      const chosen = await readyBusinessOn(page.request, CHOSEN, 'pro');
+      const moved = await apiPost(page.request, '/api/hubs/businesses/address', { id: chosen, slug: `${ONE_WORD}${language}` });
+      expect(moved.status(), await moved.text()).toBe(200);
       await readyBusinessOn(page.request, ACTIVE, 'free');
       const deleted = await apiPost(page.request, '/api/hubs/businesses/delete', { id: gone, confirm_name: DELETED });
       expect(deleted.status(), await deleted.text()).toBe(200);
@@ -69,9 +77,9 @@ for (const { language, locale } of [
       await page.goto('/dashboard/businesses');
       await expect(page.locator('html')).toHaveAttribute('lang', language);
       const hosts = page.getByTestId('business-host');
-      await expect(hosts).toHaveCount(2);
+      await expect(hosts).toHaveCount(3);
       await expect(page.getByTestId('business-status-why')).toHaveCount(1);
-      for (const host of await hosts.allTextContents()) expect(host.trim()).toMatch(/^(qa-restaurante-20261125-2101|peluqueria-qa-asistente)\S*\.\S+$/);
+      for (const host of await hosts.allTextContents()) expect(host.trim()).toMatch(ADDRESS);
 
       for (const size of SIZES) {
         await page.setViewportSize(size);
