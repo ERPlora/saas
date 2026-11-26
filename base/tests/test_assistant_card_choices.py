@@ -11,11 +11,14 @@ from live.assistant.tools import input_schema, risk
 from live.operations import Operation
 from live.operations import get as get_operation
 
-from assistant.tests.conftest import answering, fake_provider, openai_key, provider  # noqa: F401 - the gateway's fixtures
+from assistant.tests.conftest import answering, fake_provider, openai_key, provider
 from assistant.tests.doors import frames
 from base import assistant
-from base.tests.test_assistant_turn import account, ask, post_turn, signed_in  # noqa: F401 - the turn's fixtures
-from hubs.tests.conftest import create_business, ctx_for, make_user, plans  # noqa: F401 - shared fixtures
+from base.tests.test_assistant_turn import account, ask, post_turn, signed_in
+from hubs.tests.conftest import create_business, ctx_for, make_user, plans
+
+# Fixtures shared with other test files: pytest finds them by name in this module.
+__all__ = ["account", "answering", "fake_provider", "make_user", "openai_key", "plans", "provider", "signed_in"]
 
 pytestmark = pytest.mark.django_db
 
