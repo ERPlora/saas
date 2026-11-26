@@ -19,6 +19,7 @@ const SIZES = [
   { width: 1280, height: 720 },
   { width: 820, height: 1180 },
   { width: 375, height: 667 },
+  { width: 1440, height: 900 },
 ] as const;
 
 test.beforeAll(() => removeAccountsWarm(PREFIX));
