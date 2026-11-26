@@ -3,10 +3,10 @@
 // clock: data only — no code under test compares these dates with now.
 import { describe, expect, it, vi } from 'vitest';
 
-import { iconAction, labelled } from '../../../frontend/__tests__/icon-action';
 import { business } from '../__tests__/businesses';
 import { setUpLaunchPage } from '../__tests__/launch-page';
 import { ionProps, mountHubs } from '../__tests__/mount-hubs';
+import { iconAction, labelled } from '../../../frontend/__tests__/icon-action';
 import LaunchBusinesses from './LaunchBusinesses.vue';
 
 setUpLaunchPage();

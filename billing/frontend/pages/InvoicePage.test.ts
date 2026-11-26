@@ -9,11 +9,11 @@
 // clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { invoiceRow, unpaidRow } from '../__tests__/billing-fixtures';
 import { errorFrame, HELLO } from '../../../hubs/frontend/__tests__/mount-hubs';
 import { flush, mountBilling, subId } from '../__tests__/mount-billing';
 import type { InvoiceDetailOut } from '../../../frontend/sdk-types/billing-invoices';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import InvoicePage from './InvoicePage.vue';
 
 afterEach(() => {

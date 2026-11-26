@@ -8,8 +8,8 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
   IonModal: (await import('../__tests__/ion-modal-stub')).IonModalStub,
 }));
 
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { errorFrame, flush, HELLO, ionProps, LIVE_TIMEOUT_MS, mountPanel, profile, subId } from '../__tests__/mount-panel';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import ProfileTab from './ProfileTab.vue';
 
 afterEach(() => {

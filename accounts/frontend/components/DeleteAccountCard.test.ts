@@ -14,9 +14,9 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
   IonModal: (await import('../__tests__/ion-modal-stub')).IonModalStub,
 }));
 
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { errorFrame, flush, HELLO, ionProps, LIVE_TIMEOUT_MS, mountPanel, profile, subId } from '../__tests__/mount-panel';
 import type { BusinessRowOut } from '../../../frontend/sdk-types/hubs';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import DeleteAccountCard from './DeleteAccountCard.vue';
 
 function business(id: string, name: string, overrides: Partial<BusinessRowOut> = {}): BusinessRowOut {

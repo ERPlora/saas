@@ -12,9 +12,9 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/mod
 import { toastSuccess } from '@erplora/ui/shell';
 
 import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { ACTIVE, NONE, OP, OWNER_BUSINESS, PENDING, setup, setUpCustomDomainCard, status } from '../__tests__/custom-domain-card';
 import { apiError, BYE, errorFrame, flush, ionProps, subId } from '../__tests__/mount-hubs';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 
 const ADMIN_BUSINESS = { ...OWNER_BUSINESS, role: 'hub_admin', can: { manage_billing: false } };
 

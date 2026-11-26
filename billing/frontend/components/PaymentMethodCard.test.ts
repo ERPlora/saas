@@ -4,10 +4,10 @@
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { paymentMethod } from '../__tests__/billing-fixtures';
 import { flush, ionProps, mountBilling } from '../__tests__/mount-billing';
 import { browser } from '../browser';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import PaymentMethodCard from './PaymentMethodCard.vue';
 
 afterEach(() => {

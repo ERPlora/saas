@@ -7,10 +7,10 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/fr
 
 import { toastError } from '@erplora/ui/shell';
 
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { apiError, flush, ionProps, mountPanel } from '../__tests__/mount-panel';
 import accountsEn from '../locale/en.json';
 import accountsEs from '../locale/es.json';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import DataExportCard from './DataExportCard.vue';
 
 const EXPORTED = { format: 'erplora.account-export', version: 1, account: { email: 'laura@example.com' } };

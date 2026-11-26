@@ -8,8 +8,8 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
   IonModal: (await import('../__tests__/ion-modal-stub')).IonModalStub,
 }));
 
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { flush, ionProps, mountPanel } from '../__tests__/mount-panel';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import PasswordRow from './PasswordRow.vue';
 
 afterEach(() => {

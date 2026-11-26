@@ -11,8 +11,8 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
 }));
 vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/module-mocks')).shellWithToastSpies(original));
 
-import { iconAction, labelled } from '../../../frontend/__tests__/icon-action';
 import { describeCall, flush, ionProps, mountHubs } from '../__tests__/mount-hubs';
+import { iconAction, labelled } from '../../../frontend/__tests__/icon-action';
 import BusinessCreateModal from './BusinessCreateModal.vue';
 
 const DULCE = { id: 'dulce', name: 'Pastelería Dulce', host: 'dulce.localhost:8000' };

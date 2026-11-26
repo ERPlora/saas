@@ -11,10 +11,10 @@ vi.mock('../photo', async (importOriginal) => ({
 
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { apiError, flush, mountPanel, profile } from '../__tests__/mount-panel';
 import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import { PhotoError, preparePhoto } from '../photo';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import PhotoPicker from './PhotoPicker.vue';
 
 const SMALL = 'data:image/jpeg;base64,QUJD';

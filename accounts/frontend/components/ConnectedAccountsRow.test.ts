@@ -14,8 +14,8 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/fr
 import { toastSuccess } from '@erplora/ui/shell';
 
 import { type Answer, fakeAllauth, ok, reauthenticationRequired, rejected } from '../__tests__/allauth-server';
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { flush, ionProps, mountPanel, typeInto } from '../__tests__/mount-panel';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import ConnectedAccountsRow from './ConnectedAccountsRow.vue';
 
 const GOOGLE = { uid: 'g-1', display: 'laura.martin@gmail.com', provider: { id: 'google', name: 'Google', flows: ['provider_redirect'] } };

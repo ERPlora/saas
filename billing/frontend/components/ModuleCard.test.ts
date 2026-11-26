@@ -4,9 +4,9 @@
 // clock: data only — no code under test compares these dates with now.
 import { describe, expect, it } from 'vitest';
 
-import { iconAction } from '../../../frontend/__tests__/icon-action';
 import { mountBilling } from '../__tests__/mount-billing';
 import type { Block, SaleModule } from '../store';
+import { iconAction } from '../../../frontend/__tests__/icon-action';
 import ModuleCard from './ModuleCard.vue';
 
 const BOOKING: SaleModule = {

@@ -7,8 +7,8 @@ import { h } from 'vue';
 
 vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/module-mocks')).shellWithToastSpies(original));
 
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { ANONYMOUS, flush, mountHubs } from '../__tests__/mount-hubs';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import CardShell from './CardShell.vue';
 
 const SESSION = '/_allauth/browser/v1/auth/session';

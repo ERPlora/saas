@@ -4,8 +4,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { PromoCheckOut } from '../promo-types';
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { apiError, flush, ionProps, mountBilling } from '../__tests__/mount-billing';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import PromoCodeField from './PromoCodeField.vue';
 
 afterEach(() => {

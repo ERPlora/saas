@@ -8,11 +8,11 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/fr
 
 import { toastError } from '@erplora/ui/shell';
 
-import { iconAction } from '../../../frontend/__tests__/icon-action';
 import { unpaidRow } from '../__tests__/billing-fixtures';
 import { apiError, flush, mountBilling } from '../__tests__/mount-billing';
 import { browser } from '../browser';
 import { PAYING_STORAGE_KEY, providePaying } from '../pay';
+import { iconAction } from '../../../frontend/__tests__/icon-action';
 import PayInvoiceButton from './PayInvoiceButton.vue';
 
 afterEach(() => {

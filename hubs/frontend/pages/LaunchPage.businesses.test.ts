@@ -10,10 +10,10 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
 }));
 vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/module-mocks')).shellWithToastSpies(original));
 
-import { iconAction, labelled } from '../../../frontend/__tests__/icon-action';
 import { accessibleName, describeCall, flush, ionProps } from '../__tests__/mount-hubs';
 import { business } from '../__tests__/businesses';
 import { INVITATION, page, PREPARING, setUpLaunchPage, showing } from '../__tests__/launch-page';
+import { iconAction, labelled } from '../../../frontend/__tests__/icon-action';
 
 const row = business;
 

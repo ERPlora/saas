@@ -6,10 +6,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/module-mocks')).shellWithToastSpies(original));
 
-import { HubIcon, toastError, toastSuccess } from '@erplora/ui/shell';
+import { toastError, toastSuccess } from '@erplora/ui/shell';
 
-import { iconAction, iconOnly, labelled } from '../../../frontend/__tests__/icon-action';
-import { describeCall, flush, ionProps, mountHubs } from '../__tests__/mount-hubs';
+import { accessibleName, describeCall, flush, ionProps, mountHubs } from '../__tests__/mount-hubs';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import RecoverButton from './RecoverButton.vue';
 
 const DELETED = {
@@ -40,7 +40,7 @@ describe('RecoverButton', () => {
     const button = m.wrapper.get('[data-testid="recover-business"]');
     expect(iconAction(button.element)).toEqual(iconOnly('Recover business'));
     // Undoing the deletion, the arrow back: not the circle of «Check now».
-    expect(button.findComponent(HubIcon).props('name')).toBe('ion:arrow-undo-outline');
+    expect(button.findComponent({ name: 'HubIcon' }).props('name')).toBe('ion:arrow-undo-outline');
     await button.trigger('click');
     await flush();
     expect(m.calls().find((c) => c.path === '/api/hubs/businesses/restore')?.body).toEqual({ id: 'plaza' });
@@ -70,7 +70,7 @@ describe('RecoverButton', () => {
     const m = await mountIt({}, { size: 'large', expand: 'block', named: true }, undefined, 'es');
     const button = m.wrapper.get('[data-testid="recover-business"]');
     expect(ionProps(button, 'size', 'expand')).toEqual({ size: 'large', expand: 'block' });
-    // As wide as its card, it is the card's main action: it says it in words.
-    expect(iconAction(button.element)).toEqual(labelled('Recuperar negocio', 'Recuperar Bar La Plaza'));
+    expect(button.text()).toContain('Recuperar negocio');
+    expect(accessibleName(button)).toBe('Recuperar Bar La Plaza');
   });
 });

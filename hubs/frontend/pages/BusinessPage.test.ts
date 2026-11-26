@@ -16,7 +16,6 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/mod
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
 import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
-import { iconAction, iconOnly, labelled } from '../../../frontend/__tests__/icon-action';
 import { BYE, describeCall, errorFrame, flush, ionProps, mountHubs, subId } from '../__tests__/mount-hubs';
 import RepresentationCard from '../../../fiscal/frontend/components/RepresentationCard.vue';
 import BusinessSettings from '../components/BusinessSettings.vue';
@@ -24,6 +23,7 @@ import BusinessSummary from '../components/BusinessSummary.vue';
 import CustomDomainCard from '../components/CustomDomainCard.vue';
 import DangerZone from '../components/DangerZone.vue';
 import MembersTab from '../components/MembersTab.vue';
+import { iconAction, iconOnly, labelled } from '../../../frontend/__tests__/icon-action';
 import BusinessPage from './BusinessPage.vue';
 import { navigation } from '../open-business';
 import { BUSINESS } from '../__tests__/business-page';

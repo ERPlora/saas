@@ -10,10 +10,10 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
 }));
 vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/module-mocks')).shellWithToastSpies(original));
 
-import { HubIcon, toastError, toastSuccess } from '@erplora/ui/shell';
+import { toastError, toastSuccess } from '@erplora/ui/shell';
 
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { apiError, flush, mountHubs } from '../__tests__/mount-hubs';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import DangerZone from './DangerZone.vue';
 
 const BUSINESS = { id: 'h1', name: 'Panadería López', status: 'active', purge_after: null, can: { delete: true, restore: false } };
@@ -52,7 +52,7 @@ describe('DangerZone', () => {
     expect(wrapper.find('[data-testid="danger-delete"]').exists()).toBe(false);
     const restore = wrapper.get('[data-testid="danger-restore"]');
     expect(iconAction(restore.element)).toEqual(iconOnly('Recover business'));
-    expect(restore.findComponent(HubIcon).props('name')).toBe('ion:arrow-undo-outline');
+    expect(restore.findComponent({ name: 'HubIcon' }).props('name')).toBe('ion:arrow-undo-outline');
     await restore.trigger('click');
     await flush();
     expect(calls().map((c) => [c.path, c.body])).toEqual([['/api/hubs/businesses/restore', { id: 'h1' }]]);

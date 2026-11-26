@@ -9,8 +9,8 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
 }));
 
 import type { BillingProfileOut } from '../../../frontend/sdk-types/store';
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { apiError, describeCall, flush, mountBilling } from '../__tests__/mount-billing';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import BillingProfileCard from './BillingProfileCard.vue';
 import BillingProfileModal from './BillingProfileModal.vue';
 

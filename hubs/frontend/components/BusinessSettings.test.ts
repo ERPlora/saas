@@ -8,8 +8,8 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/mod
 
 import { toastSuccess } from '@erplora/ui/shell';
 
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { apiError, flush, ionProps, mountHubs, optionValue } from '../__tests__/mount-hubs';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import BusinessSettings from './BusinessSettings.vue';
 import CopyField from './CopyField.vue';
 

@@ -4,8 +4,8 @@
 // clock: data only — the maintenance timestamps are compared as ISO strings, never with now.
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { apiError, describeCall, flush, mountHubs } from '../__tests__/mount-hubs';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import BusinessPreparing from './BusinessPreparing.vue';
 
 afterEach(() => {

@@ -16,7 +16,6 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/fr
 
 import { toastSuccess } from '@erplora/ui/shell';
 
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import {
   accessibleName,
   type ApiCall,
@@ -29,6 +28,7 @@ import {
   subId,
 } from '../__tests__/mount-panel';
 import type { ApiKeyRowOut } from '../../../frontend/sdk-types/accounts-security';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import ApiKeysTable from './ApiKeysTable.vue';
 
 function key(id: string, overrides: Partial<ApiKeyRowOut> = {}): ApiKeyRowOut {
