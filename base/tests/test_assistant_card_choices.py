@@ -1,7 +1,7 @@
 """ASSISTANT-F25 · A value of a closed list on the card of the panel's assistant: «English», «Oscuro» or «España» says
 which option was chosen, never which datum it is. ``live`` marks it (``live.assistant.CHOICE``) and the card's line of
-``@erplora/ui`` names it even when it goes first: asked only for the language, the card reads «Cambiar en Cuenta: Idioma:
-English», never «Cambiar en Cuenta: English»."""
+``@erplora/ui`` names it even when it goes first: asked only for the language, the card reads «Cambiar las preferencias
+en Cuenta: Idioma: English», never «Cambiar las preferencias en Cuenta: English»."""
 
 import json
 
