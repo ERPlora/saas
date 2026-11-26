@@ -217,9 +217,11 @@ for (const run of [
 
       await types.first().locator('th a').click();
       await atEverySize(page, `HUBS-G01${run.suffix}`, async () => {
-        for (const field of ['code', 'name_en', 'name_es', 'description_en', 'description_es', 'vertical', 'icon', 'display_order']) {
+        for (const field of ['code', 'name_en', 'name_es', 'description_en', 'description_es', 'vertical', 'icon']) {
           await expect(page.locator(`[name="${field}"]`)).toBeVisible();
         }
+        // A business type is listed by its name in each language: the staff give it no order.
+        await expect(page.locator('[name="display_order"]')).toHaveCount(0);
         await expect(page.locator('[name="sector"]')).toBeAttached();
       });
       expect(errors).toEqual([]);
