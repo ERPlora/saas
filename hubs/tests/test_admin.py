@@ -74,7 +74,7 @@ def test_the_admin_refuses_a_folded_spanish_name(staff_client, rows):
     """The model's guard reaches the admin form: the row is not saved and the field says why."""
     response = staff_client.post(
         "/admin/hubs/businesstype/add/",
-        {"code": "barber_shop", "name_en": "Barber Shop", "name_es": "Barberia", "display_order": 0, "is_active": "on"},
+        {"code": "barber_shop", "name_en": "Barber Shop", "name_es": "Barberia", "is_active": "on"},
     )
 
     assert response.status_code == 200
@@ -93,7 +93,6 @@ def test_a_business_type_is_added_with_its_sector_and_vertical(staff_client, row
             "name_es": "Barbería",
             "sector": rows["sector"].pk,
             "vertical": "hair_salon",
-            "display_order": 1,
             "is_active": "on",
         },
     )
@@ -209,12 +208,20 @@ def test_the_accesses_list_says_who_how_and_when_and_finds_by_email_and_role(sta
     assert [member.user.email for member in admins.result_list] == ["ana@example.com"]
 
 
-@pytest.mark.parametrize("model", ["sector", "businesstype"])
-def test_the_taxonomy_order_and_switch_are_changed_from_the_list(staff_client, rows, model):
-    """HUBS-F36 step 2: the order and whether it is active, right in the list."""
-    page = staff_client.get(f"/admin/hubs/{model}/").content.decode()
+def test_a_sector_order_and_switch_are_changed_from_the_list(staff_client, rows):
+    """HUBS-F36 step 2: the order of the sectors and whether one is active, right in the list."""
+    page = staff_client.get("/admin/hubs/sector/").content.decode()
 
     assert 'name="form-0-display_order"' in page and 'name="form-0-is_active"' in page
+
+
+def test_a_business_type_has_its_switch_and_no_order(staff_client, rows):
+    """The business types are read by their name in each language: an order set by the staff would change nothing."""
+    listed = staff_client.get("/admin/hubs/businesstype/").content.decode()
+    form = staff_client.get(f"/admin/hubs/businesstype/{rows['businesstype'].pk}/change/").content.decode()
+
+    assert 'name="form-0-is_active"' in listed
+    assert "display_order" not in listed and 'name="display_order"' not in form
 
 
 def test_the_changelist_finds_a_business_by_its_address(staff_client, plane):
@@ -672,11 +679,11 @@ import re  # noqa: E402
 
 SPANISH_COLUMNS = {
     "sector": ["Código", "Nombre (inglés)", "Nombre (español)", "Activo", "Orden"],
-    "businesstype": ["Código", "Nombre (inglés)", "Nombre (español)", "Sector", "Vertical", "Activo", "Orden"],
+    "businesstype": ["Código", "Nombre (inglés)", "Nombre (español)", "Sector", "Vertical", "Activo"],
 }
 #: The filters' titles («Por activo»), as Django's ``admin/filter.html`` writes them in ``data-filter-title``.
 SPANISH_FILTERS = {"sector": ["activo"], "businesstype": ["sector", "vertical", "activo"]}
-SPANISH_FIELDS = ["Código", "Icono", "Color", "Orden", "Activo"]
+SPANISH_FIELDS = {"sector": ["Código", "Icono", "Color", "Orden", "Activo"], "businesstype": ["Código", "Icono", "Color", "Activo"]}
 
 
 def _headings(page: str) -> list[str]:
@@ -701,7 +708,7 @@ def test_the_taxonomy_forms_speak_spanish(staff_client, rows, model):
     page = staff_client.get(f"/admin/hubs/{model}/{rows[model].pk}/change/", HTTP_ACCEPT_LANGUAGE="es").content.decode()
     labels = [label.strip().rstrip(":") for label in re.findall(r"<label[^>]*>([^<]+)</label>", page)]
 
-    for label in SPANISH_FIELDS:
+    for label in SPANISH_FIELDS[model]:
         assert label in labels, (label, labels)
 
 
