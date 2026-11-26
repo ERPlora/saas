@@ -392,11 +392,29 @@ class TestDeleteAndRestore:
             409,
             {"error": {"code": "hub_purged", "message": "Gone."}},
         )
+        hub_double.calls.clear()
 
         hub_push.sync_hub(business.id)
 
         hub = fresh(business)
         assert (hub.status, hub.pending_hub_call) == ("deleted", "")
+        assert [(c.method, c.path.rsplit("/", 1)[-1]) for c in hub_double.calls] == [("POST", "restore")]
+
+    def test_a_restoration_the_hub_never_had_registers_it_in_the_same_push(self, business, owner, hub_double):
+        deletion.business_delete(ctx_for(owner), BusinessDeleteIn(id=business.id, confirm_name="Bar Manolo"))
+        hub_push.sync_hub(business.id)
+        deletion.business_restore(ctx_for(owner), ByIdIn(id=business.id))
+        hub_double.answer("POST", "/restore$", 404, {"error": {"code": "not_found"}})
+        hub_double.calls.clear()
+
+        assert hub_push.sync_outcome(business.id) == hub_push.DELIVERED
+
+        assert [(c.method, c.path.rsplit("/", 1)[-1]) for c in hub_double.calls] == [
+            ("POST", "restore"),
+            ("PUT", str(business.id)),
+            ("PUT", "state"),
+        ]
+        assert fresh(business).pending_hub_call == ""
 
     def test_a_deleted_business_gets_no_snapshot(self, business, owner, hub_double):
         Hub.objects.filter(pk=business.pk).update(
@@ -567,6 +585,21 @@ class TestRefusals:
         hub_push.sync_hub(business.id)
 
         assert fresh(business).last_hub_error == ""
+
+    def test_a_hub_that_is_away_is_unreachable_and_a_warning(self, business, offline_hub, caplog):
+        assert hub_push.sync_outcome(business.id) == hub_push.UNREACHABLE
+
+        [owed] = [record for record in caplog.records if record.name == "hubs.services.hub_push" and "owed" in record.msg]
+        assert owed.levelname == "WARNING"
+        assert all(part in owed.getMessage() for part in (str(business.id), "call=put"))
+
+    def test_a_refusal_code_longer_than_the_field_is_recorded_cut_to_fit(self, business, hub_double):
+        code = "internal." + "x" * 80
+        hub_double.answer("PUT", r"/internal/hubs/[^/]+$", 422, {"error": {"code": code}})
+
+        assert hub_push.sync_outcome(business.id) == hub_push.REFUSED
+
+        assert fresh(business).last_hub_error == code[:64]
 
     def test_a_newer_registry_is_not_dropped_by_an_older_acknowledgement(self, business, owner, hub_double, monkeypatch):
         """The owner renames the business while the Hub answers the previous registry."""

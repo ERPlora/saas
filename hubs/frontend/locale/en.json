@@ -97,6 +97,7 @@
       "country": "Country",
       "type": "Business type (optional)",
       "typeUnknown": "I don't know yet",
+      "typePlaceholder": "Type to search",
       "typeHint": "We'll suggest a template on your business's Home; the type helps us choose it. You can leave it blank.",
       "typesFailed": "The business types could not be loaded right now. You can create the business without one.",
       "address": "Your address will be {host}",
@@ -262,7 +263,6 @@
           "offboarding": "When it was deleted",
           "reset": "Before its data was reset"
         },
-        "download": "Download",
         "downloadName": "Download the copy of {date}",
         "notReady": "The copy is not ready yet. We will let you know by email when it is.",
         "none": "This business has no copy of its data.",

@@ -174,7 +174,8 @@ test.describe('billing', () => {
       // Selected, it counts only the issued ones: this one has no PDF yet, said above the list.
       const selectRow = (id: string) => page.locator(`[data-testid="invoices-row"][data-id="${id}"] ion-checkbox`);
       await selectRow(ids['E2EBAKERY_SEP-0001']).click();
-      await expect(page.getByTestId('invoices-pdf-selected')).toHaveText('Download PDF (0)');
+      await expect(page.getByTestId('invoices-pdf-selected')).toHaveText('0');
+      await expect(page.getByRole('button', { name: 'Download PDF (0)' })).toBeVisible();
       await expect(page.getByTestId('invoices-pdf-selected')).toHaveAttribute('aria-disabled', 'true');
       await expect(page.getByTestId('invoices-selection-note')).toHaveText(
         '1 selected invoice is still being issued: its PDF is ready in a few minutes.',

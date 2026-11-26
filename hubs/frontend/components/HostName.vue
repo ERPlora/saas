@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // A business's web address that breaks only after a dot: at 390 px the launcher once split
 // «e2e-billing- / plaza.localhost:8000» at the hyphen, as if it were two addresses. Each part between dots
-// stays on one line; a line may end only after a dot (`<wbr>`).
+// stays on one line while it fits; a line may end only after a dot (`<wbr>`). A part wider than its box
+// breaks inside it rather than painting over the next column.
 import { computed } from 'vue';
 
 const props = defineProps<{
@@ -21,6 +22,7 @@ const parts = computed(() => props.host.split('.').map((part, index, all) => (in
 
 <style scoped>
 .host-name__part {
-  white-space: nowrap;
+  display: inline-block;
+  overflow-wrap: anywhere;
 }
 </style>

@@ -31,7 +31,7 @@ logger = logging.getLogger("billing.webhooks")
 
 @csrf_exempt
 @never_cache
-def stripe_webhook(request: HttpRequest) -> JsonResponse:  # noqa: PLR0911
+def stripe_webhook(request: HttpRequest) -> JsonResponse:
     if request.method != "POST":
         response = JsonResponse({"status": "method_not_allowed"}, status=405)
         response["Allow"] = "POST"
@@ -48,6 +48,10 @@ def stripe_webhook(request: HttpRequest) -> JsonResponse:  # noqa: PLR0911
     except stripe_service.InvalidWebhook as invalid:
         logger.warning("[STRIPE WEBHOOK] Refused: %s", invalid)
         return JsonResponse({"status": "invalid_signature"}, status=400)
+    return _process_once(event)
+
+
+def _process_once(event: dict) -> JsonResponse:
     event_id, event_type = event["id"], event["type"]
     claim = webhook_events.claim_event(event_id, event_type)
     if claim == webhook_events.DUPLICATE:

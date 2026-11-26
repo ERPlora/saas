@@ -175,7 +175,7 @@ está activada, con «Activar» o «Gestionar».
 
 ### Cuenta › Seguridad › Sesiones activas
 Una tabla a toda la altura con «Dispositivo», «Navegador», «Dirección IP» y «Último uso»; la de este
-navegador va la primera, marcada «Esta sesión», y cada otra lleva «Cerrar sesión». Arriba, «Cerrar las
+navegador va la primera, marcada «Esta sesión», y cada otra lleva el icono «Cerrar sesión» (el nombre sale al pasar el ratón). Arriba, «Cerrar las
 demás sesiones»; debajo, «Al cerrar una sesión también se cierra en tus negocios.». En el móvil, las siguientes
 llegan al desplazarse hasta el final, en vez de páginas.
 
@@ -530,7 +530,7 @@ Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Seguridad › Sesiones activas
 Pasos:
 1. En **Cuenta › Seguridad**, «Sesiones activas» lista cada sesión abierta con su «Dispositivo», «Navegador», «Dirección IP» y «Último uso»; la de este navegador va la primera, marcada «Esta sesión».
-2. «Cerrar sesión» en una fila la cierra al momento y avisa «Sesión cerrada en …»; si es la app de ERPlora, antes pregunta «Cerrar la app en …», porque puede estar cobrando en una caja.
+2. El icono «Cerrar sesión» de una fila la cierra al momento y avisa «Sesión cerrada en …»; si es la app de ERPlora, antes pregunta «Cerrar la app en …», porque puede estar cobrando en una caja.
 3. «Cerrar las demás sesiones» dice cuántas se cerrarán, también las apps, y al confirmarlo las cierra todas menos esta: «Sesiones cerradas: 2».
 Entra: la sesión elegida, o «las demás».
 Sale: esas sesiones cerradas, aquí y en los negocios de la cuenta; esta sigue dentro y la lista se actualiza sola. Evento `accounts.session.closed`.
@@ -737,7 +737,7 @@ Estado: hecho
 Actor: cualquier persona con cuenta; un superusuario del personal
 Pantalla: Cuenta › Claves de API, admin › Cuentas › Claves de API
 Pasos:
-1. En **Cuenta › Claves de API**, la persona pulsa «Revocar» en la fila de la clave: «Revocar «…»» dice «Lo que use esta clave dejará de funcionar al momento. No se puede deshacer: tendrías que crear otra.».
+1. En **Cuenta › Claves de API**, la persona pulsa el icono «Revocar» de la fila de la clave: «Revocar «…»» dice «Lo que use esta clave dejará de funcionar al momento. No se puede deshacer: tendrías que crear otra.».
 2. Confirma con «Revocar clave»: «Clave revocada: «…»» y la clave sale de la lista.
 3. Ante un incidente, un superusuario del personal busca la clave en el admin (por su nombre, su principio o su cuenta; cada fila dice sus «Permisos» con las palabras de la cuenta, como «Negocios · lectura»), la marca y elige «Revocar las claves seleccionadas (dejan de funcionar al momento)»: «Claves revocadas: 1.».
 Entra: la clave elegida.

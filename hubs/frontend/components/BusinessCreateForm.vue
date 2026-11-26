@@ -1,12 +1,12 @@
 <script setup lang="ts">
 // The sign-up of a business:
 // the name, the country (the one the browser's languages suggest) and, if the person knows it, the
-// business type; under the name, the address the name proposes (`hubs.address.propose`, 300 ms after it
+// business type, found by typing; under the name, the address the name proposes (`hubs.address.propose`, 300 ms after it
 // stops changing). «Create my business»
 // runs `hubs.business.create` and hands the new business to the parent (`created`), which shows its
 // preparation. One form for the launcher, the empty Businesses and the «Create business» dialog; in the
 // dialog the dialog's button submits it (`submitButton: false` + `submit()`).
-import { InlineFeedback } from '@erplora/ui/components';
+import { Combo, type ComboOption, InlineFeedback } from '@erplora/ui/components';
 import { HubIcon, toastSuccess } from '@erplora/ui/shell';
 import { fieldErrors, useCommand, useLiveClient } from '@erplora/ui/sdk';
 import { IonButton, IonInput, IonSelect, IonSelectOption, IonSpinner } from '@ionic/vue';
@@ -43,7 +43,8 @@ const { text } = useErrorText();
 
 const name = shallowRef('');
 const country = shallowRef<string>(suggestedCountry(navigator.languages));
-const businessType = shallowRef('');
+/** The type chosen; `null` (or «I don't know yet», whose id is `''`) sends none. */
+const businessType = shallowRef<ComboOption | null>(null);
 const types = shallowRef<BusinessTypeOut[]>([]);
 const typesFailed = shallowRef(false);
 const address = shallowRef<{ state: 'idle' | 'checking' | 'ready'; host: string }>({ state: 'idle', host: '' });
@@ -51,6 +52,11 @@ const address = shallowRef<{ state: 'idle' | 'checking' | 'ready'; host: string 
 const nameMissing = shallowRef(false);
 
 const countries = computed(() => countryOptions(locale.value));
+/** «I don't know yet» first, then the types in the server's order: by name in the person's language. */
+const typeOptions = computed<ComboOption[]>(() => [
+  { id: '', label: t('hubs.create.typeUnknown') },
+  ...types.value.map((type) => ({ id: type.code, label: type.name })),
+]);
 const errors = computed(() => fieldErrors(create.error.value));
 const formError = computed(() => {
   const error = create.error.value;
@@ -111,9 +117,10 @@ async function submit(): Promise<void> {
     nameMissing.value = true;
     return;
   }
-  const typeName = types.value.find((type) => type.code === businessType.value)?.name ?? null;
+  const code = businessType.value?.id || null;
+  const typeName = code ? (businessType.value?.label ?? null) : null;
   try {
-    const business = await create.run({ name: trimmed, country: country.value, business_type: businessType.value || null });
+    const business = await create.run({ name: trimmed, country: country.value, business_type: code });
     toastSuccess(t('hubs.create.created', { name: business.name }));
     emit('created', business, { typeName });
   } catch {
@@ -196,29 +203,15 @@ defineExpose({ submit, pending: create.pending });
     </ion-select>
 
     <div class="create-field">
-      <ion-select
-        data-testid="create-type"
-        mode="md"
-        fill="outline"
-        label-placement="floating"
-        interface="popover"
+      <Combo
+        v-model="businessType"
+        testid="create-type"
+        name="business_type"
+        :options="typeOptions"
         :label="$t('hubs.create.type')"
-        :value="businessType"
+        :placeholder="$t('hubs.create.typePlaceholder')"
         :error-text="errors.business_type"
-        :class="{ 'ion-invalid': !!errors.business_type, 'ion-touched': !!errors.business_type }"
-        @ion-change="businessType = String($event.detail.value ?? '')"
-      >
-        <ion-select-option value="">
-          {{ $t('hubs.create.typeUnknown') }}
-        </ion-select-option>
-        <ion-select-option
-          v-for="type in types"
-          :key="type.code"
-          :value="type.code"
-        >
-          {{ type.name }}
-        </ion-select-option>
-      </ion-select>
+      />
       <p
         class="field-hint"
         data-testid="create-type-hint"

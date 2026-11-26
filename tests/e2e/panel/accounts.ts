@@ -1,7 +1,10 @@
 import { execFileSync } from 'node:child_process';
 
+import type { APIRequestContext } from '@playwright/test';
+
 import { djangoEnv } from '../django-env';
 import { djangoPrint, djangoPrintAsync, djangoPrintWarm, SAAS_DIR } from './django';
+import { signIn } from './session';
 
 /** A SaaS account: what its sign-in asks for. */
 export interface Credentials {
@@ -140,6 +143,18 @@ export async function createAccountWarm(email: string, password: string, options
     ].join('\n'),
   );
   return { email, password };
+}
+
+/** A fresh account (`createAccountWarm`) whose session `request` carries from now on. */
+export async function signInNewAccount(
+  request: APIRequestContext,
+  email: string,
+  password: string,
+  options: AccountOptions = {},
+): Promise<Credentials> {
+  const credentials = await createAccountWarm(email, password, options);
+  await signIn(request, credentials);
+  return credentials;
 }
 
 /** `removeAccountsOf` through the warm Django: the businesses and the accounts whose email starts with `prefix`. */

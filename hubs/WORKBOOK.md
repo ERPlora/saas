@@ -78,7 +78,8 @@ arriba. Una invitación pendiente sale encima.
 
 ### Crear negocio
 El formulario del alta: «Nombre del negocio», «País» (sugerido por el idioma del navegador), «Tipo de negocio
-(opcional)» con «Todavía no lo sé» y «Te propondremos una plantilla en el Inicio de tu negocio; el tipo nos ayuda a elegirla. Puedes dejarlo en blanco.» y, debajo del nombre, «Tu dirección será …». En la Entrada va en la tarjeta «Crea tu
+(opcional)», en el que se escribe para buscar («Escribe para buscar»), con «Todavía no lo sé» el primero de su lista y
+los tipos por orden alfabético del idioma de la persona, y «Te propondremos una plantilla en el Inicio de tu negocio; el tipo nos ayuda a elegirla. Puedes dejarlo en blanco.» y, debajo del nombre, «Tu dirección será …». En la Entrada va en la tarjeta «Crea tu
 negocio»; en **Negocios**, en el diálogo «Crear negocio», bajo «¿Cómo se llama tu negocio?».
 
 ### Preparando
@@ -217,7 +218,7 @@ Actor: cualquier persona con cuenta
 Pantalla: Entrada › Crear negocio
 Pasos:
 1. Tras crear la cuenta y entrar sin ningún negocio, la Entrada enseña «Crea tu negocio» («Gratis y sin tarjeta: solo el nombre y el país.»).
-2. Escribe el «Nombre del negocio»; debajo aparece «Tu dirección será …» con la dirección que propone el nombre. El «País» viene sugerido por el idioma del navegador y el «Tipo de negocio (opcional)» admite «Todavía no lo sé»; debajo avisa de que el Inicio del negocio le propondrá una plantilla y de que el tipo ayuda a elegirla.
+2. Escribe el «Nombre del negocio»; debajo aparece «Tu dirección será …» con la dirección que propone el nombre. El «País» viene sugerido por el idioma del navegador. En el «Tipo de negocio (opcional)» escribe parte del nombre («pelu») y la lista se queda con los tipos que lo contienen; sin escribir, la lista enseña «Todavía no lo sé» el primero y los tipos por orden alfabético de su idioma. Puede dejarlo vacío o elegir «Todavía no lo sé»; debajo avisa de que el Inicio del negocio le propondrá una plantilla y de que el tipo ayuda a elegirla.
 3. Pulsa «Crear mi negocio»: sale «Negocio creado: …» y la tarjeta pasa a **Preparando** (HUBS-F04).
 Entra: el nombre, el país (uno de los 27 de la Unión Europea en los que vende ERPlora) y, si la persona lo sabe, el tipo de negocio; la sesión de la cuenta.
 Sale: el negocio en el plan Gratis (sin tarjeta y sin prueba), en el idioma de la cuenta (ACCOUNTS-F22), con la persona como propietaria, su dirección sacada del nombre (si está cogida se numera, `bar-manolo-2`; una palabra reservada se completa sola) y quién paga, con el país del negocio. El servicio de los negocios recibe el alta en cuanto se guarda y, con el tipo de negocio, su sector. El negocio nace con todas las apps apagadas: su Inicio propone empezar con una plantilla, primero la de su sector si la hay (BASE-F38), o encenderlas una a una. Anota `hubs.business.created`.
@@ -444,7 +445,7 @@ Pantalla: Ajustes del negocio › Zona de peligro
 Pasos:
 1. En «Ajustes», en la «Zona de peligro», el propietario pulsa «Eliminar negocio»; el diálogo «Eliminar …» dice «Deja de funcionar ahora mismo para todos. Puedes recuperarlo durante 90 días; después se borra para siempre, salvo sus documentos fiscales.», «Sus ventas, facturas y demás documentos fiscales se guardan 6 años, como exige la ley, en un archivo que nadie puede modificar ni borrar.» y «Su plan se cancela ahora: si lo recuperas, vuelve en Gratis.».
 2. Escribe el nombre del negocio en «Nombre del negocio» y pulsa «Eliminar negocio»: sale «Negocio eliminado: …. Puedes recuperarlo hasta el ….».
-3. La página dice «Se eliminará para siempre el …», que una vez borrado solo se guardan sus documentos fiscales, durante 6 años, y «Recuperar negocio»; debajo, «Descargar los datos»: cada copia completa de sus datos con su fecha, «Al eliminarlo» y su tamaño, y «Descargar». Al propietario le llega el correo con esa fecha, que dice lo mismo de sus documentos fiscales, y «Descarga una copia completa de sus datos: …», que lleva a esa página; cuando la copia está lista, otro correo: «La copia de los datos de … está lista».
+3. La página dice «Se eliminará para siempre el …», que una vez borrado solo se guardan sus documentos fiscales, durante 6 años, y «Recuperar negocio»; debajo, «Descargar los datos»: cada copia completa de sus datos con su fecha, «Al eliminarlo» y su tamaño, y el icono «Descargar la copia del …». Al propietario le llega el correo con esa fecha, que dice lo mismo de sus documentos fiscales, y «Descarga una copia completa de sus datos: …», que lleva a esa página; cuando la copia está lista, otro correo: «La copia de los datos de … está lista».
 4. Una integración con la sesión de la cuenta hace lo mismo, con el nombre escrito; una clave de API no elimina.
 Entra: el nombre escrito otra vez; la sesión del propietario.
 Sale: el negocio eliminado, que deja de abrirse al momento para todos y a los 90 días se borra para siempre, salvo sus documentos fiscales, que el negocio guarda 6 años en su archivo fiscal (BASE-F109); su plan vuelve a Gratis y lo que se cobraba en Stripe se cancela en la pasada siguiente, sin factura final; hasta entonces, Facturación › Suscripciones lo enseña «En eliminación», sin próxima factura (BILLING-F23); el negocio recibe la baja tras guardar. Anota `hubs.business.deleted`.
@@ -685,8 +686,8 @@ Actor: personal de ERPlora, sistema
 Pantalla: admin › Negocios › Sectores y Tipos de negocio
 Pasos:
 1. En cada despliegue, erplora.com crea los sectores y tipos de negocio que falten de su lista de partida (12 sectores y 70 tipos), sin tocar lo que el personal ya cambió.
-2. El personal abre «Sectores» o «Tipos de negocio» en el admin, busca por código o nombre y filtra por «Activo» (los tipos, también por «Sector» y por «Vertical»); cambia el orden y si está activo desde la misma lista.
-3. En la ficha escribe el nombre y la descripción en inglés y en español, el icono, el color, el orden y si está activo; en un tipo de negocio, además, su sector y su «Vertical», la plantilla con la que nace un negocio de ese tipo.
+2. El personal abre «Sectores» o «Tipos de negocio» en el admin, busca por código o nombre y filtra por «Activo» (los tipos, también por «Sector» y por «Vertical»); cambia si está activo desde la misma lista y, en un sector, también su orden.
+3. En la ficha escribe el nombre y la descripción en inglés y en español, el icono, el color y si está activo; en un sector, además, su orden; en un tipo de negocio, su sector y su «Vertical», la plantilla con la que nace un negocio de ese tipo. Un tipo de negocio no tiene orden: sale por orden alfabético en cada idioma (HUBS-F37).
 4. Guarda: el alta del negocio, las páginas de cada sector y quien los lea por la API los reciben en su idioma (HUBS-F37).
 Entra: lo que escribe el personal.
 Sale: el sector o el tipo de negocio, con cada texto en inglés y en español.
@@ -699,7 +700,7 @@ Actor: cualquiera, integración
 Pantalla: ninguna; las usan Crear negocio y las páginas de cada sector
 Pasos:
 1. Cualquiera, sin entrar, pide la lista de sectores o la de tipos de negocio, todos o los de un sector.
-2. erplora.com contesta con los activos, en el orden que puso el personal, cada uno con su código, su nombre y su descripción en el idioma de quien pide (el inglés si falta el español), su icono y su color; cada tipo de negocio, con su sector y su plantilla.
+2. erplora.com contesta con los activos: los sectores, en el orden que puso el personal; los tipos de negocio, por orden alfabético de su nombre en el idioma de quien pide, sin agrupar por sector; cada uno con su código, su nombre y su descripción en el idioma de quien pide (el inglés si falta el español), su icono y su color; cada tipo de negocio, con su sector y su plantilla.
 3. El formulario de Crear negocio llena con ella su «Tipo de negocio (opcional)» y la web pública, sus páginas de sectores.
 Entra: el idioma de quien pide y, si quiere, un sector.
 Sale: las dos listas; nada se guarda.
