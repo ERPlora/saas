@@ -105,29 +105,27 @@ const openName = (business: BusinessRowOut) =>
     />
     <ion-button
       v-if="opensAtAll(rows[0])"
-      class="icon-action"
       data-testid="launch-open"
       expand="block"
       :size="owes(rows[0]) ? undefined : 'large'"
       :fill="owes(rows[0]) ? 'outline' : 'solid'"
       :class="owes(rows[0]) ? 'launch-second' : 'launch-main'"
       :disabled="!rows[0].can_open || !!opening"
-      :aria-label="openName(rows[0])"
-      :title="openName(rows[0])"
       @click="emit('open', rows[0])"
     >
       <ion-spinner
         v-if="opening === rows[0].id"
-        slot="icon-only"
+        slot="start"
         name="crescent"
         aria-hidden="true"
       />
       <HubIcon
         v-else
-        slot="icon-only"
+        slot="start"
         name="ion:log-in-outline"
         aria-hidden="true"
       />
+      {{ openName(rows[0]) }}
     </ion-button>
   </template>
 
@@ -185,26 +183,25 @@ const openName = (business: BusinessRowOut) =>
       </div>
       <ion-button
         v-if="opensAtAll(business)"
-        class="icon-action"
         data-testid="launch-open"
         :fill="owes(business) ? 'outline' : 'solid'"
         :aria-label="openName(business)"
         :disabled="!business.can_open || !!opening"
-        :title="openName(business)"
         @click="emit('open', business)"
       >
         <ion-spinner
           v-if="opening === business.id"
-          slot="icon-only"
+          slot="start"
           name="crescent"
           aria-hidden="true"
         />
         <HubIcon
           v-else
-          slot="icon-only"
+          slot="start"
           name="ion:log-in-outline"
           aria-hidden="true"
         />
+        {{ $t('hubs.common.open') }}
       </ion-button>
     </div>
   </div>

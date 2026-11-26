@@ -16,7 +16,7 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/mod
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
 import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
+import { iconAction, iconOnly, labelled } from '../../../frontend/__tests__/icon-action';
 import { BYE, describeCall, errorFrame, flush, ionProps, mountHubs, subId } from '../__tests__/mount-hubs';
 import RepresentationCard from '../../../fiscal/frontend/components/RepresentationCard.vue';
 import BusinessSettings from '../components/BusinessSettings.vue';
@@ -471,6 +471,6 @@ describe('BusinessPage: Spanish', () => {
   it('speaks Spanish', async () => {
     const s = await setup('summary', {}, 'es');
     expect((s.page().props('tabs') as Array<{ label: string }>).map((tab) => tab.label)).toEqual(['Resumen', 'Miembros', 'Módulos', 'Ajustes']);
-    expect(iconAction(s.testid('business-open').element)).toEqual(iconOnly('Abrir Panadería López'));
+    expect(iconAction(s.testid('business-open').element)).toEqual(labelled('Abrir', 'Abrir Panadería López'));
   });
 });

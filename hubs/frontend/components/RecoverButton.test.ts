@@ -8,7 +8,7 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/mod
 
 import { HubIcon, toastError, toastSuccess } from '@erplora/ui/shell';
 
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
+import { iconAction, iconOnly, labelled } from '../../../frontend/__tests__/icon-action';
 import { describeCall, flush, ionProps, mountHubs } from '../__tests__/mount-hubs';
 import RecoverButton from './RecoverButton.vue';
 
@@ -61,10 +61,16 @@ describe('RecoverButton', () => {
     expect(m.wrapper.find('ion-button').exists()).toBe(false);
   });
 
-  it('takes the size and the width asked for; in a list, it is named with its business', async () => {
+  it('small in a list, it is its icon named with its business', async () => {
+    const m = await mountIt({}, { size: 'small', named: true });
+    expect(iconAction(m.wrapper.get('[data-testid="recover-business"]').element)).toEqual(iconOnly('Recover Bar La Plaza'));
+  });
+
+  it('takes the size and the width asked for, and as wide as its card says «Recover business»', async () => {
     const m = await mountIt({}, { size: 'large', expand: 'block', named: true }, undefined, 'es');
     const button = m.wrapper.get('[data-testid="recover-business"]');
     expect(ionProps(button, 'size', 'expand')).toEqual({ size: 'large', expand: 'block' });
-    expect(iconAction(button.element)).toEqual(iconOnly('Recuperar Bar La Plaza'));
+    // As wide as its card, it is the card's main action: it says it in words.
+    expect(iconAction(button.element)).toEqual(labelled('Recuperar negocio', 'Recuperar Bar La Plaza'));
   });
 });

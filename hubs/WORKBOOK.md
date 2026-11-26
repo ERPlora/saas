@@ -73,7 +73,7 @@ Quién la usa:
 ### Entrada (erplora.com y la aplicación instalada)
 La tarjeta centrada de erplora.com, la misma que abre la aplicación instalada al arrancar. Sin sesión, el
 formulario de entrar o crear la cuenta. Con sesión y sin negocios, «Crea tu negocio» con el formulario del alta;
-con un negocio, «Hola, …» con el icono «Abrir …» (su nombre sale al pasar el ratón) e «Ir al panel»; con varios, «¿Dónde trabajas hoy?» con el último abierto
+con un negocio, «Hola, …» con «Abrir …» e «Ir al panel»; con varios, «¿Dónde trabajas hoy?» con el último abierto
 arriba. Una invitación pendiente sale encima.
 
 ### Crear negocio
@@ -259,7 +259,7 @@ Pantalla: Preparando
 Pasos:
 1. Tras «Crear mi negocio», la Entrada enseña «Preparando …» («Suele tardar unos segundos.», salvo en una pausa por mantenimiento: ver «Si falla») con la barra y los tres pasos; en **Negocios**, el diálogo enseña lo mismo y la fila dice «Preparando».
 2. La pantalla se actualiza sola: no hace falta recargar ni quedarse («Ir al panel mientras tanto»).
-3. Cuando el negocio está listo, la Entrada lleva a la persona dentro del negocio sin volver a pedir la contraseña; el diálogo de **Negocios** dice «Tu negocio está listo» con el icono «Abrir negocio».
+3. Cuando el negocio está listo, la Entrada lleva a la persona dentro del negocio sin volver a pedir la contraseña; el diálogo de **Negocios** dice «Tu negocio está listo» con «Abrir negocio».
 4. Al propietario le llega además el correo «… ya está listo» con el enlace para abrirlo y el de su página en el panel.
 Entra: el aviso de que el negocio está listo (HUBS-F07).
 Sale: la entrada en el negocio con un pase de un solo uso, que nunca viaja en la dirección; el correo «ya está listo», una sola vez.
@@ -349,7 +349,7 @@ Estado: hecho
 Actor: propietario, administrador, encargado, empleado, gestoría
 Pantalla: Entrada, Negocios
 Pasos:
-1. En la Entrada (con uno o varios negocios) o en **Negocios**, la persona pulsa el icono «Abrir» de su negocio, que gira mientras abre («Abriendo …»).
+1. En la Entrada (con uno o varios negocios) o en **Negocios**, la persona pulsa «Abrir» en su negocio («Abriendo …»).
 2. El navegador va a la dirección del negocio, que pide a erplora.com el pase de entrada con la sesión ya abierta, sin volver a pedir la contraseña.
 3. Entra en el negocio ya identificada; erplora.com recuerda ese negocio como el último abierto y la Entrada lo pone arriba la próxima vez.
 4. Desde una invitación, «Aceptar y entrar» acepta y entra igual.
@@ -363,8 +363,8 @@ Estado: hecho
 Actor: propietario, administrador, encargado, empleado, gestoría
 Pantalla: Entrada (en la aplicación instalada)
 Pasos:
-1. La aplicación sin negocio recordado (o tras «Cambiar de negocio») abre la Entrada: con un negocio, el icono «Abrir …»; con varios, «¿Dónde trabajas hoy?» con el último abierto arriba y el estado de cada uno.
-2. La persona pulsa el icono «Abrir» del negocio en el que quiere trabajar.
+1. La aplicación sin negocio recordado (o tras «Cambiar de negocio») abre la Entrada: con un negocio, «Abrir …»; con varios, «¿Dónde trabajas hoy?» con el último abierto arriba y el estado de cada uno.
+2. La persona pulsa «Abrir» en el negocio en el que quiere trabajar.
 3. La aplicación va al negocio, entra sin pedir otra vez la contraseña y se queda unida a él: desde ese momento la impresora, el cajón y el resto del hardware responden solo a ese negocio.
 4. La próxima vez la aplicación arranca directamente en el negocio recordado.
 Entra: los negocios de los que la persona es miembro.

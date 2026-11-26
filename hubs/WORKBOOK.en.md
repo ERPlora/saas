@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:3e5f8da1483520c4d7efe5aceb817a455b6dd1e99b444f7f414843cd688e2eab -->
+<!-- generated from WORKBOOK.md sha256:cba0d5674d0c2d2194bbd359b15dd109f4a625624fa2b5df710244e59f5abeeb -->
 
 ## What it is for and who it is for
 
@@ -62,7 +62,7 @@ Who uses it:
 ### Entrance (erplora.com and the installed app)
 The centred card of erplora.com, the same one the installed app opens when it starts. Without a session, the form
 to sign in or create the account. With a session and no businesses, "Create your business" with the sign-up form;
-with one business, "Hello, …" with the "Open …" icon (its name shows on hover) and "Go to the panel"; with several, "Where are you working today?"
+with one business, "Hello, …" with "Open …" and "Go to the panel"; with several, "Where are you working today?"
 with the last opened on top. A pending invitation shows above.
 
 ### Create business
@@ -242,7 +242,7 @@ Screen: Preparing
 Steps:
 1. After "Create my business", the Entrance shows "Preparing …" ("It usually takes a few seconds.", except during a maintenance pause: see "If it fails") with the bar and the three steps; in **Businesses**, the dialog shows the same and the row says "Preparing".
 2. The screen updates by itself: there is no need to reload or to stay ("Go to the panel meanwhile").
-3. When the business is ready, the Entrance takes the person into the business without asking for the password again; the dialog of **Businesses** says "Your business is ready" with the "Open business" icon.
+3. When the business is ready, the Entrance takes the person into the business without asking for the password again; the dialog of **Businesses** says "Your business is ready" with "Open business".
 4. The owner also gets the email "… is ready" with the link to open it and the one to its page in the panel.
 In: the notice that the business is ready (HUBS-F07).
 Out: the entry into the business with a one-time pass, which never travels in the address; the "is ready" email, only once.
@@ -332,7 +332,7 @@ Status: done
 Actor: owner, administrator, manager, employee, accountant
 Screen: Entrance, Businesses
 Steps:
-1. On the Entrance (with one or several businesses) or in **Businesses**, the person presses the "Open" icon of their business, which spins while it opens ("Opening …").
+1. On the Entrance (with one or several businesses) or in **Businesses**, the person presses "Open" on their business ("Opening …").
 2. The browser goes to the business's address, which asks erplora.com for the entry pass with the session already open, without asking for the password again.
 3. They enter the business already identified; erplora.com remembers that business as the last opened and the Entrance puts it on top next time.
 4. From an invitation, "Accept and enter" accepts and enters the same way.
@@ -346,8 +346,8 @@ Status: done
 Actor: owner, administrator, manager, employee, accountant
 Screen: Entrance (in the installed app)
 Steps:
-1. The app without a remembered business (or after "Change business") opens the Entrance: with one business, the "Open …" icon; with several, "Where are you working today?" with the last opened on top and each one's status.
-2. The person presses the "Open" icon of the business where they want to work.
+1. The app without a remembered business (or after "Change business") opens the Entrance: with one business, "Open …"; with several, "Where are you working today?" with the last opened on top and each one's status.
+2. The person presses "Open" on the business where they want to work.
 3. The app goes to the business, enters without asking for the password again and stays linked to it: from then on the printer, the drawer and the rest of the hardware answer only that business.
 4. Next time the app starts directly in the remembered business.
 In: the businesses the person is a member of.

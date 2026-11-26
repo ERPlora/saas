@@ -3,7 +3,7 @@
 // clock: data only — no code under test compares these dates with now.
 import { describe, expect, it, vi } from 'vitest';
 
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
+import { iconAction, labelled } from '../../../frontend/__tests__/icon-action';
 import { business } from '../__tests__/businesses';
 import { setUpLaunchPage } from '../__tests__/launch-page';
 import { ionProps, mountHubs } from '../__tests__/mount-hubs';
@@ -24,12 +24,12 @@ async function setup(rows: unknown[], opening: string | null = null) {
 }
 
 describe('LaunchBusinesses', () => {
-  it('one business is a card whose large «Open» (named «Open X») hands the business to the page', async () => {
+  it('one business is a card whose large «Open X» hands the business to the page', async () => {
     const s = await setup([BAKERY]);
     expect(s.wrapper.findAll('[data-testid="launch-business"]')).toHaveLength(1);
     expect(s.wrapper.find('.launch-list').exists()).toBe(false);
     const [open] = s.opens();
-    expect(iconAction(open.element)).toEqual(iconOnly('Open Panadería López'));
+    expect(iconAction(open.element)).toEqual(labelled('Open Panadería López'));
     expect(ionProps(open, 'size', 'fill', 'disabled')).toEqual({ size: 'large', fill: 'solid', disabled: false });
     await open.trigger('click');
     expect(s.handed()).toEqual([[BAKERY]]);
@@ -53,10 +53,10 @@ describe('LaunchBusinesses', () => {
     warn.mockRestore();
   });
 
-  it('while the page opens the only business, its button is named so, spins and cannot be pressed', async () => {
+  it('while the page opens the only business, its button says so, spins and cannot be pressed', async () => {
     const s = await setup([BAKERY], 'bakery');
     const [open] = s.opens();
-    expect(iconAction(open.element)).toEqual(iconOnly('Opening Panadería López…'));
+    expect(iconAction(open.element)).toEqual(labelled('Opening Panadería López…'));
     expect(open.find('ion-spinner').exists()).toBe(true);
     expect(ionProps(open, 'disabled')).toEqual({ disabled: true });
   });
@@ -72,7 +72,7 @@ describe('LaunchBusinesses', () => {
     const tiles = s.wrapper.get('.launch-list').findAll('[data-testid="launch-business"]');
     expect(tiles.map((tile) => tile.get('h2').text())).toEqual(['Bar La Plaza', 'Panadería López']);
     expect(tiles.map((tile) => tile.find('.tag-recent').exists())).toEqual([true, false]);
-    expect(s.opens().map((open) => iconAction(open.element))).toEqual([iconOnly('Open Bar La Plaza'), iconOnly('Open Panadería López')]);
+    expect(s.opens().map((open) => iconAction(open.element))).toEqual([labelled('Open', 'Open Bar La Plaza'), labelled('Open', 'Open Panadería López')]);
     await s.opens()[1].trigger('click');
     expect(s.handed()).toEqual([[BAKERY_BEFORE]]);
   });

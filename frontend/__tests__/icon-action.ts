@@ -14,3 +14,6 @@ export function iconAction(el: Element | null | undefined): { text: string | nul
 
 /** The `iconAction` of a button that is only its icon, labelled `label`. */
 export const iconOnly = (label: string) => ({ text: '', name: label, title: label, square: true });
+
+/** The `iconAction` of a button that says its label in words: `text`, with an `aria-label` only when it adds to it. */
+export const labelled = (text: string, name: string | null = null) => ({ text, name, title: null, square: false });

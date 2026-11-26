@@ -10,7 +10,7 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
 }));
 vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/module-mocks')).shellWithToastSpies(original));
 
-import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
+import { iconAction, labelled } from '../../../frontend/__tests__/icon-action';
 import { accessibleName, describeCall, flush, ionProps } from '../__tests__/mount-hubs';
 import { business } from '../__tests__/businesses';
 import { INVITATION, page, PREPARING, setUpLaunchPage, showing } from '../__tests__/launch-page';
@@ -32,7 +32,7 @@ describe('LaunchPage: one business', () => {
     expect(tile.get('.status-pill').text()).toBe('Active');
     expect(tile.get('.launch-biz__meta').text()).toBe('Plan Starter · Owner');
     const open = s.testid('launch-open');
-    expect(iconAction(open.element)).toEqual(iconOnly('Open Panadería López'));
+    expect(iconAction(open.element)).toEqual(labelled('Open Panadería López'));
     await open.trigger('click');
     await flush();
     expect(s.opened()).toEqual([{ id: 'bakery', next: '/' }]);
@@ -44,7 +44,7 @@ describe('LaunchPage: one business', () => {
     await s.testid('launch-open').trigger('click');
     await flush();
     expect(s.opened()).toEqual([{ id: 'bakery', next: '/' }]);
-    expect(iconAction(s.testid('launch-open').element)).toEqual(iconOnly('Opening Panadería López…'));
+    expect(iconAction(s.testid('launch-open').element)).toEqual(labelled('Opening Panadería López…'));
     expect(ionProps(s.testid('launch-open'), 'disabled')).toEqual({ disabled: true });
   });
 
@@ -201,7 +201,7 @@ describe('LaunchPage: Spanish', () => {
   it('speaks Spanish', async () => {
     const s = await showing(page([row('bakery', 'Panadería López')]), { locale: 'es' });
     expect(s.title()).toBe('Hola, Laura');
-    expect(iconAction(s.testid('launch-open').element)).toEqual(iconOnly('Abrir Panadería López'));
+    expect(iconAction(s.testid('launch-open').element)).toEqual(labelled('Abrir Panadería López'));
     expect(s.testid('launch-panel').text()).toBe('Ir al panel');
     expect(s.testid('launch-business').get('.status-pill').text()).toBe('Activo');
     expect(document.title).toBe('Entrar - ERPlora');
@@ -226,7 +226,7 @@ describe('LaunchPage: a deleted business is recovered from the card', () => {
     });
     expect(s.testid('launch-reason').text()).toContain('Deleted. You can recover it until Jan 8, 2027');
     const recover = s.testid('recover-business');
-    expect(iconAction(recover.element)).toEqual(iconOnly('Recover business'));
+    expect(iconAction(recover.element)).toEqual(labelled('Recover business'));
     expect(ionProps(recover, 'size', 'expand')).toEqual({ size: 'large', expand: 'block' });
     expect(s.testid('launch-open').exists()).toBe(false);
     await recover.trigger('click');

@@ -16,6 +16,7 @@ const SUBMIT = 'the submit of a form or a dialog says its consequence';
 const DECISION = 'accepting or declining is the decision the screen asks for, said in words';
 const NAVIGATION = 'a link to another screen, not an action';
 const DATUM = 'what it shows beside the icon is a datum, not a label';
+const OPEN = 'the main action of its screen: the enter arrow does not say which business it opens';
 
 /** `<file>#<data-testid, or the first i18n key>` → why that `ion-button` paints text beside its icon. */
 const LABELLED_BUTTONS: Record<string, string> = {
@@ -52,6 +53,7 @@ const LABELLED_BUTTONS: Record<string, string> = {
   'hubs/frontend/components/BusinessCreateForm.vue#create-submit': SUBMIT,
   'hubs/frontend/components/BusinessCreateModal.vue#create-free-limit-store': 'no icon says «Change the plan of …»',
   'hubs/frontend/components/BusinessCreateModal.vue#create-modal-close-list': NAVIGATION,
+  'hubs/frontend/components/BusinessCreateModal.vue#create-modal-open': OPEN,
   'hubs/frontend/components/BusinessSettings.vue#settings-save': SUBMIT,
   'hubs/frontend/components/CustomDomainCard.vue#domain-connect': SUBMIT,
   'hubs/frontend/components/DeviceAccessCard.vue#device-android': 'the platform’s name tells the two downloads apart',
@@ -60,13 +62,16 @@ const LABELLED_BUTTONS: Record<string, string> = {
   'hubs/frontend/components/InvitationsAndOffers.vue#invitation-decline': DECISION,
   'hubs/frontend/components/InvitationsAndOffers.vue#offer-accept': DECISION,
   'hubs/frontend/components/InvitationsAndOffers.vue#offer-decline': DECISION,
+  'hubs/frontend/components/LaunchBusinesses.vue#launch-open': OPEN,
   'hubs/frontend/components/LaunchInvitation.vue#launch-accept': DECISION,
   'hubs/frontend/components/LaunchInvitation.vue#launch-create-own': `${NAVIGATION}; a «+» alone does not say what it creates`,
   'hubs/frontend/components/LaunchInvitation.vue#launch-decline': DECISION,
   'hubs/frontend/components/MembersTab.vue#members-transfer-cancel': 'an ✕ reads as dismissing the notice, not as withdrawing the offer',
+  'hubs/frontend/components/RecoverButton.vue#recover-business': 'as wide as its card it is the card’s main action, said in words; small in a list it is its icon',
   'hubs/frontend/components/UnpaidActions.vue#unpaid-change-card': 'two card icons side by side: «Change card» and «Pay the invoice»',
   'hubs/frontend/components/UnpaidActions.vue#unpaid-pay': 'two card icons side by side: «Change card» and «Pay the invoice»',
   'hubs/frontend/pages/BusinessListPage.vue#businesses-show-all': 'an ✕ does not say «Show all»',
+  'hubs/frontend/pages/BusinessPage.vue#business-open': OPEN,
   'hubs/frontend/pages/InvitationPage.vue#invitation-accept': DECISION,
   'hubs/frontend/pages/InvitationPage.vue#invitation-create-own': `${NAVIGATION}; a «+» alone does not say what it creates`,
   'hubs/frontend/pages/InvitationPage.vue#invitation-decline': DECISION,

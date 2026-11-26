@@ -253,26 +253,25 @@ async function recover(): Promise<void> {
             class="biz-header__actions"
           >
             <ion-button
-              class="icon-action"
               data-testid="business-open"
               :fill="section === 'summary' || section === 'modules' ? 'solid' : 'outline'"
               :disabled="!business.can.open || !!opening"
               :aria-label="$t('hubs.common.openName', { name: business.name })"
-              :title="$t('hubs.common.openName', { name: business.name })"
               @click="open(business)"
             >
               <ion-spinner
                 v-if="opening"
-                slot="icon-only"
+                slot="start"
                 name="crescent"
                 aria-hidden="true"
               />
               <HubIcon
                 v-else
-                slot="icon-only"
+                slot="start"
                 name="ion:log-in-outline"
                 aria-hidden="true"
               />
+              {{ $t('hubs.common.open') }}
             </ion-button>
           </div>
         </div>
