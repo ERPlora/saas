@@ -103,6 +103,7 @@ class TestTheDoor:
         )
 
         assert response.status_code == 400
+        assert response.json() == {"status": "invalid_signature"}
         assert WebhookEvent.objects.count() == 0
 
     def test_a_body_that_is_not_an_event_is_refused(self):
@@ -119,7 +120,8 @@ class TestTheDoor:
     def test_only_post(self):
         response = Client().get(URL, HTTP_HOST=HOST)
 
-        assert response.status_code == 405
+        assert (response.status_code, response["Allow"]) == (405, "POST")
+        assert response.json() == {"status": "method_not_allowed"}
 
     def test_without_the_webhook_secret_stripe_is_told_to_come_back(self, settings):
         settings.STRIPE_WEBHOOK_SECRET = ""
@@ -127,6 +129,7 @@ class TestTheDoor:
         response = deliver(event("invoice.paid", {"id": "in_1"}))
 
         assert response.status_code == 503
+        assert response.json() == {"status": "unavailable"}
 
     def test_the_same_event_twice_is_processed_once(self, monkeypatch):
         runs = []
@@ -161,7 +164,7 @@ class TestTheDoor:
         response = deliver(event("invoice.paid", {"id": "in_1"}, event_id="evt_busy"))
 
         assert response.status_code == 409
-        assert response.json()["status"] == "in_progress"
+        assert response.json() == {"status": "in_progress", "event_id": "evt_busy"}
 
     def test_a_claim_left_by_a_dead_process_is_taken_over(self, monkeypatch):
         stale = timezone.now() - WebhookEvent.CLAIM_LEASE - timedelta(seconds=1)
@@ -187,12 +190,14 @@ class TestTheDoor:
         failed = deliver(payload)
 
         assert failed.status_code == 500
+        assert failed.json() == {"status": "error", "event_id": "evt_fail"}
         row = WebhookEvent.objects.get(event_id="evt_fail")
         assert (
             row.success,
+            row.outcome,
             row.processing_since,
             "went away" in row.error_message,
-        ) == (False, None, True)
+        ) == (False, "error", None, True)
         monkeypatch.setattr(
             webhook_dispatch, "process_stripe_event", lambda received: "processed"
         )
