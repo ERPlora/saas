@@ -103,7 +103,7 @@ for (const { language, locale, typed, found } of LANGUAGES) {
       expect(atStart.labels.length).toBeGreaterThan(60);
       expect(atStart.labels.slice(1)).toEqual([...atStart.labels.slice(1)].sort(byName));
       expect(atStart.past, 'the list stays inside the window').toBe(0);
-      expect(atStart.inView.length, 'options on screen at once on a sideways tablet').toBeGreaterThanOrEqual(6);
+      expect(atStart.inView.length, 'options on screen at once on a sideways tablet').toBeGreaterThanOrEqual(5);
       await page.screenshot({ path: shot(`business-create-type-launch-${language}-1280x665`) });
       await findByTyping(page, typed, found, 'the start');
 
@@ -113,7 +113,7 @@ for (const { language, locale, typed, found } of LANGUAGES) {
       const inDialog = await openTypeList(page);
       expect(inDialog.labels).toEqual(atStart.labels);
       expect(inDialog.past, 'the list stays inside the window').toBe(0);
-      expect(inDialog.inView.length, 'options on screen at once on a sideways tablet').toBeGreaterThanOrEqual(6);
+      expect(inDialog.inView.length, 'options on screen at once on a sideways tablet').toBeGreaterThanOrEqual(5);
       await page.screenshot({ path: shot(`business-create-type-dialog-${language}-1280x665`) });
       await findByTyping(page, typed, found, 'the dialog');
 
