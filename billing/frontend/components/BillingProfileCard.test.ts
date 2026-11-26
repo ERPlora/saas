@@ -10,6 +10,7 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
 
 import type { BillingProfileOut } from '../../../frontend/sdk-types/store';
 import { apiError, describeCall, flush, mountBilling } from '../__tests__/mount-billing';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import BillingProfileCard from './BillingProfileCard.vue';
 import BillingProfileModal from './BillingProfileModal.vue';
 
@@ -56,6 +57,7 @@ describe('BillingProfileCard', () => {
 
   it('«Edit details» opens the dialog with them; saved, the card shows the new ones', async () => {
     const s = await setup();
+    expect(iconAction(s.q('profile-edit').element)).toEqual(iconOnly('Edit details'));
     await s.q('profile-edit').trigger('click');
     await flush();
     const modal = s.wrapper.findComponent(BillingProfileModal);
@@ -91,6 +93,6 @@ describe('BillingProfileCard', () => {
     const s = await setup(undefined, 'es');
     expect(s.wrapper.findAll('.kv dt').map((dt) => dt.text())).toEqual(['NIF', 'Dirección', 'Correo', 'Paga']);
     expect(s.wrapper.findAll('.kv dd')[3].text()).toBe('Panadería López y Bar La Plaza');
-    expect(s.q('profile-edit').text()).toBe('Editar datos');
+    expect(iconAction(s.q('profile-edit').element)).toEqual(iconOnly('Editar datos'));
   });
 });

@@ -102,6 +102,8 @@
       "empty": "There are no modules on sale right now.",
       "perMonth": "{price}/month + VAT",
       "perYear": "{price}/year + VAT",
+      "price": "{price}/month",
+      "priceYear": "{price}/year",
       "add": "Add · {price}/month",
       "addYear": "Add · {price}/year",
       "owned": "You have it",
@@ -165,7 +167,7 @@
         "year": "every year"
       },
       "invoiceTo": "Invoice to",
-      "change": "Change",
+      "change": "Change the billing details",
       "secure": "Secure payment",
       "declined": "The card that pays for {name} was declined: pay with another one.",
       "loading": "Loading the secure payment…",

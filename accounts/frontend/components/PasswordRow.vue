@@ -33,29 +33,33 @@ const changing = shallowRef(false);
     </div>
     <ion-button
       v-if="hasPassword"
+      class="icon-action"
       data-testid="password-row-change"
       fill="outline"
+      :aria-label="$t('accounts.account.password.submit')"
+      :title="$t('accounts.account.password.submit')"
       @click="changing = true"
     >
       <HubIcon
-        slot="start"
-        name="lucide:key-round"
+        slot="icon-only"
+        name="lucide:pencil"
         aria-hidden="true"
       />
-      {{ $t('accounts.account.password.submit') }}
     </ion-button>
     <ion-button
       v-else
+      class="icon-action"
       data-testid="password-row-create"
       fill="outline"
       :router-link="PASSWORD_RESET"
+      :aria-label="$t('accounts.account.password.create')"
+      :title="$t('accounts.account.password.create')"
     >
       <HubIcon
-        slot="start"
-        name="lucide:key-round"
+        slot="icon-only"
+        name="ion:add-outline"
         aria-hidden="true"
       />
-      {{ $t('accounts.account.password.create') }}
     </ion-button>
   </div>
   <PasswordModal

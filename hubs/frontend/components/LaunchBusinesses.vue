@@ -16,7 +16,7 @@ import HostName from './HostName.vue';
 import RecoverButton from './RecoverButton.vue';
 import UnpaidActions from './UnpaidActions.vue';
 
-defineProps<{ rows: BusinessRowOut[]; opening: string | null }>();
+const props = defineProps<{ rows: BusinessRowOut[]; opening: string | null }>();
 const emit = defineEmits<{ open: [business: BusinessRowOut] }>();
 
 const { t, locale } = useI18n();
@@ -45,6 +45,9 @@ function meta(business: BusinessRowOut, withPlan: boolean): string {
 
 /** Suspended or deleted: «Open» is not offered at all. */
 const opensAtAll = (business: BusinessRowOut) => business.status !== 'suspended' && business.status !== 'deleting';
+/** The name of «Open»: the business it opens, and «Opening …» while this page opens it. */
+const openName = (business: BusinessRowOut) =>
+  t(props.opening === business.id ? 'hubs.open.opening' : 'hubs.common.openName', { name: business.name });
 </script>
 
 <template>
@@ -122,7 +125,7 @@ const opensAtAll = (business: BusinessRowOut) => business.status !== 'suspended'
         name="ion:log-in-outline"
         aria-hidden="true"
       />
-      {{ opening === rows[0].id ? $t('hubs.open.opening', { name: rows[0].name }) : $t('hubs.common.openName', { name: rows[0].name }) }}
+      {{ openName(rows[0]) }}
     </ion-button>
   </template>
 
@@ -182,7 +185,7 @@ const opensAtAll = (business: BusinessRowOut) => business.status !== 'suspended'
         v-if="opensAtAll(business)"
         data-testid="launch-open"
         :fill="owes(business) ? 'outline' : 'solid'"
-        :aria-label="$t('hubs.common.openName', { name: business.name })"
+        :aria-label="openName(business)"
         :disabled="!business.can_open || !!opening"
         @click="emit('open', business)"
       >

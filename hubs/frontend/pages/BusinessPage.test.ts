@@ -23,6 +23,7 @@ import BusinessSummary from '../components/BusinessSummary.vue';
 import CustomDomainCard from '../components/CustomDomainCard.vue';
 import DangerZone from '../components/DangerZone.vue';
 import MembersTab from '../components/MembersTab.vue';
+import { iconAction, iconOnly, labelled } from '../../../frontend/__tests__/icon-action';
 import BusinessPage from './BusinessPage.vue';
 import { navigation } from '../open-business';
 import { BUSINESS } from '../__tests__/business-page';
@@ -134,6 +135,7 @@ describe('BusinessPage: the frame', () => {
       purge_after: '2027-01-11T10:00:00Z',
       can: { ...BUSINESS.can, open: false, delete: false, restore: true },
     }, 'es');
+    expect(iconAction(s.testid('business-restore').element)).toEqual(iconOnly('Recuperar negocio'));
     s.net.onApi(() => Promise.reject(new TypeError('Failed to fetch')) as never);
     await s.testid('business-restore').trigger('click');
     await flush();
@@ -469,6 +471,6 @@ describe('BusinessPage: Spanish', () => {
   it('speaks Spanish', async () => {
     const s = await setup('summary', {}, 'es');
     expect((s.page().props('tabs') as Array<{ label: string }>).map((tab) => tab.label)).toEqual(['Resumen', 'Miembros', 'Módulos', 'Ajustes']);
-    expect(s.testid('business-open').text()).toContain('Abrir');
+    expect(iconAction(s.testid('business-open').element)).toEqual(labelled('Abrir', 'Abrir Panadería López'));
   });
 });

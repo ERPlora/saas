@@ -47,6 +47,7 @@ import { EMPTY_PROFILE, happy, MODULE, PLAN, PROFILE, SESSION, setup, TAKE_OVER,
 import { apiError, flush, ionProps } from '../__tests__/mount-billing';
 import { stripeDouble, type StripeDouble } from '../__tests__/stripe-double';
 import { loadStripeJs } from '../stripe-js';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 
 let stripe: StripeDouble;
 
@@ -92,6 +93,7 @@ describe('CheckoutModal', () => {
     expect(s.q('checkout-invoice-to')?.tagName).toBe('ION-ITEM');
     expect(s.q('checkout-change-details')?.tagName).toBe('ION-BUTTON');
     expect(s.q('checkout-change-details')?.querySelector('ion-icon')).not.toBeNull();
+    expect(iconAction(s.q('checkout-change-details'))).toEqual(iconOnly('Change the billing details'));
     expect(stripe.keys).toEqual(['pk_test_double']);
     expect(stripe.secrets).toEqual(['cs_test_1_secret_x']);
     expect(stripe.checkouts[0].mountedOn).toBe(s.q('checkout-stripe'));

@@ -98,24 +98,26 @@ onMounted(() => {
     </InlineFeedback>
     <ion-button
       v-if="id"
+      class="icon-action"
       fill="outline"
       data-testid="preparing-check"
       :disabled="check.pending.value"
+      :aria-label="$t('hubs.preparing.checkNow')"
+      :title="$t('hubs.preparing.checkNow')"
       @click="checkStatus"
     >
       <ion-spinner
         v-if="check.pending.value"
-        slot="start"
+        slot="icon-only"
         name="crescent"
         aria-hidden="true"
       />
       <HubIcon
         v-else
-        slot="start"
+        slot="icon-only"
         name="ion:refresh-outline"
         aria-hidden="true"
       />
-      {{ $t('hubs.preparing.checkNow') }}
     </ion-button>
   </div>
 </template>

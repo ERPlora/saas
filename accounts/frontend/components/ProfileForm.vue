@@ -148,31 +148,34 @@ function openEmail(mode: 'change' | 'verify' | 'resume'): void {
         <span class="email-actions">
           <ion-button
             v-if="!profile.email_verified"
+            class="icon-action"
             data-testid="profile-email-verify"
             fill="clear"
             size="small"
+            :aria-label="$t('accounts.account.profile.verify')"
+            :title="$t('accounts.account.profile.verify')"
             @click="openEmail('verify')"
           >
             <HubIcon
-              slot="start"
-              name="ion:checkmark-circle-outline"
+              slot="icon-only"
+              name="lucide:mail-check"
               aria-hidden="true"
             />
-            {{ $t('accounts.account.profile.verify') }}
           </ion-button>
           <ion-button
+            class="icon-action"
             data-testid="profile-email-change"
             fill="clear"
             size="small"
             :aria-label="$t('accounts.account.profile.changeEmail')"
+            :title="$t('accounts.account.profile.changeEmail')"
             @click="openEmail('change')"
           >
             <HubIcon
-              slot="start"
+              slot="icon-only"
               name="lucide:pencil"
               aria-hidden="true"
             />
-            {{ $t('accounts.account.profile.change') }}
           </ion-button>
         </span>
       </div>

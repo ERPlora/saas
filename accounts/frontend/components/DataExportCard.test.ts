@@ -10,6 +10,7 @@ import { toastError } from '@erplora/ui/shell';
 import { apiError, flush, ionProps, mountPanel } from '../__tests__/mount-panel';
 import accountsEn from '../locale/en.json';
 import accountsEs from '../locale/es.json';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import DataExportCard from './DataExportCard.vue';
 
 const EXPORTED = { format: 'erplora.account-export', version: 1, account: { email: 'laura@example.com' } };
@@ -44,7 +45,7 @@ describe('DataExportCard', () => {
     expect(s.q('profile-export-card')?.textContent).toContain(
       'A copy of your account, your businesses and your ERPlora invoices, in a file other apps can read.',
     );
-    expect(s.q('profile-export')?.textContent?.trim()).toBe('Download my data');
+    expect(iconAction(s.q('profile-export'))).toEqual(iconOnly('Download my data'));
   });
 
   it('never repeats the heading of «Your details» above it, in any language', () => {
@@ -59,7 +60,7 @@ describe('DataExportCard', () => {
     expect(s.q('profile-export-card')?.textContent).toContain(
       'Una copia de tu cuenta, tus negocios y tus facturas de ERPlora, en un fichero que otras aplicaciones pueden leer.',
     );
-    expect(s.q('profile-export')?.textContent?.trim()).toBe('Descargar mis datos');
+    expect(iconAction(s.q('profile-export'))).toEqual(iconOnly('Descargar mis datos'));
   });
 
   it('downloads the account as erplora-data-<day>.json, read from accounts.data.export', async () => {

@@ -130,16 +130,18 @@ const empty = computed(() => !!profile.value && !profile.value.billing_name && !
         </template>
         <div class="card-actions">
           <ion-button
+            class="icon-action"
             fill="outline"
             data-testid="profile-edit"
+            :aria-label="$t('billing.payment.profile.edit')"
+            :title="$t('billing.payment.profile.edit')"
             @click="editing = true"
           >
             <HubIcon
-              slot="start"
+              slot="icon-only"
               name="lucide:pencil"
               aria-hidden="true"
             />
-            {{ $t('billing.payment.profile.edit') }}
           </ion-button>
         </div>
         <BillingProfileModal

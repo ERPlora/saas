@@ -15,6 +15,7 @@ import { toastError, toastSuccess } from '@erplora/ui/shell';
 import { apiError, flush, ionProps, mountPanel, profile, typeInto } from '../__tests__/mount-panel';
 import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import { onSessionChanged } from '../../../frontend/session-changed';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import ProfileForm from './ProfileForm.vue';
 
 afterEach(() => {
@@ -204,6 +205,7 @@ describe('ProfileForm', () => {
 
   it('opens the change of email in its dialog', async () => {
     const s = await setup();
+    expect(iconAction(s.q('profile-email-change'))).toEqual(iconOnly('Change your email'));
     s.q('profile-email-change')?.click();
     await flush();
     expect(s.q('email-change')?.getAttribute('aria-label')).toBe('Change your email');
@@ -212,6 +214,7 @@ describe('ProfileForm', () => {
   it('says an address never proven and offers to prove it with a code', async () => {
     const s = await setup(profile({ email_verified: false }), () => Response.json(profile({ email_verified: false })));
     expect(s.q('profile-email-unverified')?.textContent).toContain('Not verified');
+    expect(iconAction(s.q('profile-email-verify'))).toEqual(iconOnly('Verify your email'));
     s.q('profile-email-verify')?.click();
     await flush();
     expect(s.calls().map((c) => [c.path, c.body])).toEqual([['/api/accounts/email/change', { email: 'laura@example.com' }]]);

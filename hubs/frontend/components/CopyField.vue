@@ -39,6 +39,7 @@ async function copy(): Promise<void> {
   >
     <span data-testid="copy-value">{{ value }}</span>
     <ion-button
+      class="icon-action"
       data-testid="copy-button"
       fill="clear"
       :aria-label="copyLabel ?? $t('hubs.common.copyAddress')"

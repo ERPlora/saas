@@ -102,16 +102,17 @@ function removePromo(): void {
       <ion-button
         v-if="promo"
         fill="clear"
-        class="btn-neutral"
+        class="btn-neutral icon-action"
         data-testid="store-promo-remove"
+        :aria-label="$t('billing.promo.remove')"
+        :title="$t('billing.promo.remove')"
         @click="removePromo"
       >
         <HubIcon
-          slot="start"
+          slot="icon-only"
           name="ion:close-outline"
           aria-hidden="true"
         />
-        {{ $t('billing.promo.remove') }}
       </ion-button>
     </form>
     <p

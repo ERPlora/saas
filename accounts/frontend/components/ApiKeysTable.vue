@@ -152,15 +152,17 @@ async function confirmRevoke(): Promise<void> {
         </span>
         <span>{{ $t('accounts.account.keys.empty') }}</span>
         <ion-button
+          class="icon-action"
           data-testid="api-keys-empty-new"
+          :aria-label="$t('accounts.account.keys.new')"
+          :title="$t('accounts.account.keys.new')"
           @click="creating = true"
         >
           <HubIcon
-            slot="start"
+            slot="icon-only"
             name="ion:add"
             aria-hidden="true"
           />
-          {{ $t('accounts.account.keys.new') }}
         </ion-button>
       </div>
     </template>

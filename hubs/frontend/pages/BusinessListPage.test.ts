@@ -50,7 +50,7 @@ describe('BusinessListPage: the list', () => {
     expect(s.prop<Array<Record<string, unknown>>>('actions').map((a) => [a.id, a.icon, !!a.pinned, !!a.menuOnly])).toEqual([
       ['open', 'ion:log-in-outline', true, false],
       ['manage', 'ion:settings-outline', false, false],
-      ['restore', 'ion:refresh-outline', false, false],
+      ['restore', 'ion:arrow-undo-outline', false, false],
     ]);
     // What the box gives up first when it narrows: the web address and the last use; never the status.
     expect(s.prop<Array<{ key: string; priority?: string }>>('columns').map((c) => [c.key, c.priority ?? 'normal'])).toEqual([

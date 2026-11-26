@@ -174,7 +174,7 @@ const actions = computed<DataTableAction<BusinessRowOut>[]>(() => [
   {
     id: 'restore',
     label: t('hubs.list.actions.restore'),
-    icon: 'ion:refresh-outline',
+    icon: 'ion:arrow-undo-outline',
     color: 'primary',
     hidden: (row) => !row.can.restore,
     loading: () => restore.pending.value,

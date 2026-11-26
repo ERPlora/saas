@@ -168,9 +168,9 @@ recuperación?» y «¿Desactivar la app autenticadora?». Al pie, «Volver a co
 admin, «Continuar».
 
 ### Cuenta › Seguridad › Cambiar tu contraseña
-La fila «Contraseña» con «Cambiar contraseña» abre el diálogo «Cambiar tu contraseña»: «Contraseña actual»,
+La fila «Contraseña» con el icono «Cambiar contraseña» (su nombre sale al pasar el ratón) abre el diálogo «Cambiar tu contraseña»: «Contraseña actual»,
 «Contraseña nueva» con su pista, «Cancelar» y «Cambiar contraseña». Una cuenta que solo entra con Google ve
-en su lugar «Crear contraseña». En el mismo bloque «Acceso», la fila «Verificación en dos pasos» dice si
+en su lugar el icono «Crear contraseña». En el mismo bloque «Acceso», la fila «Verificación en dos pasos» dice si
 está activada, con «Activar» o «Gestionar».
 
 ### Cuenta › Seguridad › Sesiones activas
@@ -187,8 +187,8 @@ Las dos acciones solo las ve un superusuario. La ficha de una cuenta lleva en «
 revisión de tienda» (ACCOUNTS-F49): un superusuario la pone y la quita; el resto del personal solo la ve.
 
 ### Cuenta › Perfil
-«Tus datos» (la foto o las iniciales con «Cambiar foto», «Nombre», «Apellidos», el «Correo con el que entras» con
-«Cambiar» y «Guardar cambios»), «Exportar tus datos» para descargar («Descargar mis datos») y la tarjeta roja «Eliminar tu
+«Tus datos» (la foto o las iniciales con los iconos «Cambiar foto» y «Quitar foto», «Nombre», «Apellidos», el «Correo con el que entras» con
+el icono «Cambiar tu correo» (y «Verificar tu correo» si aún no está verificado), y «Guardar cambios»), «Exportar tus datos» para descargar (el icono «Descargar mis datos») y la tarjeta roja «Eliminar tu
 cuenta». Abajo, las pestañas de **Cuenta**: «Perfil», «Seguridad», «Preferencias» y «Claves de API».
 
 ### Cuenta › Preferencias
@@ -228,7 +228,7 @@ inglés» y el «mensaje en español» (vacío, quien visita en español lee el 
 
 | Estado | Qué ve la persona |
 |---|---|
-| Cargando | El botón de enviar se apaga mientras va la petición, también «Descargar mis datos» mientras prepara el fichero; el perfil y las preferencias, sus tarjetas cargando, y «Efectos de transparencia» no se puede pulsar mientras se guarda; el enlace del correo dice «Comprobando tu enlace…»; los ajustes de la verificación en dos pasos, «Cargando…»; las sesiones, la tabla cargando. |
+| Cargando | El botón de enviar se apaga mientras va la petición, también el icono «Descargar mis datos» mientras prepara el fichero; el perfil y las preferencias, sus tarjetas cargando, y «Efectos de transparencia» no se puede pulsar mientras se guarda; el enlace del correo dice «Comprobando tu enlace…»; los ajustes de la verificación en dos pasos, «Cargando…»; las sesiones, la tabla cargando. |
 | Vacío | Sin sesión, toda página del panel lleva a la **Entrada**, que vuelve a ella tras entrar. Con esta sesión sola, «Cerrar las demás sesiones» está apagado; sin códigos de recuperación, «Sin ellos, perder tu autenticador te bloquea el acceso a tu cuenta.» con «Generar códigos de recuperación». |
 | Error | Cada error sale debajo de su campo, con las palabras de la regla que falla («La contraseña nueva tiene que ser distinta de la actual.»); un fallo de red, «No hemos podido iniciar tu sesión. Vuelve a intentarlo.» o «Algo ha ido mal. Inténtalo de nuevo.». Los ajustes que no cargan, «No hemos podido cargar tu configuración de seguridad. Vuelve a intentarlo.» con «Reintentar»; las sesiones, «No hemos podido cargar tus sesiones» con «Reintentar»; el perfil, «No hemos podido cargar tu cuenta», y las preferencias, «No hemos podido cargar tus preferencias», con «Reintentar». Un cambio de preferencias que no se guarda vuelve a como estaba. |
 | Freno | «Demasiados intentos fallidos. Inténtelo más tarde.» o «Demasiados intentos. Espera unos minutos y vuelve a intentarlo.», igual exista o no la cuenta; si Google no ve una persona, «No hemos podido comprobar que eres una persona. Vuelve a intentarlo.». |
@@ -393,13 +393,13 @@ Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Seguridad › Cambiar tu contraseña
 Pasos:
-1. En **Cuenta › Seguridad**, fila «Contraseña», la persona pulsa «Cambiar contraseña».
+1. En **Cuenta › Seguridad**, fila «Contraseña», la persona pulsa el icono «Cambiar contraseña».
 2. Escribe la «Contraseña actual» y la «Contraseña nueva», que pasa las mismas reglas que en el alta; la pista dice lo fuerte que parece.
 3. Pulsa «Cambiar contraseña»: «Contraseña cambiada. Tus negocios te pedirán entrar otra vez.»; sigue dentro en este navegador.
 4. Los demás navegadores con su cuenta salen: sus pestañas abiertas vuelven solas a la **Entrada**. erplora.com pide a cada uno de sus negocios que cierre las sesiones abiertas con ella.
 Entra: la contraseña actual y la nueva.
 Sale: la contraseña nueva; las otras sesiones de erplora.com cerradas, este navegador dentro; el aviso a sus negocios. Lo mismo pasa al restablecerla (ACCOUNTS-F07).
-Si falla: una contraseña actual equivocada, debajo de su campo, y la nueva no se guarda; la nueva igual a la actual, «La contraseña nueva tiene que ser distinta de la actual.»; una que no pasa las reglas, sus avisos. Los avisos salen en el idioma de la cuenta. Más de 5 intentos por minuto, «Demasiados intentos…» sin mirar la contraseña, ni la buena: una sesión ajena abierta no sirve para adivinarla. Una cuenta sin contraseña (entró con Google) ve «Crear contraseña», que le manda el enlace de ACCOUNTS-F07. Si un negocio no contesta al aviso de cerrar sus sesiones, se reintenta hasta que lo atiende.
+Si falla: una contraseña actual equivocada, debajo de su campo, y la nueva no se guarda; la nueva igual a la actual, «La contraseña nueva tiene que ser distinta de la actual.»; una que no pasa las reglas, sus avisos. Los avisos salen en el idioma de la cuenta. Más de 5 intentos por minuto, «Demasiados intentos…» sin mirar la contraseña, ni la buena: una sesión ajena abierta no sirve para adivinarla. Una cuenta sin contraseña (entró con Google) ve el icono «Crear contraseña», que le manda el enlace de ACCOUNTS-F07. Si un negocio no contesta al aviso de cerrar sus sesiones, se reintenta hasta que lo atiende.
 Implicados: hubs (cada negocio cierra las sesiones de la cuenta)
 
 ### ACCOUNTS-F09 Cerrar la sesión
@@ -407,7 +407,7 @@ Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Menú de usuario, Entrada, Cerrar la sesión de erplora.com
 Pasos:
-1. En el panel, la persona abre el **Menú de usuario** (en el móvil, dentro del menú) y pulsa «Cerrar sesión»; en la **Entrada** con sesión, «Cerrar sesión» está bajo su cuenta, y en la aplicación de Android queda siempre por encima de la barra del sistema.
+1. En el panel, la persona abre el **Menú de usuario** (en el móvil, dentro del menú) y pulsa «Cerrar sesión»; en la **Entrada** con sesión, el icono «Cerrar sesión» está bajo su cuenta, y en la aplicación de Android queda siempre por encima de la barra del sistema.
 2. La sesión de ese navegador se cierra y vuelve la **Entrada**, lista para entrar; las demás pestañas abiertas con esa sesión vuelven solas a la **Entrada**.
 3. Una página del panel abierta después lleva a la **Entrada**.
 4. Desde un negocio, en un dispositivo sin teclado de PIN, su «Cerrar sesión» cierra la del negocio y abre **Cerrar la sesión de erplora.com**: «Cerrar sesión» cierra también esta, como en el paso 2; «Seguir conectado» la deja abierta y vuelve la **Entrada** con los negocios de la cuenta. Sin sesión, lleva a la **Entrada**.
@@ -572,8 +572,8 @@ Pasos:
 1. Desde el **Menú de usuario**, «Cuenta» abre **Cuenta › Perfil**: «Tus datos» con la foto (o las iniciales), «Nombre», «Apellidos» y el «Correo con el que entras».
 2. La persona cambia su nombre o sus apellidos: «Guardar cambios» se activa al tocar algo («Se activa al cambiar algo.»).
 3. Pulsa «Guardar cambios»: «Cambios guardados», y el menú de usuario y los negocios en los que entre la nombran así.
-4. «Cambiar foto» sube una foto (JPEG, PNG o WebP), que se guarda limpia de los datos ocultos de la cámara; «Quitar foto» vuelve a las iniciales.
-5. El correo se cambia con «Cambiar»: si su última entrada no es reciente, antes confirma que es ella con su contraseña («Confirma que eres tú», sobre la ventana del correo); le llega un código a la dirección nueva y, al escribirlo, esa pasa a ser la de entrar y la página lo dice («Tu correo ahora es …», aunque el perfil ya enseñe la dirección nueva antes de la respuesta); a la antigua le llega un aviso del cambio. Confirmar con su código la dirección que ya tenía dice «Tu correo está verificado».
+4. El icono «Cambiar foto» sube una foto (JPEG, PNG o WebP), que se guarda limpia de los datos ocultos de la cámara; el icono «Quitar foto» vuelve a las iniciales.
+5. El correo se cambia con el icono «Cambiar tu correo»: si su última entrada no es reciente, antes confirma que es ella con su contraseña («Confirma que eres tú», sobre la ventana del correo); le llega un código a la dirección nueva y, al escribirlo, esa pasa a ser la de entrar y la página lo dice («Tu correo ahora es …», aunque el perfil ya enseñe la dirección nueva antes de la respuesta); a la antigua le llega un aviso del cambio. Confirmar con su código la dirección que ya tenía dice «Tu correo está verificado».
 Entra: nombre y apellidos, la foto o el correo nuevo y su código.
 Sale: el perfil cambiado, en el panel y en cada negocio en el que entre después. Toda cuenta tiene su perfil desde que nace, sin rellenar nada. Lo mismo se lee y se guarda desde cualquier programa con la sesión de la persona.
 Si falla: un nombre vacío no se guarda («Escribe tu nombre.»); una foto que no es imagen o es demasiado grande dice por qué y no cambia la que había; un correo nuevo que no vale o que ya usa otra cuenta sale debajo del campo, con «Revisa los datos marcados.» arriba hasta que lo corriges; un fallo de red, «No hemos podido conectar con ERPlora…» y no cambia nada. Los datos de facturación no están aquí: son de **Facturación**.
@@ -641,7 +641,7 @@ Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Perfil
 Pasos:
 1. En **Cuenta › Perfil**, la tarjeta «Exportar tus datos» dice «Una copia de tu cuenta, tus negocios y tus facturas de ERPlora, en un fichero que otras aplicaciones pueden leer.».
-2. La persona pulsa «Descargar mis datos»: el botón se apaga mientras se prepara.
+2. La persona pulsa el icono «Descargar mis datos»: se apaga mientras se prepara.
 3. El navegador guarda el fichero «erplora-data-» con la fecha del día.
 Entra: la sesión.
 Sale: un fichero con sus datos: la cuenta (correo, nombre, idioma, alta, último acceso y los términos aceptados), su apariencia y sus avisos, su foto, sus direcciones de correo, su cuenta de Google enlazada, sus sesiones abiertas, sus claves de API (sin la clave), los negocios a los que pertenece con su papel en cada uno y las facturas de ERPlora que ve, cada una con sus líneas y su destinatario tal como se emitió. Nada de otra cuenta.
@@ -653,8 +653,8 @@ Estado: hecho
 Actor: cualquier persona con cuenta
 Pantalla: Cuenta › Perfil
 Pasos:
-1. En **Cuenta › Perfil**, la tarjeta «Eliminar tu cuenta» dice de entrada si algo la retiene: si es propietaria de un negocio, «Eres propietario de 1 negocio: transfiérelo o elimínalo antes de borrar la cuenta.» con el nombre del negocio, que lleva a sus ajustes; si paga el negocio de otra persona (con sus datos de pago, o porque tras un traspaso su plan se sigue cobrando en su tarjeta), que su propietario ponga sus datos de pago. Mientras tanto «Eliminar cuenta» está apagado.
-2. Sin nada que la retenga, pulsa «Eliminar cuenta»: el diálogo dice qué se borra (la cuenta, la foto, las preferencias y las claves de API, y todas las sesiones, también en las apps y en sus negocios), que no se puede deshacer y que «Tus facturas de ERPlora se conservan el tiempo que exige la ley.».
+1. En **Cuenta › Perfil**, la tarjeta «Eliminar tu cuenta» dice de entrada si algo la retiene: si es propietaria de un negocio, «Eres propietario de 1 negocio: transfiérelo o elimínalo antes de borrar la cuenta.» con el nombre del negocio, que lleva a sus ajustes; si paga el negocio de otra persona (con sus datos de pago, o porque tras un traspaso su plan se sigue cobrando en su tarjeta), que su propietario ponga sus datos de pago. Mientras tanto el icono «Eliminar cuenta» está apagado.
+2. Sin nada que la retenga, pulsa el icono «Eliminar cuenta»: el diálogo dice qué se borra (la cuenta, la foto, las preferencias y las claves de API, y todas las sesiones, también en las apps y en sus negocios), que no se puede deshacer y que «Tus facturas de ERPlora se conservan el tiempo que exige la ley.».
 3. Escribe su correo para confirmar y pulsa «Eliminar cuenta». Si su última entrada no es reciente, antes confirma que es ella: con su contraseña o, si solo entra con Google, entrando otra vez con Google.
 4. La sesión se cierra y llega a la web pública.
 Entra: el correo escrito y, si hace falta, la contraseña o Google.

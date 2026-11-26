@@ -354,17 +354,19 @@ onBeforeUnmount(() => {
         </ion-label>
         <ion-button
           slot="end"
+          class="icon-action"
           fill="clear"
           size="small"
           data-testid="checkout-change-details"
+          :aria-label="$t('billing.checkout.change')"
+          :title="$t('billing.checkout.change')"
           @click="changeDetails"
         >
           <HubIcon
-            slot="start"
+            slot="icon-only"
             name="ion:create-outline"
             aria-hidden="true"
           />
-          {{ $t('billing.checkout.change') }}
         </ion-button>
       </ion-item>
       <InlineFeedback

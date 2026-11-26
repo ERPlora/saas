@@ -8,6 +8,7 @@ import { h } from 'vue';
 vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/module-mocks')).shellWithToastSpies(original));
 
 import { ANONYMOUS, flush, mountHubs } from '../__tests__/mount-hubs';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import CardShell from './CardShell.vue';
 
 const SESSION = '/_allauth/browser/v1/auth/session';
@@ -71,7 +72,7 @@ describe('CardShell', () => {
     const account = wrapper.get('[data-testid="shell-account"]');
     expect(account.text()).toContain('Signed in as laura@example.com');
     const button = account.get('ion-button');
-    expect(button.text()).toBe('Sign out');
+    expect(iconAction(button.element)).toEqual(iconOnly('Sign out'));
 
     await button.trigger('click');
     await flush();
@@ -101,6 +102,6 @@ describe('CardShell', () => {
   it('speaks Spanish', async () => {
     const { wrapper } = await mountShell({ locale: 'es' });
     expect(wrapper.get('[data-testid="shell-account"]').text()).toContain('Conectado como laura@example.com');
-    expect(wrapper.get('[data-testid="shell-account"] ion-button').text()).toBe('Cerrar sesión');
+    expect(iconAction(wrapper.get('[data-testid="shell-account"] ion-button').element)).toEqual(iconOnly('Cerrar sesión'));
   });
 });

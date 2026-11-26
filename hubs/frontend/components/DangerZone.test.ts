@@ -13,6 +13,7 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/mod
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
 import { apiError, flush, mountHubs } from '../__tests__/mount-hubs';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import DangerZone from './DangerZone.vue';
 
 const BUSINESS = { id: 'h1', name: 'Panadería López', status: 'active', purge_after: null, can: { delete: true, restore: false } };
@@ -34,7 +35,7 @@ describe('DangerZone', () => {
       'It stops working at once. We keep the data for 90 days in case you change your mind.',
     );
     const button = wrapper.get('[data-testid="danger-delete"]');
-    expect(button.text()).toContain('Delete business');
+    expect(iconAction(button.element)).toEqual(iconOnly('Delete business'));
     await button.trigger('click');
     await flush();
     expect(document.querySelector('[data-testid="delete-dialog"]')?.getAttribute('aria-label')).toBe('Delete Panadería López');
@@ -49,7 +50,10 @@ describe('DangerZone', () => {
   it('deleted, the owner recovers it (`can.restore`: a deleted business takes no `delete`) and it says so', async () => {
     const { wrapper, calls } = await mountZone({ status: 'deleting', purge_after: '2027-01-11T10:00:00Z', can: { delete: false, restore: true } });
     expect(wrapper.find('[data-testid="danger-delete"]').exists()).toBe(false);
-    await wrapper.get('[data-testid="danger-restore"]').trigger('click');
+    const restore = wrapper.get('[data-testid="danger-restore"]');
+    expect(iconAction(restore.element)).toEqual(iconOnly('Recover business'));
+    expect(restore.findComponent({ name: 'HubIcon' }).props('name')).toBe('ion:arrow-undo-outline');
+    await restore.trigger('click');
     await flush();
     expect(calls().map((c) => [c.path, c.body])).toEqual([['/api/hubs/businesses/restore', { id: 'h1' }]]);
     expect(toastSuccess).toHaveBeenCalledWith('Business recovered: Panadería López');

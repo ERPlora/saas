@@ -28,6 +28,7 @@ import {
   subId,
 } from '../__tests__/mount-panel';
 import type { ApiKeyRowOut } from '../../../frontend/sdk-types/accounts-security';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import ApiKeysTable from './ApiKeysTable.vue';
 
 function key(id: string, overrides: Partial<ApiKeyRowOut> = {}): ApiKeyRowOut {
@@ -142,6 +143,7 @@ describe('ApiKeysTable', () => {
     const s = await setup([]);
     expect(s.q('api-keys-empty')?.textContent).toContain('You have no keys yet');
     expect(s.q('api-keys-add')).toBeNull();
+    expect(iconAction(s.q('api-keys-empty-new'))).toEqual(iconOnly('New key'));
     s.q('api-keys-empty-new')?.click();
     await flush();
     expect(s.q('new-key')?.querySelector('.ion-delegate-host')).not.toBeNull();

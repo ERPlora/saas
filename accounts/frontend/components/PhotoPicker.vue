@@ -71,41 +71,45 @@ async function clear(): Promise<void> {
       @change="onPicked"
     >
     <ion-button
+      class="icon-action"
       data-testid="photo-change"
       fill="outline"
       size="small"
       :disabled="busy"
+      :aria-label="$t('accounts.account.photo.change')"
+      :title="$t('accounts.account.photo.change')"
       @click="input?.click()"
     >
       <ion-spinner
         v-if="upload.pending.value"
-        slot="start"
+        slot="icon-only"
         name="crescent"
         aria-hidden="true"
       />
       <HubIcon
         v-else
-        slot="start"
+        slot="icon-only"
         name="lucide:camera"
         aria-hidden="true"
       />
-      {{ $t('accounts.account.photo.change') }}
     </ion-button>
     <ion-button
       v-if="profile.photo"
+      class="icon-action"
       data-testid="photo-remove"
       fill="clear"
       size="small"
       color="danger"
       :disabled="busy"
+      :aria-label="$t('accounts.account.photo.remove')"
+      :title="$t('accounts.account.photo.remove')"
       @click="clear"
     >
       <HubIcon
-        slot="start"
+        slot="icon-only"
         name="ion:trash-outline"
         aria-hidden="true"
       />
-      {{ $t('accounts.account.photo.remove') }}
     </ion-button>
   </div>
 </template>
