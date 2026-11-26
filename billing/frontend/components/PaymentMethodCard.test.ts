@@ -4,6 +4,7 @@
 import { applySurface } from '@erplora/ui/shell';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { paymentMethod } from '../__tests__/billing-fixtures';
 import { flush, ionProps, mountBilling } from '../__tests__/mount-billing';
 import { browser } from '../browser';
@@ -27,6 +28,7 @@ describe('PaymentMethodCard', () => {
     expect(s.q('payment-card-detail').text()).toBe('Expires 08/28 · pays Panadería López and Bar La Plaza');
     expect(s.q('payment-failed').exists()).toBe(false);
     expect(ionProps(s.q('payment-change'), 'fill')).toEqual({ fill: 'outline' });
+    expect(iconAction(s.q('payment-change').element)).toEqual(iconOnly('Change card'));
     expect(s.q('payment-secure').text()).toBe('The secure payment page opens.');
   });
 
@@ -72,6 +74,6 @@ describe('PaymentMethodCard', () => {
     const s = await card(paymentMethod({ card: { brand: 'mastercard', last4: '5454', exp_month: 11, exp_year: 2029 } }), 'es');
     expect(s.q('payment-card').text()).toBe('Mastercard •••• 5454');
     expect(s.q('payment-card-detail').text()).toBe('Caduca 11/29 · paga Panadería López y Bar La Plaza');
-    expect(s.q('payment-change').text()).toBe('Cambiar tarjeta');
+    expect(iconAction(s.q('payment-change').element)).toEqual(iconOnly('Cambiar tarjeta'));
   });
 });

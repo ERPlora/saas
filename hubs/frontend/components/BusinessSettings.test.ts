@@ -8,6 +8,7 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/mod
 
 import { toastSuccess } from '@erplora/ui/shell';
 
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { apiError, flush, ionProps, mountHubs, optionValue } from '../__tests__/mount-hubs';
 import BusinessSettings from './BusinessSettings.vue';
 import CopyField from './CopyField.vue';
@@ -147,7 +148,7 @@ describe('BusinessSettings', () => {
 
   it('offers «Change address» to the owner only (HUBS-F16)', async () => {
     const owner = await setup(undefined, { ...BUSINESS, slug: 'bakery', can: { change_address: true } } as never);
-    expect(owner.get('settings-change-address').text()).toBe('Change address');
+    expect(iconAction(owner.get('settings-change-address').element)).toEqual(iconOnly('Change address'));
     owner.wrapper.unmount();
     const admin = await setup(undefined, { ...BUSINESS, slug: 'bakery', can: { change_address: false } } as never);
     expect(admin.wrapper.find('[data-testid="settings-change-address"]').exists()).toBe(false);

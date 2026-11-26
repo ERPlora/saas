@@ -12,6 +12,7 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/mod
 import { toastSuccess } from '@erplora/ui/shell';
 
 import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { ACTIVE, NONE, OP, OWNER_BUSINESS, PENDING, setup, setUpCustomDomainCard, status } from '../__tests__/custom-domain-card';
 import { apiError, BYE, errorFrame, flush, ionProps, subId } from '../__tests__/mount-hubs';
 
@@ -271,6 +272,6 @@ describe('CustomDomainCard: Spanish', () => {
     await s.show(status(PENDING));
     expect(s.testid('domain-record-validation').text()).toContain('1. Registro de validación');
     expect(s.testid('domain-record-traffic').text()).toContain('2. Registro que apunta a ERPlora');
-    expect(s.testid('domain-remove').text()).toContain('Quitar dominio');
+    expect(iconAction(s.testid('domain-remove').element)).toEqual(iconOnly('Quitar dominio'));
   });
 });

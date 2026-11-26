@@ -201,24 +201,26 @@ async function recover(): Promise<void> {
             #actions
           >
             <ion-button
+              class="icon-action"
               data-testid="business-restore"
               size="small"
               :disabled="restore.pending.value"
+              :aria-label="$t('hubs.danger.restore')"
+              :title="$t('hubs.danger.restore')"
               @click="recover"
             >
               <ion-spinner
                 v-if="restore.pending.value"
-                slot="start"
+                slot="icon-only"
                 name="crescent"
                 aria-hidden="true"
               />
               <HubIcon
                 v-else
-                slot="start"
-                name="ion:refresh-outline"
+                slot="icon-only"
+                name="ion:arrow-undo-outline"
                 aria-hidden="true"
               />
-              {{ $t('hubs.danger.restore') }}
             </ion-button>
           </template>
         </InlineFeedback>
@@ -251,25 +253,26 @@ async function recover(): Promise<void> {
             class="biz-header__actions"
           >
             <ion-button
+              class="icon-action"
               data-testid="business-open"
               :fill="section === 'summary' || section === 'modules' ? 'solid' : 'outline'"
               :disabled="!business.can.open || !!opening"
               :aria-label="$t('hubs.common.openName', { name: business.name })"
+              :title="$t('hubs.common.openName', { name: business.name })"
               @click="open(business)"
             >
               <ion-spinner
                 v-if="opening"
-                slot="start"
+                slot="icon-only"
                 name="crescent"
                 aria-hidden="true"
               />
               <HubIcon
                 v-else
-                slot="start"
+                slot="icon-only"
                 name="ion:log-in-outline"
                 aria-hidden="true"
               />
-              {{ $t('hubs.common.open') }}
             </ion-button>
           </div>
         </div>

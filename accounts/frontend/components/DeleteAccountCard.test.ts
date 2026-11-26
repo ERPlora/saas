@@ -14,6 +14,7 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
   IonModal: (await import('../__tests__/ion-modal-stub')).IonModalStub,
 }));
 
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { errorFrame, flush, HELLO, ionProps, LIVE_TIMEOUT_MS, mountPanel, profile, subId } from '../__tests__/mount-panel';
 import type { BusinessRowOut } from '../../../frontend/sdk-types/hubs';
 import DeleteAccountCard from './DeleteAccountCard.vue';
@@ -135,6 +136,7 @@ describe('DeleteAccountCard', () => {
     const s = await setup([{ ...platform(), role: 'hub_admin' }]);
     expect(texts(s)).toEqual([expect.stringContaining('Your account and what is in it go for good.')]);
     expect(ionProps(s.q('profile-delete'), 'disabled')).toEqual({ disabled: false });
+    expect(iconAction(s.q('profile-delete'))).toEqual(iconOnly('Delete account'));
   });
 
   it('lets a business in its 90 days of deletion go', async () => {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// «Pay the invoice · 36,29 €»: blue, not red — paying is the good action. Disabled while the server says «Pay»
-// waits (a declined card to change first, or another account pays the business), described by the reason the page
-// shows next to it, and while any payment of the page runs. Web only: the page renders it in `<WebOnly>`.
+// The card and the amount, «36,29 €», named «Pay the invoice · 36,29 €»: blue, not red — paying is the good action.
+// Disabled while the server says «Pay» waits (a declined card to change first, or another account pays the
+// business), described by the reason the page shows next to it, and while any payment of the page runs. Web only:
+// the page renders it in `<WebOnly>`.
 import { HubIcon } from '@erplora/ui/shell';
 import { IonButton, IonSpinner } from '@ionic/vue';
 import { computed } from 'vue';
@@ -22,12 +23,13 @@ const props = withDefaults(
   { fill: 'solid', describedBy: undefined },
 );
 
-const { locale } = useI18n();
+const { t, locale } = useI18n();
 const { pay, paying } = usePayInvoice();
 
 const mine = computed(() => paying.value === props.invoice.id);
 const disabled = computed(() => !props.invoice.can.pay || !!paying.value);
 const amount = computed(() => formatAmount(props.invoice.total_cents, props.invoice.currency, locale.value));
+const name = computed(() => (mine.value ? t('billing.notice.paying') : t('billing.notice.pay', { amount: amount.value })));
 
 function press(): void {
   if (!disabled.value) void pay(props.invoice);
@@ -36,9 +38,12 @@ function press(): void {
 
 <template>
   <ion-button
+    class="icon-action"
     data-testid="pay-invoice"
     :fill="fill"
     :disabled="disabled"
+    :aria-label="name"
+    :title="name"
     :aria-describedby="describedBy"
     @click="press"
   >
@@ -54,7 +59,7 @@ function press(): void {
       name="ion:card-outline"
       aria-hidden="true"
     />
-    {{ mine ? $t('billing.notice.paying') : $t('billing.notice.pay', { amount }) }}
+    <span aria-hidden="true">{{ amount }}</span>
   </ion-button>
 </template>
 

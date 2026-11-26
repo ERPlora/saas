@@ -16,7 +16,7 @@ import HostName from './HostName.vue';
 import RecoverButton from './RecoverButton.vue';
 import UnpaidActions from './UnpaidActions.vue';
 
-defineProps<{ rows: BusinessRowOut[]; opening: string | null }>();
+const props = defineProps<{ rows: BusinessRowOut[]; opening: string | null }>();
 const emit = defineEmits<{ open: [business: BusinessRowOut] }>();
 
 const { t, locale } = useI18n();
@@ -45,6 +45,9 @@ function meta(business: BusinessRowOut, withPlan: boolean): string {
 
 /** Suspended or deleted: «Open» is not offered at all. */
 const opensAtAll = (business: BusinessRowOut) => business.status !== 'suspended' && business.status !== 'deleting';
+/** The name of «Open»: the business it opens, and «Opening …» while this page opens it. */
+const openName = (business: BusinessRowOut) =>
+  t(props.opening === business.id ? 'hubs.open.opening' : 'hubs.common.openName', { name: business.name });
 </script>
 
 <template>
@@ -102,27 +105,29 @@ const opensAtAll = (business: BusinessRowOut) => business.status !== 'suspended'
     />
     <ion-button
       v-if="opensAtAll(rows[0])"
+      class="icon-action"
       data-testid="launch-open"
       expand="block"
       :size="owes(rows[0]) ? undefined : 'large'"
       :fill="owes(rows[0]) ? 'outline' : 'solid'"
       :class="owes(rows[0]) ? 'launch-second' : 'launch-main'"
       :disabled="!rows[0].can_open || !!opening"
+      :aria-label="openName(rows[0])"
+      :title="openName(rows[0])"
       @click="emit('open', rows[0])"
     >
       <ion-spinner
         v-if="opening === rows[0].id"
-        slot="start"
+        slot="icon-only"
         name="crescent"
         aria-hidden="true"
       />
       <HubIcon
         v-else
-        slot="start"
+        slot="icon-only"
         name="ion:log-in-outline"
         aria-hidden="true"
       />
-      {{ opening === rows[0].id ? $t('hubs.open.opening', { name: rows[0].name }) : $t('hubs.common.openName', { name: rows[0].name }) }}
     </ion-button>
   </template>
 
@@ -180,25 +185,26 @@ const opensAtAll = (business: BusinessRowOut) => business.status !== 'suspended'
       </div>
       <ion-button
         v-if="opensAtAll(business)"
+        class="icon-action"
         data-testid="launch-open"
         :fill="owes(business) ? 'outline' : 'solid'"
-        :aria-label="$t('hubs.common.openName', { name: business.name })"
+        :aria-label="openName(business)"
         :disabled="!business.can_open || !!opening"
+        :title="openName(business)"
         @click="emit('open', business)"
       >
         <ion-spinner
           v-if="opening === business.id"
-          slot="start"
+          slot="icon-only"
           name="crescent"
           aria-hidden="true"
         />
         <HubIcon
           v-else
-          slot="start"
+          slot="icon-only"
           name="ion:log-in-outline"
           aria-hidden="true"
         />
-        {{ $t('hubs.common.open') }}
       </ion-button>
     </div>
   </div>

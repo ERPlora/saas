@@ -117,10 +117,12 @@ async function copy(): Promise<void> {
             >{{ created.secret }}</code>
           </span>
           <ion-button
+            class="icon-action"
             data-testid="new-key-copy"
             fill="clear"
             data-autofocus
             :aria-label="$t('accounts.account.keys.copy')"
+            :title="$t('accounts.account.keys.copy')"
             @click="copy"
           >
             <HubIcon

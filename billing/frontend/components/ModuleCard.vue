@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // A module of the Store: the catalog's name, summary and icon, billing's net price at the business's billing, and
 // the one thing the business can do with it. What each button does is the page's: the card emits it.
-//   - «Add · €9.00/month»: one dialog per module with its own proration (or the checkout on Free).
+//   - «+ €9.00/month», named «Add · €9.00/month»: one dialog per module with its own proration (or the checkout on Free).
 //   - Just bought: «Activating… in <business>» (the Hub turns it on by itself), never on sale twice.
 //   - Cancelled but still working: until when, and «Keep · no charge today».
 //   - Off sale but still had: it says so; it is cancelled, never kept nor bought again.
@@ -36,6 +36,7 @@ const hintId = `module-hint-${useId()}`;
 
 const cents = computed(() => (props.interval === 'year' ? props.module.priceAnnualCents : props.module.priceMonthlyCents));
 const price = computed(() => formatCents(cents.value, locale.value));
+const addName = computed(() => t(props.interval === 'year' ? 'billing.modules.addYear' : 'billing.modules.add', { price: price.value }));
 const cancelled = computed(() => props.module.owned && !!props.module.validUntil && !props.activating);
 const owned = computed(() => props.module.owned || props.activating);
 /** Bought and running: it can be cancelled (one the plan includes goes with the plan). */
@@ -162,9 +163,12 @@ function cancel(): void {
         </ion-button>
         <ion-button
           v-else
+          class="icon-action"
           expand="block"
           fill="outline"
           :disabled="!!hint"
+          :aria-label="addName"
+          :title="addName"
           :aria-describedby="hint ? hintId : undefined"
           data-testid="module-add"
           @click="add"
@@ -174,7 +178,7 @@ function cancel(): void {
             name="ion:add-outline"
             aria-hidden="true"
           />
-          {{ interval === 'year' ? $t('billing.modules.addYear', { price }) : $t('billing.modules.add', { price }) }}
+          <span aria-hidden="true">{{ interval === 'year' ? $t('billing.modules.priceYear', { price }) : $t('billing.modules.price', { price }) }}</span>
         </ion-button>
         <ion-button
           v-if="cancellable"

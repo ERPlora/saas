@@ -16,6 +16,7 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../../../hubs/fr
 
 import { toastSuccess } from '@erplora/ui/shell';
 
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import {
   accessibleName,
   type ApiCall,
@@ -142,6 +143,7 @@ describe('ApiKeysTable', () => {
     const s = await setup([]);
     expect(s.q('api-keys-empty')?.textContent).toContain('You have no keys yet');
     expect(s.q('api-keys-add')).toBeNull();
+    expect(iconAction(s.q('api-keys-empty-new'))).toEqual(iconOnly('New key'));
     s.q('api-keys-empty-new')?.click();
     await flush();
     expect(s.q('new-key')?.querySelector('.ion-delegate-host')).not.toBeNull();

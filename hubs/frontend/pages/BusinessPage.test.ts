@@ -16,6 +16,7 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/mod
 import { toastError, toastSuccess } from '@erplora/ui/shell';
 
 import { LIVE_TIMEOUT_MS } from '../../../frontend/live-state';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { BYE, describeCall, errorFrame, flush, ionProps, mountHubs, subId } from '../__tests__/mount-hubs';
 import RepresentationCard from '../../../fiscal/frontend/components/RepresentationCard.vue';
 import BusinessSettings from '../components/BusinessSettings.vue';
@@ -134,6 +135,7 @@ describe('BusinessPage: the frame', () => {
       purge_after: '2027-01-11T10:00:00Z',
       can: { ...BUSINESS.can, open: false, delete: false, restore: true },
     }, 'es');
+    expect(iconAction(s.testid('business-restore').element)).toEqual(iconOnly('Recuperar negocio'));
     s.net.onApi(() => Promise.reject(new TypeError('Failed to fetch')) as never);
     await s.testid('business-restore').trigger('click');
     await flush();
@@ -469,6 +471,6 @@ describe('BusinessPage: Spanish', () => {
   it('speaks Spanish', async () => {
     const s = await setup('summary', {}, 'es');
     expect((s.page().props('tabs') as Array<{ label: string }>).map((tab) => tab.label)).toEqual(['Resumen', 'Miembros', 'Módulos', 'Ajustes']);
-    expect(s.testid('business-open').text()).toContain('Abrir');
+    expect(iconAction(s.testid('business-open').element)).toEqual(iconOnly('Abrir Panadería López'));
   });
 });

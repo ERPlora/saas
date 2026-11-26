@@ -4,6 +4,7 @@
 // clock: data only — no code under test compares these dates with now.
 import { describe, expect, it } from 'vitest';
 
+import { iconAction } from '../../../frontend/__tests__/icon-action';
 import { mountBilling } from '../__tests__/mount-billing';
 import type { Block, SaleModule } from '../store';
 import ModuleCard from './ModuleCard.vue';
@@ -42,14 +43,15 @@ describe('ModuleCard', () => {
     expect(s.el('module-price').text()).toBe('€9.00/month + VAT');
   });
 
-  it('adds it at the business’s billing, saying the price on the button', async () => {
+  it('adds it at the business’s billing: the button is «+» and the price, named by what it does', async () => {
     const s = await card();
-    expect(s.el('module-add').text()).toBe('Add · €9.00/month');
+    expect(iconAction(s.el('module-add').element)).toEqual({ text: '€9.00/month', name: 'Add · €9.00/month', title: 'Add · €9.00/month', square: true });
     await s.el('module-add').trigger('click');
     expect(s.wrapper.emitted('add')).toHaveLength(1);
     const annual = await card({}, { interval: 'year', locale: 'es' });
     expect(annual.el('module-price').text()).toBe(nb('90,00 €/año + IVA'));
-    expect(annual.el('module-add').text()).toBe(nb('Añadir · 90,00 €/año'));
+    const added = nb('Añadir · 90,00 €/año');
+    expect(iconAction(annual.el('module-add').element)).toEqual({ text: nb('90,00 €/año'), name: added, title: added, square: true });
   });
 
   it('a module without an annual price is not sold to an annual business', async () => {

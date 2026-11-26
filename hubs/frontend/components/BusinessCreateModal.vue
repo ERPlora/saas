@@ -214,16 +214,18 @@ function closeCreate(): void {
       <ion-button
         v-if="phase === 'ready' && createdNow"
         ref="openButton"
+        class="icon-action"
         data-testid="create-modal-open"
         :disabled="!!opening"
+        :aria-label="$t('hubs.common.openBusiness')"
+        :title="$t('hubs.common.openBusiness')"
         @click="emit('open', createdNow)"
       >
         <HubIcon
-          slot="start"
+          slot="icon-only"
           name="ion:log-in-outline"
           aria-hidden="true"
         />
-        {{ $t('hubs.common.openBusiness') }}
       </ion-button>
     </template>
   </FormModal>

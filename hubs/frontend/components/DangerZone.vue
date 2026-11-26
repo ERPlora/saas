@@ -53,36 +53,40 @@ async function recover(): Promise<void> {
         </div>
         <ion-button
           v-if="business.can.restore"
+          class="icon-action"
           data-testid="danger-restore"
           :disabled="restore.pending.value"
+          :aria-label="$t('hubs.danger.restore')"
+          :title="$t('hubs.danger.restore')"
           @click="recover"
         >
           <ion-spinner
             v-if="restore.pending.value"
-            slot="start"
+            slot="icon-only"
             name="crescent"
             aria-hidden="true"
           />
           <HubIcon
             v-else
-            slot="start"
-            name="ion:refresh-outline"
+            slot="icon-only"
+            name="ion:arrow-undo-outline"
             aria-hidden="true"
           />
-          {{ $t('hubs.danger.restore') }}
         </ion-button>
         <ion-button
           v-else-if="business.can.delete"
+          class="icon-action"
           data-testid="danger-delete"
           color="danger"
+          :aria-label="$t('hubs.danger.deleteAction')"
+          :title="$t('hubs.danger.deleteAction')"
           @click="deleting = true"
         >
           <HubIcon
-            slot="start"
+            slot="icon-only"
             name="ion:trash-outline"
             aria-hidden="true"
           />
-          {{ $t('hubs.danger.deleteAction') }}
         </ion-button>
       </div>
     </ion-card-content>

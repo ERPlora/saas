@@ -6,9 +6,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/module-mocks')).shellWithToastSpies(original));
 
-import { toastError, toastSuccess } from '@erplora/ui/shell';
+import { HubIcon, toastError, toastSuccess } from '@erplora/ui/shell';
 
-import { accessibleName, describeCall, flush, ionProps, mountHubs } from '../__tests__/mount-hubs';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
+import { describeCall, flush, ionProps, mountHubs } from '../__tests__/mount-hubs';
 import RecoverButton from './RecoverButton.vue';
 
 const DELETED = {
@@ -37,7 +38,9 @@ describe('RecoverButton', () => {
   it('its owner recovers the business, and it is said', async () => {
     const m = await mountIt();
     const button = m.wrapper.get('[data-testid="recover-business"]');
-    expect(button.text()).toContain('Recover business');
+    expect(iconAction(button.element)).toEqual(iconOnly('Recover business'));
+    // Undoing the deletion, the arrow back: not the circle of «Check now».
+    expect(button.findComponent(HubIcon).props('name')).toBe('ion:arrow-undo-outline');
     await button.trigger('click');
     await flush();
     expect(m.calls().find((c) => c.path === '/api/hubs/businesses/restore')?.body).toEqual({ id: 'plaza' });
@@ -62,7 +65,6 @@ describe('RecoverButton', () => {
     const m = await mountIt({}, { size: 'large', expand: 'block', named: true }, undefined, 'es');
     const button = m.wrapper.get('[data-testid="recover-business"]');
     expect(ionProps(button, 'size', 'expand')).toEqual({ size: 'large', expand: 'block' });
-    expect(button.text()).toContain('Recuperar negocio');
-    expect(accessibleName(button)).toBe('Recuperar Bar La Plaza');
+    expect(iconAction(button.element)).toEqual(iconOnly('Recuperar Bar La Plaza'));
   });
 });

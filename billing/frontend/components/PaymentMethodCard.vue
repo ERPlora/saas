@@ -91,24 +91,26 @@ const { surface } = useSurface();
           class="card-actions"
         >
           <ion-button
+            class="icon-action"
             data-testid="payment-change"
             :fill="method.last_failure ? 'solid' : 'outline'"
             :disabled="!!portal.opening.value"
+            :aria-label="$t('billing.payment.method.change')"
+            :title="$t('billing.payment.method.change')"
             @click="hubId && portal.open(hubId)"
           >
             <ion-spinner
               v-if="portal.opening.value"
-              slot="start"
+              slot="icon-only"
               name="crescent"
               aria-hidden="true"
             />
             <HubIcon
               v-else
-              slot="start"
-              name="lucide:credit-card"
+              slot="icon-only"
+              name="lucide:pencil"
               aria-hidden="true"
             />
-            {{ $t('billing.payment.method.change') }}
           </ion-button>
         </div>
         <p

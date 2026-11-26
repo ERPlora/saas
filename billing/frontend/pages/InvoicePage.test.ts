@@ -9,6 +9,7 @@
 // clock: data only — no code under test compares these dates with now.
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { invoiceRow, unpaidRow } from '../__tests__/billing-fixtures';
 import { errorFrame, HELLO } from '../../../hubs/frontend/__tests__/mount-hubs';
 import { flush, mountBilling, subId } from '../__tests__/mount-billing';
@@ -164,7 +165,7 @@ describe('InvoicePage', () => {
 
   it('issued: «Download PDF»; not collected: no number yet, «Pay» and no PDF', async () => {
     const issued = await setup(detail());
-    expect(issued.el('invoice-pdf').exists()).toBe(true);
+    expect(iconAction(issued.el('invoice-pdf').element)).toEqual(iconOnly('Download PDF'));
     expect(issued.el('pay-invoice').exists()).toBe(false);
     const unpaid = await setup(detail({ ...unpaidRow('00043'), id: '00043' }));
     expect(unpaid.el('invoice-title').text()).toBe('Invoice REF-00043 (not collected)');

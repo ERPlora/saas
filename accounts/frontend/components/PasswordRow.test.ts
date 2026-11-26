@@ -8,6 +8,7 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
   IonModal: (await import('../__tests__/ion-modal-stub')).IonModalStub,
 }));
 
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import { flush, ionProps, mountPanel } from '../__tests__/mount-panel';
 import PasswordRow from './PasswordRow.vue';
 
@@ -20,6 +21,7 @@ describe('PasswordRow', () => {
     const s = await mountPanel(PasswordRow, { props: { hasPassword: true, email: 'laura@example.com' } });
     await flush();
     expect(s.q('password-row')?.textContent).toContain('Password');
+    expect(iconAction(s.q('password-row-change'))).toEqual(iconOnly('Change password'));
     s.q('password-row-change')?.click();
     await flush();
     expect(s.q('password-change')?.querySelector('.ion-delegate-host')).not.toBeNull();
@@ -34,6 +36,6 @@ describe('PasswordRow', () => {
     // allauth's template page.
     expect(s.q('password-row-create')?.getAttribute('routerlink')).toBe('/password/reset');
     expect(ionProps(s.q('password-row-create'), 'href')).toEqual({ href: '/password/reset' });
-    expect(s.q('password-row-create')?.textContent).toContain('Create a password');
+    expect(iconAction(s.q('password-row-create'))).toEqual(iconOnly('Create a password'));
   });
 });
