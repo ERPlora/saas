@@ -5,13 +5,12 @@
 // found on screen without scrolling the list. At every size the list stays inside the window.
 import { type Page } from '@playwright/test';
 
-import { createAccountWarm, removeAccountsWarm } from './accounts';
+import { removeAccountsWarm, signInNewAccount } from './accounts';
 import { readyBusinessOn } from './businesses';
 import { djangoPrintWarm } from './django';
 import { expect, test } from './fixtures';
 import { watchPageErrors } from './page-events';
 import { catalogueText, settled, shot } from './screen';
-import { signIn } from './session';
 
 const PREFIX = 'e2e-type-picker-';
 const PASSWORD = 'Masa-madre-y-centeno-26';
@@ -91,9 +90,7 @@ for (const { language, locale, typed, found } of LANGUAGES) {
     test('the business type: «I don’t know yet» first, then by name, found by typing on a sideways tablet', async ({ page }) => {
       const errors = watchPageErrors(page);
       const unknown = catalogueText('hubs', language, 'hubs.create.typeUnknown');
-      const email = `${PREFIX}${language}-${Date.now()}@example.com`;
-      await createAccountWarm(email, PASSWORD, { language, firstName: 'Ana', lastName: 'López' });
-      await signIn(page.request, { email, password: PASSWORD });
+      await signInNewAccount(page.request, `${PREFIX}${language}-${Date.now()}@example.com`, PASSWORD, { language, firstName: 'Ana', lastName: 'López' });
 
       await page.setViewportSize(SIDEWAYS_TABLET);
       await page.goto('/launch');

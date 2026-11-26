@@ -9,6 +9,7 @@ vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/mod
 
 import { toastSuccess } from '@erplora/ui/shell';
 
+import { choose, typeInto } from '../../../accounts/frontend/__tests__/mount-panel';
 import { apiError, type ApiCall, describeCall, flush, ionProps, mountHubs, optionValue } from '../__tests__/mount-hubs';
 import BusinessCreateForm from './BusinessCreateForm.vue';
 
@@ -56,17 +57,8 @@ async function setup(options: { props?: Record<string, unknown>; api?: Handler; 
   const m = await mountHubs(Host, { api: server(options.api), locale: options.locale });
   await flush();
   const get = (id: string) => m.wrapper.get(`[data-testid="${id}"]`);
-  /** Types in an Ionic field, as Ionic does (`ionInput` with its value). */
-  async function type(id: string, value: string) {
-    const el = get(id).element as HTMLElement & { value?: string };
-    el.value = value;
-    el.dispatchEvent(new CustomEvent('ionInput', { detail: { value } }));
-    await flush();
-  }
-  async function pick(id: string, value: string) {
-    get(id).element.dispatchEvent(new CustomEvent('ionChange', { detail: { value } }));
-    await flush();
-  }
+  const type = (id: string, value: string) => typeInto(get(id).element, value);
+  const pick = (id: string, value: string) => choose(get(id).element, { value });
   /** The labels of the type's open list (Stencil's slot patch hides an ion-label's `textContent`: its markup is read). */
   const typeOptions = () =>
     m.wrapper.findAll('[data-stub="ion-popover"] [role="option"] ion-label').map((l) => l.element.innerHTML.replace(/<!--[\s\S]*?-->/g, '').trim());
