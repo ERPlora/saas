@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:bfa36d11e577c455353579673dfe6b2a8c76bf1c05e7f29b33cde9b2f5a95098 -->
+<!-- generated from WORKBOOK.md sha256:2f3efa5e02286c47101d23c17fe576ac9ca8137a906c84b04e0e32733e0dff6d -->
 
 ## What it is for and who it is for
 
@@ -428,7 +428,7 @@ Screen: Business settings › Danger zone
 Steps:
 1. In "Settings", in the "Danger zone", the owner presses "Delete business"; the dialog "Delete …" says "It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good, except its fiscal documents.", "Its sales, invoices and other fiscal documents are kept for 6 years, as the law requires, in an archive nobody can change or delete." and "Its plan is cancelled now: if you recover it, it comes back on Free.".
 2. They type the business's name in "Business name" and press "Delete business": "Business deleted: …. You can recover it until ….".
-3. The page says "It will be erased for good on …", that once erased only its fiscal documents are kept, for 6 years, and "Recover business"; below, "Download the data": each full copy of its data with its date, "When it was deleted" and its size, and "Download". The owner gets the email with that date, which says the same of its fiscal documents, and "Download a full copy of its data: …", which leads to that page; when the copy is ready, another email: "The copy of the data of … is ready".
+3. The page says "It will be erased for good on …", that once erased only its fiscal documents are kept, for 6 years, and "Recover business"; below, "Download the data": each full copy of its data with its date, "When it was deleted" and its size, and the "Download the copy of …" icon. The owner gets the email with that date, which says the same of its fiscal documents, and "Download a full copy of its data: …", which leads to that page; when the copy is ready, another email: "The copy of the data of … is ready".
 4. An integration with the account's session does the same, with the name typed; an API key does not delete.
 In: the name typed again; the owner's session.
 Out: the business deleted, which stops opening at once for everyone and after 90 days is erased for good, except its fiscal documents, which the business keeps for 6 years in its fiscal archive (BASE-F109); its plan goes back to Free and what Stripe was charging is cancelled in the next pass, with no final invoice; until then, Billing › Subscriptions shows it "Being deleted", with no next invoice (BILLING-F23); the business receives the deletion after saving. Records `hubs.business.deleted`.

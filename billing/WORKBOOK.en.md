@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:cc76dbb170c96eb3f8fd32921bdca4687507e98aec07b738368c7da9b376226b -->
+<!-- generated from WORKBOOK.md sha256:b9db280b26c90b052293d79e3feea9755d8e2c6366a649f16428dfaa0a83f7f3 -->
 
 ## What it is for and who it is for
 
@@ -469,7 +469,7 @@ Screen: Billing › Invoices
 Steps:
 1. **Billing** opens on **Invoices**, with ERPlora's invoices of all the account's businesses: Invoice, Date, Business, Amount and Status, from newest to oldest. What was paid for an app is a line of its business's invoice.
 2. Filter by business, status ("Paid", "Not collected") and year, or search by number; the filters are kept in the address.
-3. Tap "Download PDF" on a row (or select several and "Download PDF (n)"), or "Download Excel" for the list of what is filtered, ready for the accountant.
+3. Tap "Download PDF" on a row (or select several and "Download PDF (n)", the download icon with the number of those that have a PDF), or "Download Excel" for the list of what is filtered, ready for the accountant.
 4. A credit note says "Credit note R1 · reason" and the invoice it corrects.
 5. "View invoice" opens its page (BILLING-F36).
 6. An integration of the account, with a Billing read key, reads the same list with the same filters, each invoice with its business, its lines, its VAT and who it is made out to, its PDF and the spreadsheet.
