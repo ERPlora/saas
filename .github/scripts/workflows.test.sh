@@ -130,7 +130,7 @@ check("test (the required check) needs the four jobs",
 results = str(next((step.get("env") or {} for step in steps(tjobs.get("test", {})) if "RESULTS" in (step.get("env") or {})), {}).get("RESULTS"))
 check("test looks at the result of each of the four jobs",
       all(f"{name}=${{{{ needs.{name}.result }}}}" in results for name in TEST_JOBS))
-check("test reports even when a job fails or is cancelled", str(tjobs.get("test", {}).get("if", "")) == "always()")
+check("test reports a red or skipped job, not a cancelled run", str(tjobs.get("test", {}).get("if", "")) == "${{ !cancelled() }}")
 python_runs, frontend_runs, scripts_runs = (runs(tjobs.get(name, {})) for name in ("python", "frontend", "scripts"))
 check("python runs pytest over a Postgres service",
       "pytest" in python_runs and "postgres" in (tjobs.get("python", {}).get("services") or {}))
