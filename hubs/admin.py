@@ -67,15 +67,16 @@ class SectorAdmin(admin.ModelAdmin):
 
 @admin.register(BusinessType)
 class BusinessTypeAdmin(admin.ModelAdmin):
-    list_display = ["code", "name_en", "name_es", "sector", "vertical", "is_active", "display_order"]
+    list_display = ["code", "name_en", "name_es", "sector", "vertical", "is_active"]
     list_filter = ["sector", "vertical", "is_active"]
-    list_editable = ["is_active", "display_order"]
+    list_editable = ["is_active"]
     list_select_related = ["sector"]
     search_fields = ["code", "name_en", "name_es"]
     autocomplete_fields = ["sector"]
+    ordering = ["code"]
     fieldsets = (
         (None, {"fields": ("code", *TAXONOMY_COPY, "sector", "vertical")}),
-        (_("Display"), {"fields": ("icon", "color", "display_order", "is_active")}),
+        (_("Display"), {"fields": ("icon", "color", "is_active")}),
     )
 
 

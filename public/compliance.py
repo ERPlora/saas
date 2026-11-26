@@ -13,13 +13,12 @@ Business Central its countries:
 
 from __future__ import annotations
 
-import unicodedata
-
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_safe
 
+from base.collation import collation_key
 from hubs.countries import COUNTRY_NAMES
 from hubs.schemas.common import COUNTRIES
 
@@ -42,11 +41,6 @@ FISCAL_SYSTEMS = {
         },
     ),
 }
-
-
-def collation_key(name: str) -> str:
-    """Alphabetical in any language: «Österreich» next to «Oman», «España» next to «Estonia»."""
-    return unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().casefold()
 
 
 def countries() -> list[dict]:
