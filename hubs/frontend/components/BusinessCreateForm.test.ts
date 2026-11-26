@@ -67,8 +67,9 @@ async function setup(options: { props?: Record<string, unknown>; api?: Handler; 
     get(id).element.dispatchEvent(new CustomEvent('ionChange', { detail: { value } }));
     await flush();
   }
-  /** The labels of the type's open list. */
-  const typeOptions = () => m.wrapper.findAll('[data-stub="ion-popover"] [role="option"]').map((o) => o.text().trim());
+  /** The labels of the type's open list (Stencil's slot patch hides an ion-label's `textContent`: its markup is read). */
+  const typeOptions = () =>
+    m.wrapper.findAll('[data-stub="ion-popover"] [role="option"] ion-label').map((l) => l.element.innerHTML.replace(/<!--[\s\S]*?-->/g, '').trim());
   /** Opens the type's list, as a tap on the field does, and reads it. */
   async function openTypes() {
     await get('create-type').trigger('click');
