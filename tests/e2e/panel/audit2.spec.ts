@@ -245,7 +245,7 @@ test.describe('creating and buying', () => {
     expect(deleted.status(), await deleted.text()).toBe(200);
     await page.goto('/launch');
     const recover = page.getByTestId('recover-business');
-    await expect(recover).toContainText('Recover business');
+    await expect(recover).toHaveAttribute('title', 'Recover business');
     await expect(page.getByTestId('launch-open')).toHaveCount(0);
     await settled(page);
     await page.screenshot({ path: join(SHOTS_DIR, 'launch-deleted-1280-light.png') });

@@ -182,7 +182,7 @@ for (const { language, locale } of LANGUAGES) {
         language,
         async () => {
           await expect(shown(page)).toContainText(say(language, 'hubs.launch.one.greeting', { name: 'Olga' }));
-          await expect(shown(page).getByTestId('launch-open')).toContainText(say(language, 'hubs.common.openName', { name: 'Bar Manolo' }));
+          await expect(shown(page).getByTestId('launch-open')).toHaveAttribute('title', say(language, 'hubs.common.openName', { name: 'Bar Manolo' }));
         },
         { where: shown(page), english: [say('en', 'hubs.launch.one.lead')] },
       );
