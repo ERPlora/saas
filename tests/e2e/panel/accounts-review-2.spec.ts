@@ -118,7 +118,7 @@ for (const { lang, locale } of LANGUAGES) {
       await page.goto('/dashboard/account/profile');
       await review(page, lang, 'ACCOUNTS-F26-F27-held', async () => {
         await expect(page.getByTestId('profile-export-card')).toContainText(t(lang, 'accounts.account.export.lead'));
-        await expect(page.getByTestId('profile-export')).toHaveText(t(lang, 'accounts.account.export.download'));
+        await expect(page.getByTestId('profile-export')).toHaveAttribute('title', t(lang, 'accounts.account.export.download'));
         await expect(page.getByTestId('profile-danger-business')).toHaveText('Panadería de Lucía');
         await expect(page.getByTestId('profile-delete')).toHaveJSProperty('disabled', true);
       });

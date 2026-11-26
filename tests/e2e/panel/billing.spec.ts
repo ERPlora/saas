@@ -238,7 +238,7 @@ test.describe('billing', () => {
       await page.setViewportSize(viewport);
       // «Descargar PDF» of the invoice's page.
       await page.goto(`/dashboard/billing/invoices/${ids['E2EBAKERY_AUG-0001']}`);
-      await expect(page.getByTestId('invoice-pdf')).toHaveText('Descargar PDF');
+      await expect(page.getByTestId('invoice-pdf')).toHaveAttribute('title', 'Descargar PDF');
       await page.getByTestId('invoice-pdf').click();
       await expect(toast(page, offline)).toBeVisible();
       await expect(toasts(page).filter({ hasText: 'Network error' })).toHaveCount(0);
@@ -422,7 +422,7 @@ test.describe('billing', () => {
     await page.reload();
     await expect(page.getByTestId('payment-card')).toHaveText('Visa •••• 4242');
     await expect(page.getByTestId('payment-failed')).toContainText('The last charge failed');
-    await expect(page.getByTestId('payment-change')).toHaveText('Change card');
+    await expect(page.getByTestId('payment-change')).toHaveAttribute('title', 'Change card');
     await expect(page.getByTestId('profile-name')).toHaveText('Panadería López S.L.');
     await page.screenshot({ path: join(SHOTS_DIR, 'billing-card-payment-1280-light.png'), fullPage: true });
   });

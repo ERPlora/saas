@@ -9,6 +9,7 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
 }));
 
 import { errorFrame, flush, HELLO, ionProps, LIVE_TIMEOUT_MS, mountPanel, profile, subId } from '../__tests__/mount-panel';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import ProfileTab from './ProfileTab.vue';
 
 afterEach(() => {
@@ -84,6 +85,6 @@ describe('ProfileTab', () => {
     await s.result(stream, 'accounts.profile.get', profile());
     const cards = [...document.querySelectorAll('[data-testid="profile-export-card"], [data-testid="profile-danger"]')];
     expect(cards.map((card) => card.getAttribute('data-testid'))).toEqual(['profile-export-card', 'profile-danger']);
-    expect(s.q('profile-export')?.textContent?.trim()).toBe('Download my data');
+    expect(iconAction(s.q('profile-export'))).toEqual(iconOnly('Download my data'));
   });
 });

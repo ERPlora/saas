@@ -27,6 +27,7 @@ const BACK_ICON = ionIconSrc('lucide:arrow-left');
             shape="round"
             class="auth-back"
             :aria-label="$t('accounts.login.backToHome')"
+            :title="$t('accounts.login.backToHome')"
           >
             <ion-icon
               slot="icon-only"

@@ -201,24 +201,26 @@ async function recover(): Promise<void> {
             #actions
           >
             <ion-button
+              class="icon-action"
               data-testid="business-restore"
               size="small"
               :disabled="restore.pending.value"
+              :aria-label="$t('hubs.danger.restore')"
+              :title="$t('hubs.danger.restore')"
               @click="recover"
             >
               <ion-spinner
                 v-if="restore.pending.value"
-                slot="start"
+                slot="icon-only"
                 name="crescent"
                 aria-hidden="true"
               />
               <HubIcon
                 v-else
-                slot="start"
-                name="ion:refresh-outline"
+                slot="icon-only"
+                name="ion:arrow-undo-outline"
                 aria-hidden="true"
               />
-              {{ $t('hubs.danger.restore') }}
             </ion-button>
           </template>
         </InlineFeedback>

@@ -14,6 +14,7 @@ import { toastError, toastSuccess } from '@erplora/ui/shell';
 import { apiError, flush, mountPanel, profile } from '../__tests__/mount-panel';
 import type { ProfileOut } from '../../../frontend/sdk-types/accounts';
 import { PhotoError, preparePhoto } from '../photo';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import PhotoPicker from './PhotoPicker.vue';
 
 const SMALL = 'data:image/jpeg;base64,QUJD';
@@ -46,6 +47,7 @@ describe('PhotoPicker', () => {
     expect(input.type).toBe('file');
     expect(input.accept).toBe('image/jpeg,image/png,image/webp');
     const click = vi.spyOn(input, 'click');
+    expect(iconAction(s.q('photo-change'))).toEqual(iconOnly('Change photo'));
     s.q('photo-change')?.click();
     expect(click).toHaveBeenCalledTimes(1);
   });
@@ -79,6 +81,7 @@ describe('PhotoPicker', () => {
     expect((await setup()).q('photo-remove')).toBeNull();
     document.body.innerHTML = '';
     const s = await setup(profile({ photo: SMALL }), () => Response.json(profile()));
+    expect(iconAction(s.q('photo-remove'))).toEqual(iconOnly('Remove photo'));
     s.q('photo-remove')?.click();
     await flush();
     expect(s.calls().map((c) => c.path)).toEqual(['/api/accounts/photo/remove']);

@@ -128,7 +128,7 @@ test.describe('billing part 3: the screens of the old pricing, payment, billing 
     const change = page.getByTestId('payment-change');
     await atEverySize(page, 'BILLING-G27', async () => {
       await expect(page.getByTestId('payment-card')).toHaveText('Visa •••• 4242');
-      await expect(change).toHaveText('Change card');
+      await expect(change).toHaveAttribute('title', 'Change card');
     });
     await change.click();
     await page.waitForURL(STRIPE_PORTAL_URL);

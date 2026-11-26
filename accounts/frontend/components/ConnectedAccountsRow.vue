@@ -103,17 +103,19 @@ async function disconnect(): Promise<void> {
     </div>
     <ion-button
       v-if="google"
+      class="icon-action"
       data-testid="google-disconnect"
       fill="outline"
       :disabled="onlyWayIn"
+      :aria-label="$t('accounts.account.google.disconnect')"
+      :title="$t('accounts.account.google.disconnect')"
       @click="ask"
     >
       <HubIcon
-        slot="start"
+        slot="icon-only"
         name="lucide:unlink"
         aria-hidden="true"
       />
-      {{ $t('accounts.account.google.disconnect') }}
     </ion-button>
   </div>
   <ConfirmDialog

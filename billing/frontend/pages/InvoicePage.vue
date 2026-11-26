@@ -186,17 +186,19 @@ async function downloadPdf(): Promise<void> {
             <div class="invoice-actions">
               <ion-button
                 v-if="invoice.can.pdf"
+                class="icon-action"
                 fill="outline"
                 :disabled="fetching"
                 data-testid="invoice-pdf"
+                :aria-label="$t('billing.invoices.pdf')"
+                :title="$t('billing.invoices.pdf')"
                 @click="downloadPdf"
               >
                 <HubIcon
-                  slot="start"
+                  slot="icon-only"
                   name="ion:download-outline"
                   aria-hidden="true"
                 />
-                {{ $t('billing.invoices.pdf') }}
               </ion-button>
               <WebOnly v-if="invoice.can.pay || invoice.actions.includes('pay')">
                 <PayInvoiceButton :invoice="invoice" />

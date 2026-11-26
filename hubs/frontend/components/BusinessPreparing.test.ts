@@ -5,6 +5,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { apiError, describeCall, flush, mountHubs } from '../__tests__/mount-hubs';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import BusinessPreparing from './BusinessPreparing.vue';
 
 afterEach(() => {
@@ -68,7 +69,7 @@ describe('BusinessPreparing', () => {
     });
     await flush();
     expect(wrapper.get('[data-testid="preparing-check-error"]').text()).toContain('We could not check the status. Try again.');
-    expect(wrapper.get('[data-testid="preparing-check"]').text()).toContain('Check now');
+    expect(iconAction(wrapper.get('[data-testid="preparing-check"]').element)).toEqual(iconOnly('Check now'));
   });
 
   it('in Spanish, names the maintenance pause and the recovery action', async () => {
@@ -77,7 +78,7 @@ describe('BusinessPreparing', () => {
       locale: 'es',
     });
     expect(wrapper.get('[data-testid="preparing-maintenance"]').text()).toContain('Alta en pausa por mantenimiento: tu negocio estará listo en unos minutos.');
-    expect(wrapper.get('[data-testid="preparing-check"]').text()).toContain('Comprobar ahora');
+    expect(iconAction(wrapper.get('[data-testid="preparing-check"]').element)).toEqual(iconOnly('Comprobar ahora'));
   });
 
   it('without a type, sets up «your business», and in the dialog ends on «Ready to open»', async () => {

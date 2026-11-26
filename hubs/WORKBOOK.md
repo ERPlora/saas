@@ -86,7 +86,7 @@ negocio»; en **Negocios**, en el diálogo «Crear negocio», bajo «¿Cómo se 
 La barra en marcha y tres pasos: «Negocio creado», «Preparando tu negocio» (o «Preparando tu negocio: …», con el tipo elegido) y
 «Se abre solo al terminar» en la Entrada o «Listo para abrir» en el diálogo. Mientras el personal tiene la plataforma
 congelada para una subida de la base, el aviso «Alta en pausa por mantenimiento: tu negocio estará listo en unos
-minutos.» explica la espera, con «Comprobar ahora», y no se lee «Suele tardar unos segundos.»; el aviso desaparece solo al
+minutos.» explica la espera, con el icono «Comprobar ahora», y no se lee «Suele tardar unos segundos.»; el aviso desaparece solo al
 descongelar (y la frase vuelve) o cuando el negocio queda listo.
 Si la comprobación no puede hacerse, otro aviso lo dice y deja reintentar.
 
@@ -107,13 +107,13 @@ unos segundos. Esta página se actualiza sola.».
 
 ### Ajustes del negocio
 La pestaña «Ajustes» de cada negocio. «General»: «Nombre del negocio», «País» (solo texto una vez listo),
-«Zona horaria», «Idioma del negocio» y «Dirección web» con su botón de copiar y, para el propietario, «Cambiar
+«Zona horaria», «Idioma del negocio» y «Dirección web» con su botón de copiar y, para el propietario, el icono «Cambiar
 dirección»; «Guardar cambios» se activa al cambiar algo. Debajo, «Dominio propio»: con un plan que lo incluye, el
 propietario escribe «Tu dominio» y pulsa «Conectar dominio»; con un dominio, su estado, por qué está parado, los dos
 registros CNAME («1. Registro de validación» y «2. Registro que apunta a ERPlora», cada uno con «Copiar el nombre» y
-«Copiar el valor»), la revisión de cada hora y «Quitar dominio». Un plan que no lo incluye dice «El plan … no incluye
+«Copiar el valor»), la revisión de cada hora y el icono «Quitar dominio». Un plan que no lo incluye dice «El plan … no incluye
 dominio propio» y «Lo incluye el plan …» con «Ver planes»; un administrador lo ve sin poder cambiarlo. Al final, la «Zona de peligro» con
-«Eliminar negocio».
+el icono «Eliminar negocio».
 
 ### Cambiar la dirección web
 El diálogo de «Cambiar dirección»: «Nueva dirección», debajo «Tu negocio se abrirá en:» con la dirección que dará
@@ -263,7 +263,7 @@ Pasos:
 4. Al propietario le llega además el correo «… ya está listo» con el enlace para abrirlo y el de su página en el panel.
 Entra: el aviso de que el negocio está listo (HUBS-F07).
 Sale: la entrada en el negocio con un pase de un solo uso, que nunca viaja en la dirección; el correo «ya está listo», una sola vez.
-Si falla: si el negocio no se pudo preparar, la pantalla dice «No se ha podido preparar» y «Hemos guardado …, pero no se ha podido preparar. Seguimos reintentándolo; si sigue fallando, avísanos.», y entra sola si el reintento (HUBS-F08) lo arregla. Mientras el personal tiene la plataforma congelada para una subida de la base, la tarjeta y la fila dicen «Alta en pausa por mantenimiento: tu negocio estará listo en unos minutos.», con «Comprobar ahora», y ni la Entrada ni el diálogo de **Negocios** dicen «Suele tardar unos segundos.» hasta que se levanta; es una pausa, nunca un fallo de preparación, y desaparece sola al descongelar o cuando el negocio queda listo. Si la comprobación no puede hacerse, un aviso lo dice y deja reintentar. Con varios negocios no entra sola en ninguno: la persona elige.
+Si falla: si el negocio no se pudo preparar, la pantalla dice «No se ha podido preparar» y «Hemos guardado …, pero no se ha podido preparar. Seguimos reintentándolo; si sigue fallando, avísanos.», y entra sola si el reintento (HUBS-F08) lo arregla. Mientras el personal tiene la plataforma congelada para una subida de la base, la tarjeta y la fila dicen «Alta en pausa por mantenimiento: tu negocio estará listo en unos minutos.», con el icono «Comprobar ahora», y ni la Entrada ni el diálogo de **Negocios** dicen «Suele tardar unos segundos.» hasta que se levanta; es una pausa, nunca un fallo de preparación, y desaparece sola al descongelar o cuando el negocio queda listo. Si la comprobación no puede hacerse, un aviso lo dice y deja reintentar. Con varios negocios no entra sola en ninguno: la persona elige.
 Implicados: accounts (el salto al negocio), el negocio (avisa de que está listo)
 
 ### HUBS-F05 Mantener los planes en el admin
@@ -415,7 +415,7 @@ Estado: hecho
 Actor: propietario
 Pantalla: Ajustes del negocio › Cambiar la dirección web
 Pasos:
-1. En «Ajustes», junto a la «Dirección web», el propietario pulsa «Cambiar dirección».
+1. En «Ajustes», junto a la «Dirección web», el propietario pulsa el icono «Cambiar dirección».
 2. Escribe la «Nueva dirección»; debajo, «Tu negocio se abrirá en:» con la dirección que dará, y el diálogo dice qué pasa: «Tus dispositivos y erplora.com te llevan a la nueva dirección.», «La dirección antigua deja de abrir el negocio: los enlaces y códigos QR con ella dejan de funcionar.» y «Nadie más puede quedarse con la dirección antigua mientras sea la última que tuviste.».
 3. Pulsa «Cambiar dirección»: sale «El negocio se abre ahora en …» y la página enseña la nueva.
 Entra: la nueva dirección; la sesión del propietario.
@@ -432,7 +432,7 @@ Pasos:
 2. Primero crea el de validación, que se queda para siempre porque renueva el certificado. Cuando ACM lo ve, el certificado se emite y erplora.com lo pone en la entrada de ERPlora.
 3. Con el certificado puesto crea el segundo, que apunta al nombre de ese negocio. Cuando la comprobación de cada hora lo ve, el negocio sirve su web por ese dominio y, si responde bien, el dominio queda activo.
 4. Cada hora vuelve a mirarlo y la pantalla dice cuándo fue la última vez; si deja de apuntar bien o de servirse tres veces seguidas, avisa al propietario por correo y lo deja de servir. Mientras tanto la pantalla cuenta los fallos seguidos. Cuando el registro vuelve, el dominio vuelve solo.
-5. Para quitarlo pulsa «Quitar dominio» y lo confirma en «Quitar …»: deja de servirse, se borra su certificado y el nombre queda libre.
+5. Para quitarlo pulsa el icono «Quitar dominio» y lo confirma en «Quitar …»: deja de servirse, se borra su certificado y el nombre queda libre.
 Entra: el dominio del propietario y los dos registros de su proveedor.
 Sale: la web pública del negocio en su dominio, con su certificado.
 Si falla: lo que erplora.com no acepta del nombre se dice en el propio campo («Ese dominio es de ERPlora. Escribe el tuyo.»). Un dominio que no apunta a ERPlora se queda sin activar y se dice qué registro falta. Un dominio raíz (minegocio.es) no se ofrece, porque ni admite CNAME ni la entrada tiene IP fija: se conecta www y el raíz se redirige en el proveedor. Un plan que no lo incluye no lo ofrece: dice «El plan … no incluye dominio propio» y «Lo incluye el plan …», el primero a la venta que lo incluye y que no es de mejora (si no se puede saber o no hay ninguno, «Cambia a un plan que lo incluya…»), con «Ver planes», sin formulario; y al bajar a uno así se deja de servir y vuelve al subir. Sin sitio para más certificados, el dominio espera y se reintenta cada hora, y lo ya activo no se entera. Un certificado rechazado o sin validar en 72 horas hay que volver a pedirlo: el dominio sin conectar vuelve al campo para pedirlo otra vez con «Conectar dominio». Si el DNS, AWS o el Hub no responden, no cuenta como fallo y se reintenta. La aplicación y la entrada al negocio siguen en su dirección de erplora.com.
@@ -443,9 +443,9 @@ Estado: hecho
 Actor: propietario, integración
 Pantalla: Ajustes del negocio › Zona de peligro
 Pasos:
-1. En «Ajustes», en la «Zona de peligro», el propietario pulsa «Eliminar negocio»; el diálogo «Eliminar …» dice «Deja de funcionar ahora mismo para todos. Puedes recuperarlo durante 90 días; después se borra para siempre, salvo sus documentos fiscales.», «Sus ventas, facturas y demás documentos fiscales se guardan 6 años, como exige la ley, en un archivo que nadie puede modificar ni borrar.» y «Su plan se cancela ahora: si lo recuperas, vuelve en Gratis.».
+1. En «Ajustes», en la «Zona de peligro», el propietario pulsa el icono «Eliminar negocio»; el diálogo «Eliminar …» dice «Deja de funcionar ahora mismo para todos. Puedes recuperarlo durante 90 días; después se borra para siempre, salvo sus documentos fiscales.», «Sus ventas, facturas y demás documentos fiscales se guardan 6 años, como exige la ley, en un archivo que nadie puede modificar ni borrar.» y «Su plan se cancela ahora: si lo recuperas, vuelve en Gratis.».
 2. Escribe el nombre del negocio en «Nombre del negocio» y pulsa «Eliminar negocio»: sale «Negocio eliminado: …. Puedes recuperarlo hasta el ….».
-3. La página dice «Se eliminará para siempre el …», que una vez borrado solo se guardan sus documentos fiscales, durante 6 años, y «Recuperar negocio»; debajo, «Descargar los datos»: cada copia completa de sus datos con su fecha, «Al eliminarlo» y su tamaño, y el icono «Descargar la copia del …». Al propietario le llega el correo con esa fecha, que dice lo mismo de sus documentos fiscales, y «Descarga una copia completa de sus datos: …», que lleva a esa página; cuando la copia está lista, otro correo: «La copia de los datos de … está lista».
+3. La página dice «Se eliminará para siempre el …», que una vez borrado solo se guardan sus documentos fiscales, durante 6 años, y el icono «Recuperar negocio», la flecha atrás; debajo, «Descargar los datos»: cada copia completa de sus datos con su fecha, «Al eliminarlo» y su tamaño, y el icono «Descargar la copia del …». Al propietario le llega el correo con esa fecha, que dice lo mismo de sus documentos fiscales, y «Descarga una copia completa de sus datos: …», que lleva a esa página; cuando la copia está lista, otro correo: «La copia de los datos de … está lista».
 4. Una integración con la sesión de la cuenta hace lo mismo, con el nombre escrito; una clave de API no elimina.
 Entra: el nombre escrito otra vez; la sesión del propietario.
 Sale: el negocio eliminado, que deja de abrirse al momento para todos y a los 90 días se borra para siempre, salvo sus documentos fiscales, que el negocio guarda 6 años en su archivo fiscal (BASE-F109); su plan vuelve a Gratis y lo que se cobraba en Stripe se cancela en la pasada siguiente, sin factura final; hasta entonces, Facturación › Suscripciones lo enseña «En eliminación», sin próxima factura (BILLING-F23); el negocio recibe la baja tras guardar. Anota `hubs.business.deleted`.
@@ -457,7 +457,7 @@ Estado: hecho
 Actor: propietario
 Pantalla: Negocios, Resumen del negocio
 Pasos:
-1. En **Negocios** (la fila dice hasta cuándo se puede recuperar) o en la página del negocio eliminado, el propietario pulsa «Recuperar negocio».
+1. En **Negocios** (la fila dice hasta cuándo se puede recuperar) o en la página del negocio eliminado, el propietario pulsa el icono «Recuperar negocio» (en la fila, «Recuperar»).
 2. Sale «Negocio recuperado: …» y el negocio vuelve a abrirse como estaba, en el plan Gratis; para volver a un plan de pago, se cambia en la Tienda (BILLING-F08).
 Entra: el negocio eliminado hace menos de 90 días; la sesión del propietario.
 Sale: el negocio activo otra vez (o preparándose, si nunca llegó a estar listo), en Gratis, y el negocio avisado tras guardar; Facturación › Suscripciones deja de enseñarlo, porque en Gratis no se le cobra nada (BILLING-F23). Anota `hubs.business.restored`.

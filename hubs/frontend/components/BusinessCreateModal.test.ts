@@ -12,6 +12,7 @@ vi.mock('@ionic/vue', async (importOriginal) => ({
 vi.mock('@erplora/ui/shell', async (original) => (await import('../__tests__/module-mocks')).shellWithToastSpies(original));
 
 import { describeCall, flush, ionProps, mountHubs } from '../__tests__/mount-hubs';
+import { iconAction, labelled } from '../../../frontend/__tests__/icon-action';
 import BusinessCreateModal from './BusinessCreateModal.vue';
 
 const DULCE = { id: 'dulce', name: 'Pastelería Dulce', host: 'dulce.localhost:8000' };
@@ -97,6 +98,7 @@ describe('BusinessCreateModal', () => {
 
   it('«Open business» is off while the page is opening a business', async () => {
     const s = await setup({ open: true, created: FOLLOWED, createdNow: READY, opening: 'bakery' });
+    expect(iconAction(s.q('create-modal-open'))).toEqual(labelled('Open business'));
     expect(ionProps({ element: s.q('create-modal-open')! }, 'disabled')).toEqual({ disabled: true });
     s.props.opening = null;
     await flush();

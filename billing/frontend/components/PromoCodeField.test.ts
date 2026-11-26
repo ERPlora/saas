@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { PromoCheckOut } from '../promo-types';
 import { apiError, flush, ionProps, mountBilling } from '../__tests__/mount-billing';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import PromoCodeField from './PromoCodeField.vue';
 
 afterEach(() => {
@@ -98,6 +99,7 @@ describe('PromoCodeField', () => {
   it('the code can be removed', async () => {
     const s = await setup(() => Response.json(SPRING));
     await type(s, 'spring');
+    expect(iconAction(s.el('store-promo-remove').element)).toEqual(iconOnly('Remove the code'));
     await s.el('store-promo-remove').trigger('click');
     expect(s.emitted).toEqual([SPRING, null]);
     expect(ionProps(s.el('store-promo-code'), 'value')).toEqual({ value: '' });

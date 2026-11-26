@@ -102,6 +102,8 @@
       "empty": "Ahora mismo no hay módulos a la venta.",
       "perMonth": "{price}/mes + IVA",
       "perYear": "{price}/año + IVA",
+      "price": "{price}/mes",
+      "priceYear": "{price}/año",
       "add": "Añadir · {price}/mes",
       "addYear": "Añadir · {price}/año",
       "owned": "Ya lo tienes",
@@ -165,7 +167,7 @@
         "year": "cada año"
       },
       "invoiceTo": "Factura a nombre de",
-      "change": "Cambiar",
+      "change": "Cambiar los datos de facturación",
       "secure": "Pago seguro",
       "declined": "La tarjeta con la que se paga {name} fue rechazada: paga con otra.",
       "loading": "Cargando el pago seguro…",

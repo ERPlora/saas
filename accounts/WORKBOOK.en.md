@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:839983ead3958bd303c1dc7f751d888d2026e77c2b8608f2e0f620a17ea2b10b -->
+<!-- generated from WORKBOOK.md sha256:3f919a25e46cc9318e6727b871558f22163a50b291c806dc792211310090fc68 -->
 
 ## What it is for and who it is for
 
@@ -145,9 +145,9 @@ codes" with "Download", "Generate new recovery codes?" and "Turn off the authent
 "Back to settings"; when coming from the admin, "Continue".
 
 ### Account › Security › Change your password
-The "Password" row with "Change password" opens the "Change your password" dialog: "Current password", "New
+The "Password" row with the "Change password" icon (its name shows on hover) opens the "Change your password" dialog: "Current password", "New
 password" with its hint, "Cancel" and "Change password". An account that only signs in with Google sees
-"Create a password" instead. In the same "Sign-in" block, the "Two-step verification" row says whether it is
+the "Create a password" icon instead. In the same "Sign-in" block, the "Two-step verification" row says whether it is
 on, with "Set up" or "Manage".
 
 ### Account › Security › Active sessions
@@ -164,8 +164,8 @@ actions. An account's page carries under "Permissions" the mark "Store review ac
 sets and removes it; the rest of the staff only see it.
 
 ### Account › Profile
-"Your details" (the photo or the initials with "Change photo", "First name", "Last name", the "Email you sign in
-with" with "Change" and "Save changes"), "Export your data" to download ("Download my data") and the red card "Delete
+"Your details" (the photo or the initials with the "Change photo" and "Remove photo" icons, "First name", "Last name", the "Email you sign in
+with" with the "Change your email" icon (and "Verify your email" while it is not verified), and "Save changes"), "Export your data" to download (the "Download my data" icon) and the red card "Delete
 your account". At the bottom, the tabs of **Account**: "Profile", "Security", "Preferences" and "API keys".
 
 ### Account › Preferences
@@ -205,7 +205,7 @@ the "message in Spanish" (empty, Spanish visitors read the English one), and the
 
 | State | What the person sees |
 |---|---|
-| Loading | The submit button is off while the request is on its way, and so is "Download my data" while it prepares the file; the profile and the preferences, their cards loading, and "Transparency effects" cannot be tapped while it saves; the email's link says "Checking your link…"; the two-step verification settings, "Loading…"; the sessions, the table loading. |
+| Loading | The submit button is off while the request is on its way, and so is the "Download my data" icon while it prepares the file; the profile and the preferences, their cards loading, and "Transparency effects" cannot be tapped while it saves; the email's link says "Checking your link…"; the two-step verification settings, "Loading…"; the sessions, the table loading. |
 | Empty | Without a session, every page of the panel leads to the **Entrance**, which goes back to it after signing in. With this session alone, "Close other sessions" is off; without recovery codes, "Without them, losing your authenticator locks you out of your account." with "Generate recovery codes". |
 | Error | Each error appears under its field, with the words of the rule that fails ("Your new password must be different from the current one."); a network failure, "We could not sign you in. Please try again." or "Something went wrong. Please try again.". Settings that do not load, "We could not load your security settings. Please try again." with "Try again"; the sessions, "We could not load your sessions" with "Try again"; the profile, "We could not load your account", and the preferences, "We could not load your preferences", with "Try again". A change of preferences that is not saved goes back to how it was. |
 | Throttle | "Too many failed login attempts. Try again later." or "Too many attempts. Please wait a few minutes and try again.", the same whether the account exists or not; if Google does not see a person, "We could not check that you are a person. Try again.". |
@@ -370,13 +370,13 @@ Status: done
 Actor: any person with an account
 Screen: Account › Security › Change your password
 Steps:
-1. In **Account › Security**, "Password" row, the person taps "Change password".
+1. In **Account › Security**, "Password" row, the person taps the "Change password" icon.
 2. They type the "Current password" and the "New password", which passes the same rules as at sign-up; the hint says how strong it looks.
 3. They tap "Change password": "Password changed. Your businesses will ask you to sign in again."; they stay signed in on this browser.
 4. The other browsers with their account are signed out: their open tabs go back to the **Entrance** by themselves. erplora.com asks each of their businesses to end the sessions open with it.
 In: the current password and the new one.
 Out: the new password; the other erplora.com sessions ended, this browser signed in; the notice to their businesses. The same happens when resetting it (ACCOUNTS-F07).
-If it fails: a wrong current password, under its field, and the new one is not saved; the new one equal to the current one, "Your new password must be different from the current one."; one that does not pass the rules, its warnings. The warnings appear in the account's language. More than 5 attempts a minute, "Too many attempts…" without looking at the password, not even the right one: someone else's open session is no way to guess it. An account without a password (it signed in with Google) sees "Create a password", which sends it the link of ACCOUNTS-F07. If a business does not answer the notice to close its sessions, it is retried until it acts on it.
+If it fails: a wrong current password, under its field, and the new one is not saved; the new one equal to the current one, "Your new password must be different from the current one."; one that does not pass the rules, its warnings. The warnings appear in the account's language. More than 5 attempts a minute, "Too many attempts…" without looking at the password, not even the right one: someone else's open session is no way to guess it. An account without a password (it signed in with Google) sees the "Create a password" icon, which sends it the link of ACCOUNTS-F07. If a business does not answer the notice to close its sessions, it is retried until it acts on it.
 Involved: hubs (each business ends the account's sessions)
 
 ### ACCOUNTS-F09 Sign out
@@ -384,7 +384,7 @@ Status: done
 Actor: any person with an account
 Screen: User menu, Entrance, Sign out of erplora.com
 Steps:
-1. In the panel, the person opens the **User menu** (on a phone, inside the menu) and taps "Sign out"; on the **Entrance** with a session, "Sign out" is under their account, and in the Android app it always stays above the system bar.
+1. In the panel, the person opens the **User menu** (on a phone, inside the menu) and taps "Sign out"; on the **Entrance** with a session, the "Sign out" icon is under their account, and in the Android app it always stays above the system bar.
 2. That browser's session ends and the **Entrance** comes back, ready to sign in; the other tabs open with that session go back to the **Entrance** by themselves.
 3. A page of the panel opened afterwards leads to the **Entrance**.
 4. From a business, on a device without the PIN pad, its "Sign out" ends the business's and opens **Sign out of erplora.com**: "Sign out" ends this one too, as in step 2; "Stay signed in" leaves it open and the **Entrance** comes back with the account's businesses. Without a session, it leads to the **Entrance**.
@@ -549,8 +549,8 @@ Steps:
 1. From the **User menu**, "Account" opens **Account › Profile**: "Your details" with the photo (or the initials), "First name", "Last name" and the "Email you sign in with".
 2. The person changes their first or last name: "Save changes" turns on when something changes ("It turns on when you change something.").
 3. They tap "Save changes": "Changes saved", and the user menu and the businesses they enter call them that.
-4. "Change photo" uploads a photo (JPEG, PNG or WebP), kept clean of the camera's hidden data; "Remove photo" goes back to the initials.
-5. The email changes with "Change": if their last sign-in is not recent, first they confirm it is them with their password ("Confirm it's you", over the email window); a code arrives at the new address and, once typed, that one becomes the one to sign in with and the page says so ("Your email is now …", even when the profile already shows the new address before the answer); the old one gets a notice of the change. Proving with its code the address it already had says "Your email is verified".
+4. The "Change photo" icon uploads a photo (JPEG, PNG or WebP), kept clean of the camera's hidden data; the "Remove photo" icon goes back to the initials.
+5. The email changes with the "Change your email" icon: if their last sign-in is not recent, first they confirm it is them with their password ("Confirm it's you", over the email window); a code arrives at the new address and, once typed, that one becomes the one to sign in with and the page says so ("Your email is now …", even when the profile already shows the new address before the answer); the old one gets a notice of the change. Proving with its code the address it already had says "Your email is verified".
 In: first and last name, the photo, or the new email and its code.
 Out: the profile changed, in the panel and in every business entered afterwards. Every account has its profile from the start, with nothing to fill in. The same is read and saved from any program with the person's session.
 If it fails: an empty first name is not saved ("Write your first name."); a photo that is no image or is too big says why and keeps the one there was; a new email that is not valid or that another account already uses is shown under the field, with "Check the highlighted details." on top until it is corrected; a network failure, "We could not reach ERPlora…" and nothing changes. The billing details are not here: they belong to **Billing**.
@@ -618,7 +618,7 @@ Actor: any person with an account
 Screen: Account › Profile
 Steps:
 1. In **Account › Profile**, the "Export your data" card says "A copy of your account, your businesses and your ERPlora invoices, in a file other apps can read.".
-2. The person taps "Download my data": the button is off while it is prepared.
+2. The person taps the "Download my data" icon: it is off while it is prepared.
 3. The browser saves the file "erplora-data-" with the day's date.
 In: the session.
 Out: a file with their data: the account (email, name, language, sign-up, last sign-in and the terms accepted), their appearance and notices, their photo, their email addresses, their linked Google account, their open sessions, their API keys (without the key), the businesses they belong to with their role in each one, and the ERPlora invoices they see, each with its lines and its recipient as issued. Nothing of another account.
@@ -630,8 +630,8 @@ Status: done
 Actor: any person with an account
 Screen: Account › Profile
 Steps:
-1. In **Account › Profile**, the "Delete your account" card says up front whether something holds it: if they own a business, "You own 1 business: transfer or delete it before deleting your account." with the business's name, which leads to its settings; if they pay for someone else's business (with their payment details, or because after a hand-over its plan is still charged to their card), that its owner enter their own payment details. Meanwhile "Delete account" is off.
-2. With nothing holding it, they tap "Delete account": the dialog says what goes (the account, the photo, the preferences and the API keys, and every session, also in the apps and in their businesses), that it cannot be undone and that "Your ERPlora invoices are kept for as long as the law requires.".
+1. In **Account › Profile**, the "Delete your account" card says up front whether something holds it: if they own a business, "You own 1 business: transfer or delete it before deleting your account." with the business's name, which leads to its settings; if they pay for someone else's business (with their payment details, or because after a hand-over its plan is still charged to their card), that its owner enter their own payment details. Meanwhile the "Delete account" icon is off.
+2. With nothing holding it, they tap the "Delete account" icon: the dialog says what goes (the account, the photo, the preferences and the API keys, and every session, also in the apps and in their businesses), that it cannot be undone and that "Your ERPlora invoices are kept for as long as the law requires.".
 3. They type their email to confirm and tap "Delete account". If their last sign-in is not recent, first they confirm it is them: with their password or, if they only sign in with Google, by signing in with Google again.
 4. The session ends and they reach the public website.
 In: the email typed and, if needed, the password or Google.

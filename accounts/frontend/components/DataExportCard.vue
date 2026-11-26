@@ -58,17 +58,19 @@ async function download(): Promise<void> {
           </p>
         </div>
         <ion-button
+          class="icon-action"
           data-testid="profile-export"
           fill="outline"
           :disabled="running"
+          :aria-label="$t('accounts.account.export.download')"
+          :title="$t('accounts.account.export.download')"
           @click="download"
         >
           <HubIcon
-            slot="start"
+            slot="icon-only"
             name="ion:download-outline"
             aria-hidden="true"
           />
-          {{ $t('accounts.account.export.download') }}
         </ion-button>
       </div>
     </ion-card-content>

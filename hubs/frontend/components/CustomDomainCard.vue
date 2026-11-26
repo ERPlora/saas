@@ -376,18 +376,19 @@ async function confirmRemove(): Promise<void> {
 
         <ion-button
           v-if="domain && changes && domain.state !== 'removing'"
-          class="ion-margin-top"
+          class="ion-margin-top icon-action"
           data-testid="domain-remove"
           fill="outline"
           color="danger"
+          :aria-label="$t('hubs.domain.remove')"
+          :title="$t('hubs.domain.remove')"
           @click="askToRemove"
         >
           <HubIcon
-            slot="start"
+            slot="icon-only"
             name="ion:trash-outline"
             aria-hidden="true"
           />
-          {{ $t('hubs.domain.remove') }}
         </ion-button>
       </template>
     </ion-card-content>

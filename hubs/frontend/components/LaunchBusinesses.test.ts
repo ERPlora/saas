@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { business } from '../__tests__/businesses';
 import { setUpLaunchPage } from '../__tests__/launch-page';
 import { ionProps, mountHubs } from '../__tests__/mount-hubs';
+import { iconAction, labelled } from '../../../frontend/__tests__/icon-action';
 import LaunchBusinesses from './LaunchBusinesses.vue';
 
 setUpLaunchPage();
@@ -28,7 +29,7 @@ describe('LaunchBusinesses', () => {
     expect(s.wrapper.findAll('[data-testid="launch-business"]')).toHaveLength(1);
     expect(s.wrapper.find('.launch-list').exists()).toBe(false);
     const [open] = s.opens();
-    expect(open.text()).toBe('Open Panadería López');
+    expect(iconAction(open.element)).toEqual(labelled('Open Panadería López'));
     expect(ionProps(open, 'size', 'fill', 'disabled')).toEqual({ size: 'large', fill: 'solid', disabled: false });
     await open.trigger('click');
     expect(s.handed()).toEqual([[BAKERY]]);
@@ -55,9 +56,15 @@ describe('LaunchBusinesses', () => {
   it('while the page opens the only business, its button says so, spins and cannot be pressed', async () => {
     const s = await setup([BAKERY], 'bakery');
     const [open] = s.opens();
-    expect(open.text()).toBe('Opening Panadería López…');
+    expect(iconAction(open.element)).toEqual(labelled('Opening Panadería López…'));
     expect(open.find('ion-spinner').exists()).toBe(true);
     expect(ionProps(open, 'disabled')).toEqual({ disabled: true });
+  });
+
+  it('while the page opens a business of the list, only its «Open» is named so and spins', async () => {
+    const s = await setup([BAR, BAKERY_BEFORE], 'bakery');
+    expect(s.opens().map((open) => iconAction(open.element).name)).toEqual(['Open Bar La Plaza', 'Opening Panadería López…']);
+    expect(s.opens().map((open) => open.find('ion-spinner').exists())).toEqual([false, true]);
   });
 
   it('several are a list, only the first tagged as last opened, and «Open» on a row hands that business to the page', async () => {
@@ -65,7 +72,7 @@ describe('LaunchBusinesses', () => {
     const tiles = s.wrapper.get('.launch-list').findAll('[data-testid="launch-business"]');
     expect(tiles.map((tile) => tile.get('h2').text())).toEqual(['Bar La Plaza', 'Panadería López']);
     expect(tiles.map((tile) => tile.find('.tag-recent').exists())).toEqual([true, false]);
-    expect(s.opens().map((open) => open.text())).toEqual(['Open', 'Open']);
+    expect(s.opens().map((open) => iconAction(open.element))).toEqual([labelled('Open', 'Open Bar La Plaza'), labelled('Open', 'Open Panadería López')]);
     await s.opens()[1].trigger('click');
     expect(s.handed()).toEqual([[BAKERY_BEFORE]]);
   });

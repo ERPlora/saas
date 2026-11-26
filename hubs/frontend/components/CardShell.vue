@@ -100,16 +100,17 @@ async function signOut(): Promise<void> {
             <span class="shell-account__who">{{ $t('hubs.common.signedInAs', { email }) }}</span>
             <ion-button
               fill="clear"
-              class="shell-account__logout"
+              class="shell-account__logout icon-action"
               :disabled="signingOut"
+              :aria-label="$t('hubs.common.signOut')"
+              :title="$t('hubs.common.signOut')"
               @click="signOut"
             >
               <HubIcon
-                slot="start"
+                slot="icon-only"
                 name="ion:log-out-outline"
                 aria-hidden="true"
               />
-              {{ $t('hubs.common.signOut') }}
             </ion-button>
           </div>
         </div>

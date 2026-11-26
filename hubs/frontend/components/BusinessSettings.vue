@@ -209,16 +209,18 @@ const value = (event: CustomEvent<{ value?: unknown }>) => String(event.detail.v
           />
           <ion-button
             v-if="business.can?.change_address"
+            class="icon-action"
             data-testid="settings-change-address"
             fill="outline"
+            :aria-label="$t('hubs.settings.changeAddress')"
+            :title="$t('hubs.settings.changeAddress')"
             @click="changingAddress = true"
           >
             <HubIcon
-              slot="start"
+              slot="icon-only"
               name="ion:create-outline"
               aria-hidden="true"
             />
-            {{ $t('hubs.settings.changeAddress') }}
           </ion-button>
         </div>
 

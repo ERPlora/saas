@@ -15,6 +15,7 @@ import { toastSuccess } from '@erplora/ui/shell';
 
 import { type Answer, fakeAllauth, ok, reauthenticationRequired, rejected } from '../__tests__/allauth-server';
 import { flush, ionProps, mountPanel, typeInto } from '../__tests__/mount-panel';
+import { iconAction, iconOnly } from '../../../frontend/__tests__/icon-action';
 import ConnectedAccountsRow from './ConnectedAccountsRow.vue';
 
 const GOOGLE = { uid: 'g-1', display: 'laura.martin@gmail.com', provider: { id: 'google', name: 'Google', flows: ['provider_redirect'] } };
@@ -39,6 +40,7 @@ describe('ConnectedAccountsRow', () => {
     const s = await setup({ 'GET /account/providers': ok([GOOGLE]) });
     expect(s.q('google-row')?.textContent).toContain('You can sign in with laura.martin@gmail.com.');
     expect(ionProps(s.q('google-disconnect'), 'disabled')).toEqual({ disabled: false });
+    expect(iconAction(s.q('google-disconnect'))).toEqual(iconOnly('Disconnect'));
     expect(s.q('google-connect')).toBeNull();
   });
 

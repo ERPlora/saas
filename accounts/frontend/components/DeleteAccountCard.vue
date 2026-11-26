@@ -125,18 +125,20 @@ const deleting = shallowRef(false);
           </p>
         </div>
         <ion-button
+          class="icon-action"
           data-testid="profile-delete"
           fill="outline"
           color="danger"
           :disabled="!known || held"
+          :aria-label="$t('accounts.account.delete.confirm')"
+          :title="$t('accounts.account.delete.confirm')"
           @click="deleting = true"
         >
           <HubIcon
-            slot="start"
+            slot="icon-only"
             name="lucide:user-x"
             aria-hidden="true"
           />
-          {{ $t('accounts.account.delete.confirm') }}
         </ion-button>
       </div>
     </ion-card-content>
