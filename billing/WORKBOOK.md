@@ -84,7 +84,7 @@ al final, el plan interno «Prueba de pago (interno)»; ningún otro negocio lo 
 vende nada a ese negocio.
 
 **Módulos** enseña cada aplicación de pago con su icono, su nombre, su resumen y su precio sin IVA al
-periodo del negocio, y lo único que el negocio puede hacer con ella: «Añadir · …», «Ya lo tienes» (o
+periodo del negocio, y lo único que el negocio puede hacer con ella: «Añadir · …» (el icono «+» con su precio), «Ya lo tienes» (o
 «Incluido en tu plan»), «Cancelar el módulo», «Mantener · sin cobro hoy» en una cancelada o «Activando… en
 …» justo después de comprarla. Una que ya no se vende solo la ve el negocio que la paga, con «Ya no se
 vende».
@@ -105,8 +105,8 @@ Menú **Facturación**, con tres pestañas: **Facturas** (tabla con Factura, Fec
 Estado; filtros por negocio, estado y año; buscador por número; «Descargar PDF», «Ver la factura»,
 «Descargar Excel» y «Pagar» en las no cobradas), **Suscripciones** (una fila por negocio que paga: plan, módulos, próxima
 factura con IVA y estado; «Cambiar plan», «Mantener el plan», «Ver la factura», «Ver facturas» y
-«Cancelar plan») y **Datos de pago** (la tarjeta con «Cambiar tarjeta» y los datos de facturación con
-«Editar datos»). Las facturas sin pagar no se avisan dentro de las pestañas: se avisan en la campana de la barra
+«Cancelar plan») y **Datos de pago** (la tarjeta con el icono «Cambiar tarjeta» y los datos de facturación con
+el icono «Editar datos»; su nombre sale al pasar el ratón). Las facturas sin pagar no se avisan dentro de las pestañas: se avisan en la campana de la barra
 superior (Avisos de la campana).
 
 ### Avisos de la campana
@@ -124,7 +124,7 @@ navegador.»
 Página de una factura, que se abre con «Ver la factura»: su número (o «no cobrada»), la fecha, el negocio,
 el cobro y su estado en VeriFactu; «Lo que se cobra», una línea por concepto con su periodo, su base, su
 IVA y su descuento si lo tiene; la base imponible, el IVA y el total; y «A nombre de», los datos de quien paga tal como estaban ese
-día. Arriba, «Descargar PDF» cuando ya está emitida y «Pagar» si no se cobró; una rectificativa enlaza la
+día. Arriba, el icono «Descargar PDF» cuando ya está emitida y, si no se cobró, «Pagar la factura · …», la tarjeta con el importe; una rectificativa enlaza la
 factura que rectifica. La flecha de arriba vuelve a Facturas.
 
 ### Resumen del negocio
@@ -196,8 +196,8 @@ Actor: propietario, cuenta que paga
 Pantalla: Pago seguro, Facturación › Datos de pago
 Pasos:
 1. La primera vez que se paga un plan o un módulo, el diálogo de pago pregunta «¿A nombre de quién facturamos?»: «Razón social», «NIF (opcional)», «Dirección», «Ciudad», «Código postal», «País» y «Correo para las facturas (opcional)», o «Usar el nombre y el país del negocio». «País» solo ofrece España y dice debajo «Por ahora ERPlora solo factura a pagadores en España.»; el NIF dice «Obligatorio en Canarias, Ceuta y Melilla, donde solo vendemos a empresas y profesionales.».
-2. Pulsa «Continuar al pago»: los datos se guardan y sigue el pago. Las veces siguientes el diálogo solo dice «Factura a nombre de …» con «Cambiar».
-3. En cualquier momento, en **Facturación › Datos de pago**, la tarjeta «Datos de facturación» enseña razón social, NIF, dirección, correo y qué negocios paga, con «Editar datos».
+2. Pulsa «Continuar al pago»: los datos se guardan y sigue el pago. Las veces siguientes el diálogo solo dice «Factura a nombre de …» con el icono «Cambiar los datos de facturación».
+3. En cualquier momento, en **Facturación › Datos de pago**, la tarjeta «Datos de facturación» enseña razón social, NIF, dirección, correo y qué negocios paga, con el icono «Editar datos».
 4. Al escribir el NIF, la ventana dice «NIF válido.». Un NIF-IVA de otro país de la UE se comprueba en VIES y dice «Comprobado en VIES: …. Se factura en España, así que la factura lleva IVA.», «VIES no reconoce este número: la factura llevará IVA» o «VIES no responde ahora: lo volvemos a comprobar al facturar». «Comprobado en VIES: … La factura va sin IVA» solo sale cuando la venta va con inversión del sujeto pasivo, que hoy no ocurre: solo se factura en España.
 5. Pulsa «Guardar datos»: «Datos de facturación guardados». Valen para las próximas facturas y para lo que manda Stripe (la página para confirmar un cobro que el banco quiere autenticar, sus recibos y su portal de pagos); las facturas ya emitidas no cambian. Lo que manda Stripe lleva solo el NIF actual: el anterior se quita, y también desaparece si se borra el NIF.
 Entra: lo que escribe la persona; el país y el nombre del negocio si elige usarlos.
@@ -513,7 +513,7 @@ Actor: cuenta que paga
 Pantalla: Facturación › Datos de pago, Avisos de la campana
 Pasos:
 1. En **Facturación › Datos de pago**, la tarjeta «Método de pago» dice qué tarjeta paga qué negocios y, si el último cobro falló, cuándo y de qué negocio.
-2. Pulsa «Cambiar tarjeta» (ahí o en el aviso de la campana de un negocio con la factura sin pagar): se abre la página segura de Stripe de esa cuenta, que solo permite cambiar la tarjeta y ver los recibos.
+2. Pulsa el icono «Cambiar tarjeta» (o «Cambiar tarjeta» en el aviso de la campana de un negocio con la factura sin pagar): se abre la página segura de Stripe de esa cuenta, que solo permite cambiar la tarjeta y ver los recibos.
 3. Al volver, el panel vuelve a Facturación y, si había una factura rechazada, su aviso de la campana dice «Tarjeta cambiada: ya puedes pagarla.» y «Pagar la factura · …» vuelve.
 Entra: la cuenta que paga el negocio.
 Sale: la tarjeta nueva en Stripe; los cambios de plan nunca se hacen allí.
@@ -609,7 +609,7 @@ Actor: propietario
 Pantalla: Tienda
 Pasos:
 1. En **Tienda › Módulos**, con el negocio elegido arriba, el propietario ve cada aplicación de pago con su icono, su nombre, su resumen y su precio sin IVA al periodo del negocio («… /mes + IVA» o «… /año + IVA»), en su idioma.
-2. Cada tarjeta dice lo que la aplicación es en ese negocio: «Añadir · …» si no la tiene; «Ya lo tienes» con «Cancelar el módulo» si la paga; «Incluido en tu plan» si viene con el plan; «Ya lo tienes hasta el … (cancelado)» con «Mantener · sin cobro hoy» si está cancelada; «Activando… en …» justo después de comprarla.
+2. Cada tarjeta dice lo que la aplicación es en ese negocio: «Añadir · …» (el «+» con el precio) si no la tiene; «Ya lo tienes» con «Cancelar el módulo» si la paga; «Incluido en tu plan» si viene con el plan; «Ya lo tienes hasta el … (cancelado)» con «Mantener · sin cobro hoy» si está cancelada; «Activando… en …» justo después de comprarla.
 3. Una aplicación que ERPlora ya no vende sigue saliendo al negocio que la paga, con «Ya no se vende: lo conservas mientras lo pagues y puedes cancelarlo cuando quieras»; a los demás negocios no se les ofrece.
 Entra: el negocio elegido (solo los de los que esa persona es propietaria), el catálogo de aplicaciones y la suscripción del negocio.
 Sale: nada.
@@ -621,7 +621,7 @@ Estado: hecho
 Actor: propietario
 Pantalla: Tienda, Cambiar de plan, Pago seguro
 Pasos:
-1. En **Tienda › Módulos**, con el negocio elegido arriba, el propietario pulsa «Añadir · …» en la aplicación.
+1. En **Tienda › Módulos**, con el negocio elegido arriba, el propietario pulsa «Añadir · …» (el «+» con el precio) en la aplicación.
 2. Si el negocio ya paga, el diálogo «Añadir …» dice «Se suma a la suscripción de …» y lo que se cobra: «Hoy (prorrateado)», el IVA, el «Total hoy» y lo que se cobrará «Desde el …»; confirma con «Pagar … y añadir», que cobra con la tarjeta guardada.
 3. Si el negocio está en Gratis, se abre el pago seguro con la aplicación sola, como en BILLING-F08; una aplicación no tiene días de prueba.
 4. Aviso «… añadido a …: se enciende en unos segundos»; la tarjeta dice «Activando… en …» y después «Ya lo tienes». La aplicación va en la misma factura mensual (o anual) que el plan.

@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:b9db280b26c90b052293d79e3feea9755d8e2c6366a649f16428dfaa0a83f7f3 -->
+<!-- generated from WORKBOOK.md sha256:3fb71175f8c366010dfb62bd88edbbadec5a5a4ac954ff94f17879ccc332e399 -->
 
 ## What it is for and who it is for
 
@@ -70,7 +70,7 @@ business has an unpaid invoice, the notice with "Pay the invoice" comes at the t
 business.
 
 **Modules** shows each paid app with its icon, its name, its summary and its price without VAT at the
-business's period, and the one thing the business can do with it: "Add · …", "You have it" (or "Included in
+business's period, and the one thing the business can do with it: "Add · …" (the "+" icon with its price), "You have it" (or "Included in
 your plan"), "Cancel module", "Keep · no charge today" on a cancelled one or "Activating… in …" right after
 buying it. One no longer sold is only seen by the business that pays it, with "No longer sold".
 
@@ -90,7 +90,7 @@ Menu **Billing**, with three tabs: **Invoices** (table with Invoice, Date, Busin
 filters by business, status and year; search by number; "Download PDF", "View invoice", "Download Excel"
 and "Pay" on the uncollected ones), **Subscriptions** (one row per paying business: plan, modules, next invoice with VAT and
 status; "Change plan", "Keep the plan", "View the invoice", "View invoices" and "Cancel plan") and **Payment
-details** (the card with "Change card" and the billing details with "Edit details"). Unpaid invoices are not
+details** (the card with the "Change card" icon and the billing details with the "Edit details" icon; its name shows on hover). Unpaid invoices are not
 announced inside the tabs: they are announced in the bell of the top bar (Bell notices).
 
 ### Bell notices
@@ -107,7 +107,7 @@ pays this business can pay its invoices."; in the app, "To pay it, go to erplora
 Page of one invoice, opened with "View invoice": its number (or "not collected"), the date, the business, the
 charge and its VeriFactu status; "What it charges", one line per item with its period, its base, its VAT and its discount if it has one;
 the taxable base, the VAT and the total; and "Made out to", the payer's details as they were that day. At the
-top, "Download PDF" once it is issued and "Pay" if it was not collected; a credit note links the invoice it
+top, the "Download PDF" icon once it is issued and, if it was not collected, "Pay the invoice · …", the card with the amount; a credit note links the invoice it
 corrects. The arrow at the top goes back to Invoices.
 
 ### Business summary
@@ -179,8 +179,8 @@ Actor: owner, paying account
 Screen: Secure payment, Billing › Payment details
 Steps:
 1. The first time a plan or a module is paid, the payment dialog asks "Who do we invoice?": "Company name", "Tax ID (optional)", "Address", "City", "Postal code", "Country" and "Email for invoices (optional)", or "Use the business's name and country". "Country" only offers Spain and says under it "For now ERPlora only invoices payers in Spain."; the tax ID says "Required in the Canary Islands, Ceuta and Melilla, where we only sell to businesses and professionals.".
-2. Tap "Continue to payment": the details are saved and the payment goes on. The following times the dialog only says "Invoiced to …" with "Change".
-3. At any time, in **Billing › Payment details**, the "Billing details" card shows company name, tax ID, address, email and which businesses it pays, with "Edit details".
+2. Tap "Continue to payment": the details are saved and the payment goes on. The following times the dialog only says "Invoiced to …" with the "Change the billing details" icon.
+3. At any time, in **Billing › Payment details**, the "Billing details" card shows company name, tax ID, address, email and which businesses it pays, with the "Edit details" icon.
 4. When the tax ID is typed, the window says "Valid tax ID.". An EU VAT number of another country is checked in VIES and the window says "Checked in VIES: …. Billed in Spain, the invoice carries VAT.", "VIES does not recognise this number: the invoice will carry VAT" or "VIES is not answering now: we check it again when invoicing". "Checked in VIES: … The invoice goes without VAT" only shows when the sale is reverse charged, which does not happen today: only Spain is invoiced.
 5. Tap "Save details": "Billing details saved". They apply to the next invoices and to what Stripe sends (the page to confirm a charge the bank wants authenticated, its receipts and its payment portal); the invoices already issued do not change. What Stripe sends carries only the current tax ID: the previous one is removed, and so is the tax ID when it is deleted.
 In: what the person types; the business's country and name if they choose to use them.
@@ -496,7 +496,7 @@ Actor: paying account
 Screen: Billing › Payment details, Bell notices
 Steps:
 1. In **Billing › Payment details**, the "Payment method" card says which card pays which businesses and, if the last charge failed, when and for which business.
-2. Tap "Change card" (there or on the bell's notice of a business with an unpaid invoice): Stripe's secure page of that account opens, which only allows changing the card and seeing the receipts.
+2. Tap the "Change card" icon (or "Change card" on the bell's notice of a business with an unpaid invoice): Stripe's secure page of that account opens, which only allows changing the card and seeing the receipts.
 3. Back, the panel returns to Billing and, if there was a declined invoice, its bell notice says "Card changed: you can pay it now." and "Pay the invoice · …" comes back.
 In: the paying account of the business.
 Out: the new card in Stripe; plan changes are never made there.
@@ -592,7 +592,7 @@ Actor: owner
 Screen: Store
 Steps:
 1. In **Store › Modules**, with the business chosen at the top, the owner sees each paid app with its icon, its name, its summary and its price without VAT at the business's period ("… /month + VAT" or "… /year + VAT"), in their language.
-2. Each card says what the app is in that business: "Add · …" if it does not have it; "You have it" with "Cancel module" if it pays it; "Included in your plan" if it comes with the plan; "You have it until … (cancelled)" with "Keep · no charge today" if it is cancelled; "Activating… in …" right after buying it.
+2. Each card says what the app is in that business: "Add · …" (the "+" with the price) if it does not have it; "You have it" with "Cancel module" if it pays it; "Included in your plan" if it comes with the plan; "You have it until … (cancelled)" with "Keep · no charge today" if it is cancelled; "Activating… in …" right after buying it.
 3. An app ERPlora no longer sells still shows to the business that pays it, with "No longer sold: you keep it while you pay it, and can cancel it whenever you want"; it is not offered to the other businesses.
 In: the chosen business (only those that person owns), the app catalog and the business's subscription.
 Out: nothing.
@@ -604,7 +604,7 @@ Status: done
 Actor: owner
 Screen: Store, Change plan, Secure payment
 Steps:
-1. In **Store › Modules**, with the business chosen at the top, the owner taps "Add · …" on the app.
+1. In **Store › Modules**, with the business chosen at the top, the owner taps "Add · …" (the "+" with the price) on the app.
 2. If the business already pays, the "Add …" dialog says "It is added to the subscription of …" and what is charged: "Today (prorated)", the VAT, the "Total today" and what will be charged "From …"; it is confirmed with "Pay … and add", which charges the saved card.
 3. If the business is on Free, the secure payment opens with the app alone, as in BILLING-F08; an app has no trial days.
 4. Notice "… added to …: it turns on in a few seconds"; the card says "Activating… in …" and then "You have it". The app goes on the same monthly (or annual) invoice as the plan.

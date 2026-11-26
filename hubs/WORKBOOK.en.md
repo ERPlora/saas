@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:2f3efa5e02286c47101d23c17fe576ac9ca8137a906c84b04e0e32733e0dff6d -->
+<!-- generated from WORKBOOK.md sha256:3e5f8da1483520c4d7efe5aceb817a455b6dd1e99b444f7f414843cd688e2eab -->
 
 ## What it is for and who it is for
 
@@ -62,7 +62,7 @@ Who uses it:
 ### Entrance (erplora.com and the installed app)
 The centred card of erplora.com, the same one the installed app opens when it starts. Without a session, the form
 to sign in or create the account. With a session and no businesses, "Create your business" with the sign-up form;
-with one business, "Hello, …" with "Open …" and "Go to the panel"; with several, "Where are you working today?"
+with one business, "Hello, …" with the "Open …" icon (its name shows on hover) and "Go to the panel"; with several, "Where are you working today?"
 with the last opened on top. A pending invitation shows above.
 
 ### Create business
@@ -73,7 +73,7 @@ card; in **Businesses**, in the "Create business" dialog, under "What is your bu
 
 ### Preparing
 The running bar and three steps: "Business created", "Setting up your business" (or "Setting up your business: …", with the type picked)
-and "It opens by itself when it finishes" on the Entrance or "Ready to open" in the dialog. While ERPlora's staff keeps the platform frozen for a database upgrade, the notice "Provisioning paused for maintenance: your business will be ready in a few minutes." explains the wait, with "Check now", and "It usually takes a few seconds." is not shown; the notice clears by itself after the lift (and the sentence comes back) or when the business is ready. If the check cannot run, another notice says so and offers a retry.
+and "It opens by itself when it finishes" on the Entrance or "Ready to open" in the dialog. While ERPlora's staff keeps the platform frozen for a database upgrade, the notice "Provisioning paused for maintenance: your business will be ready in a few minutes." explains the wait, with the "Check now" icon, and "It usually takes a few seconds." is not shown; the notice clears by itself after the lift (and the sentence comes back) or when the business is ready. If the check cannot run, another notice says so and offers a retry.
 
 ### Businesses
 The panel's home: the list of the account's businesses with "Business", "Web address", "Status", "Plan", "Role"
@@ -91,13 +91,13 @@ few seconds. This page refreshes by itself.".
 
 ### Business settings
 Each business's "Settings" tab. "General": "Business name", "Country" (only text once ready), "Time zone",
-"Business language" and "Web address" with its copy button and, for the owner, "Change address"; "Save changes"
+"Business language" and "Web address" with its copy button and, for the owner, the "Change address" icon; "Save changes"
 is enabled when something changes. Below, "Own domain": on a plan that includes it, the owner types "Your domain"
 and presses "Connect domain"; with a domain, its state, where it is stuck, the two CNAME records ("1. Validation
 record" and "2. Record that points to ERPlora", each with "Copy the name" and "Copy the value"), the hourly check and
-"Remove domain". A plan that does not include it says "The … plan does not include an own domain" and "The … plan
+the "Remove domain" icon. A plan that does not include it says "The … plan does not include an own domain" and "The … plan
 includes it" with "See plans";
-an administrator sees it without being able to change it. Last, the "Danger zone" with "Delete business".
+an administrator sees it without being able to change it. Last, the "Danger zone" with the "Delete business" icon.
 
 ### Change the web address
 The dialog of "Change address": "New address", under it "Your business will open at:" with the address it will
@@ -242,11 +242,11 @@ Screen: Preparing
 Steps:
 1. After "Create my business", the Entrance shows "Preparing …" ("It usually takes a few seconds.", except during a maintenance pause: see "If it fails") with the bar and the three steps; in **Businesses**, the dialog shows the same and the row says "Preparing".
 2. The screen updates by itself: there is no need to reload or to stay ("Go to the panel meanwhile").
-3. When the business is ready, the Entrance takes the person into the business without asking for the password again; the dialog of **Businesses** says "Your business is ready" with "Open business".
+3. When the business is ready, the Entrance takes the person into the business without asking for the password again; the dialog of **Businesses** says "Your business is ready" with the "Open business" icon.
 4. The owner also gets the email "… is ready" with the link to open it and the one to its page in the panel.
 In: the notice that the business is ready (HUBS-F07).
 Out: the entry into the business with a one-time pass, which never travels in the address; the "is ready" email, only once.
-If it fails: if the business could not be prepared, the screen says "It could not be prepared" and "We saved …, but it could not be prepared. We keep retrying; if it keeps failing, contact us.", and goes in by itself if the retry (HUBS-F08) fixes it. While ERPlora's staff keeps the platform frozen for a database upgrade, the card and the row instead say "Provisioning paused for maintenance: your business will be ready in a few minutes.", with "Check now", and neither the Entrance nor the dialog of **Businesses** says "It usually takes a few seconds." until it lifts; this is a pause, never a preparation failure, and it clears by itself after the lift or when the business is ready. If the check cannot run, an error says so and can be retried. With several businesses it goes into none by itself: the person chooses.
+If it fails: if the business could not be prepared, the screen says "It could not be prepared" and "We saved …, but it could not be prepared. We keep retrying; if it keeps failing, contact us.", and goes in by itself if the retry (HUBS-F08) fixes it. While ERPlora's staff keeps the platform frozen for a database upgrade, the card and the row instead say "Provisioning paused for maintenance: your business will be ready in a few minutes.", with the "Check now" icon, and neither the Entrance nor the dialog of **Businesses** says "It usually takes a few seconds." until it lifts; this is a pause, never a preparation failure, and it clears by itself after the lift or when the business is ready. If the check cannot run, an error says so and can be retried. With several businesses it goes into none by itself: the person chooses.
 Involved: accounts (the jump into the business), the business (reports it is ready)
 
 ### HUBS-F05 Keep the plans in the admin
@@ -332,7 +332,7 @@ Status: done
 Actor: owner, administrator, manager, employee, accountant
 Screen: Entrance, Businesses
 Steps:
-1. On the Entrance (with one or several businesses) or in **Businesses**, the person presses "Open" on their business ("Opening …").
+1. On the Entrance (with one or several businesses) or in **Businesses**, the person presses the "Open" icon of their business, which spins while it opens ("Opening …").
 2. The browser goes to the business's address, which asks erplora.com for the entry pass with the session already open, without asking for the password again.
 3. They enter the business already identified; erplora.com remembers that business as the last opened and the Entrance puts it on top next time.
 4. From an invitation, "Accept and enter" accepts and enters the same way.
@@ -346,8 +346,8 @@ Status: done
 Actor: owner, administrator, manager, employee, accountant
 Screen: Entrance (in the installed app)
 Steps:
-1. The app without a remembered business (or after "Change business") opens the Entrance: with one business, "Open …"; with several, "Where are you working today?" with the last opened on top and each one's status.
-2. The person presses "Open" on the business where they want to work.
+1. The app without a remembered business (or after "Change business") opens the Entrance: with one business, the "Open …" icon; with several, "Where are you working today?" with the last opened on top and each one's status.
+2. The person presses the "Open" icon of the business where they want to work.
 3. The app goes to the business, enters without asking for the password again and stays linked to it: from then on the printer, the drawer and the rest of the hardware answer only that business.
 4. Next time the app starts directly in the remembered business.
 In: the businesses the person is a member of.
@@ -398,7 +398,7 @@ Status: done
 Actor: owner
 Screen: Business settings › Change the web address
 Steps:
-1. In "Settings", next to the "Web address", the owner presses "Change address".
+1. In "Settings", next to the "Web address", the owner presses the "Change address" icon.
 2. They type the "New address"; under it, "Your business will open at:" with the address it will give, and the dialog says what happens: "Your devices and erplora.com take you to the new address.", "The old address stops opening the business: links and QR codes with it stop working." and "Nobody else can take the old address while it is the last one you had.".
 3. They press "Change address": "The business now opens at …" appears and the page shows the new one.
 In: the new address; the owner's session.
@@ -415,7 +415,7 @@ Steps:
 2. First they create the validation one, which stays for good because it renews the certificate. When ACM sees it, the certificate is issued and erplora.com puts it on ERPlora's entrance.
 3. With the certificate on, they create the second one, which points at the name of that business. When the hourly check sees it, the business serves its website on that domain and, if it answers well, the domain is active.
 4. Every hour it looks again and the screen says when it last did; if it stops pointing right or being served three times in a row, it tells the owner by email and stops serving it. Meanwhile the screen counts the failures in a row. When the record comes back, the domain comes back by itself.
-5. To remove it, they press "Remove domain" and confirm it in "Remove …": it stops being served, its certificate is deleted and the name is free.
+5. To remove it, they press the "Remove domain" icon and confirm it in "Remove …": it stops being served, its certificate is deleted and the name is free.
 In: the owner's domain and the two records at their provider.
 Out: the business's public website on its domain, with its certificate.
 If it fails: what erplora.com does not accept of the name is said on the field itself ("That domain belongs to ERPlora. Write your own."). A domain that does not point to ERPlora stays inactive and the missing record is said. A root domain (mybusiness.com) is not offered, because it takes no CNAME and the entrance has no fixed IP: they connect www and redirect the root to it at their provider. A plan that does not include it does not offer it: it says "The … plan does not include an own domain" and "The … plan includes it", the first on sale that includes one and is not an upgrade plan (if that cannot be known or there is none, "Change to a plan that includes one…"), with "See plans", without a form; and moving down to one stops serving it, which comes back on moving up. With no room for more certificates, the domain waits and it is tried again every hour, and what is already active does not notice. A certificate that was refused or not validated in 72 hours has to be asked for again: the domain that is not connected comes back in the field to ask for it again with "Connect domain". If the DNS, AWS or the Hub do not answer, that is no failure and it is tried again. The app and the way into the business stay at its address on erplora.com.
@@ -426,9 +426,9 @@ Status: done
 Actor: owner, integration
 Screen: Business settings › Danger zone
 Steps:
-1. In "Settings", in the "Danger zone", the owner presses "Delete business"; the dialog "Delete …" says "It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good, except its fiscal documents.", "Its sales, invoices and other fiscal documents are kept for 6 years, as the law requires, in an archive nobody can change or delete." and "Its plan is cancelled now: if you recover it, it comes back on Free.".
+1. In "Settings", in the "Danger zone", the owner presses the "Delete business" icon; the dialog "Delete …" says "It stops working right now for everyone. You can recover it for 90 days; after that it is erased for good, except its fiscal documents.", "Its sales, invoices and other fiscal documents are kept for 6 years, as the law requires, in an archive nobody can change or delete." and "Its plan is cancelled now: if you recover it, it comes back on Free.".
 2. They type the business's name in "Business name" and press "Delete business": "Business deleted: …. You can recover it until ….".
-3. The page says "It will be erased for good on …", that once erased only its fiscal documents are kept, for 6 years, and "Recover business"; below, "Download the data": each full copy of its data with its date, "When it was deleted" and its size, and the "Download the copy of …" icon. The owner gets the email with that date, which says the same of its fiscal documents, and "Download a full copy of its data: …", which leads to that page; when the copy is ready, another email: "The copy of the data of … is ready".
+3. The page says "It will be erased for good on …", that once erased only its fiscal documents are kept, for 6 years, and the "Recover business" icon, the arrow back; below, "Download the data": each full copy of its data with its date, "When it was deleted" and its size, and the "Download the copy of …" icon. The owner gets the email with that date, which says the same of its fiscal documents, and "Download a full copy of its data: …", which leads to that page; when the copy is ready, another email: "The copy of the data of … is ready".
 4. An integration with the account's session does the same, with the name typed; an API key does not delete.
 In: the name typed again; the owner's session.
 Out: the business deleted, which stops opening at once for everyone and after 90 days is erased for good, except its fiscal documents, which the business keeps for 6 years in its fiscal archive (BASE-F109); its plan goes back to Free and what Stripe was charging is cancelled in the next pass, with no final invoice; until then, Billing › Subscriptions shows it "Being deleted", with no next invoice (BILLING-F23); the business receives the deletion after saving. Records `hubs.business.deleted`.
@@ -440,7 +440,7 @@ Status: done
 Actor: owner
 Screen: Businesses, Business summary
 Steps:
-1. In **Businesses** (the row says until when it can be recovered) or on the deleted business's page, the owner presses "Recover business".
+1. In **Businesses** (the row says until when it can be recovered) or on the deleted business's page, the owner presses the "Recover business" icon (on the row, "Recover").
 2. "Business recovered: …" appears and the business opens again as it was, on the Free plan; to go back to a paid plan, it is changed in the Store (BILLING-F08).
 In: the business deleted less than 90 days ago; the owner's session.
 Out: the business active again (or being prepared, if it never got ready), on Free, and the business told after saving; Billing › Subscriptions stops showing it, because on Free nothing is charged for it (BILLING-F23). Records `hubs.business.restored`.
