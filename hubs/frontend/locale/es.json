@@ -263,7 +263,6 @@
           "offboarding": "Al eliminarlo",
           "reset": "Antes de restablecer sus datos"
         },
-        "download": "Descargar",
         "downloadName": "Descargar la copia del {date}",
         "notReady": "La copia todavía no está lista. Te avisaremos por correo cuando lo esté.",
         "none": "Este negocio no tiene copia de datos.",

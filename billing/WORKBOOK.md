@@ -486,7 +486,7 @@ Pantalla: Facturación › Facturas
 Pasos:
 1. **Facturación** se abre en **Facturas**, con las facturas de ERPlora de todos los negocios de la cuenta: Factura, Fecha, Negocio, Importe y Estado, de la más nueva a la más antigua. Lo pagado por una aplicación es una línea de la factura de su negocio.
 2. Filtra por negocio, estado («Pagadas», «No cobradas») y año, o busca por número; los filtros se guardan en la dirección.
-3. Pulsa «Descargar PDF» en una fila (o selecciona varias y «Descargar PDF (n)»), o «Descargar Excel» para la lista de lo filtrado, lista para la gestoría.
+3. Pulsa «Descargar PDF» en una fila (o selecciona varias y «Descargar PDF (n)», el icono de descarga con el número de las que tienen PDF), o «Descargar Excel» para la lista de lo filtrado, lista para la gestoría.
 4. Una rectificativa dice «Rectificativa R1 · motivo» y la factura que rectifica.
 5. «Ver la factura» abre su página (BILLING-F36).
 6. Una integración de la cuenta, con una clave de lectura de Facturación, lee la misma lista con los mismos filtros, cada factura con su negocio, sus líneas, su IVA y a quién va, su PDF y la hoja de cálculo.

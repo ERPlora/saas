@@ -80,7 +80,6 @@ const actions = computed<DataTableAction<SessionRowOut>[]>(() => [
     icon: 'ion:log-out-outline',
     color: 'danger',
     pinned: true,
-    showLabel: true,
     hidden: (row) => row.is_current,
     loading: (row) => close.pending.value && target.value?.id === row.id,
   },

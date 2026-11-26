@@ -226,7 +226,8 @@ test.describe('creating and buying', () => {
     const unpaid = shown(page).locator('[data-testid="invoices-row"]').filter({ hasText: /Not collected/ });
     await expect(unpaid).toHaveCount(2);
     for (const row of await unpaid.all()) await row.locator('ion-checkbox').click();
-    await expect(shown(page).getByTestId('invoices-pdf-selected')).toHaveText('Download PDF (0)');
+    await expect(shown(page).getByTestId('invoices-pdf-selected')).toHaveText('0');
+    await expect(shown(page).getByRole('button', { name: 'Download PDF (0)' })).toBeVisible();
     await expect(shown(page).getByTestId('invoices-selection-note')).toHaveText(
       '2 selected invoices are unpaid: an unpaid invoice has no PDF until it is paid.',
     );

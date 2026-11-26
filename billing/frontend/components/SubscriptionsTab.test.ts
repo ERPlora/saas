@@ -197,14 +197,14 @@ describe('SubscriptionsTab: the list', () => {
     expect(s.wrapper.find('[data-testid="subscription-discount"]').exists()).toBe(false);
   });
 
-  it('one action per row: its first one fixed and labelled; with a «⋮» (Cancel plan), «View invoices» goes in it too', async () => {
+  it('one action per row: its first one fixed, in words; with a «⋮» (Cancel plan), «View invoices» goes in it too', async () => {
     const s = await setup();
     await s.show([BAKERY_SUB, PLAZA_SUB]);
-    expect(s.prop<Array<Record<string, unknown>>>('actions').map((a) => [a.id, !!a.pinned, !!a.menuOnly, !!a.showLabel])).toEqual([
-      ['lead', true, false, false],
-      ['view_invoices', false, false, true],
-      ['view_invoices_menu', false, true, true],
-      ['cancel_plan', false, true, true],
+    expect(s.prop<Array<Record<string, unknown>>>('actions').map((a) => [a.id, !!a.pinned, !!a.menuOnly, a.icon ?? null, !!a.showLabel])).toEqual([
+      ['lead', true, false, null, false],
+      ['view_invoices', false, false, 'ion:receipt-outline', false],
+      ['view_invoices_menu', false, true, 'ion:receipt-outline', false],
+      ['cancel_plan', false, true, 'ion:close-circle-outline', false],
     ]);
     // An unpaid row keeps «View the invoice» and the rest in «⋮»; an active one, «Change plan».
     expect(s.actionsOf('bakery')).toEqual(['lead', 'menu']);
@@ -232,12 +232,14 @@ describe('SubscriptionsTab: the list', () => {
     expect(inMenu).toEqual(['Cancel plan: Panadería López', 'Cancel plan: Bar La Plaza']);
   });
 
-  it('without a «⋮» (nothing to cancel), «View invoices» stays a button next to the fixed one', async () => {
+  it('without a «⋮» (nothing to cancel), «View invoices» stays a button next to the fixed one: the icon of Invoices, named', async () => {
     const s = await setup();
     await s.show([CANCELLING]);
     expect(s.actionsOf('bakery')).toEqual(['lead', 'view_invoices']);
     expect(s.testid('subscriptions-row-bakery-lead').text()).toBe('Keep the plan');
-    expect(s.testid('subscriptions-row-bakery-view_invoices').text()).toBe('View invoices');
+    const invoices = s.testid('subscriptions-row-bakery-view_invoices');
+    expect(invoices.text()).toBe('');
+    expect([accessibleName(invoices), invoices.attributes('title')]).toEqual(['View invoices: Panadería López', 'View invoices: Panadería López']);
   });
 
   it('«Change plan» opens the Store with that business; «View invoices» and «View the invoice», Invoices filtered', async () => {

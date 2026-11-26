@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:cad2153f6c7911c351373e770d967b4296b4f8750296e93b38e0785163c91c31 -->
+<!-- generated from WORKBOOK.md sha256:839983ead3958bd303c1dc7f751d888d2026e77c2b8608f2e0f620a17ea2b10b -->
 
 ## What it is for and who it is for
 
@@ -152,7 +152,7 @@ on, with "Set up" or "Manage".
 
 ### Account › Security › Active sessions
 A full-height table with "Device", "Browser", "IP address" and "Last used"; this browser's goes first,
-marked "This session", and each other one carries "Close session". On top, "Close other sessions"; below,
+marked "This session", and each other one carries the "Close session" icon (its name shows on hover). On top, "Close other sessions"; below,
 "Closing a session also closes it in your businesses.". On a phone, the next ones arrive on scrolling to the end,
 instead of pages.
 
@@ -507,7 +507,7 @@ Actor: any person with an account
 Screen: Account › Security › Active sessions
 Steps:
 1. In **Account › Security**, "Active sessions" lists each open session with its "Device", "Browser", "IP address" and "Last used"; this browser's goes first, marked "This session".
-2. "Close session" on a row closes it at once and says "Session closed on …"; if it is the ERPlora app, it first asks "Close the app on …", because it may be charging at a till.
+2. The "Close session" icon of a row closes it at once and says "Session closed on …"; if it is the ERPlora app, it first asks "Close the app on …", because it may be charging at a till.
 3. "Close other sessions" says how many will be closed, the apps too, and once confirmed closes all but this one: "Sessions closed: 2".
 In: the session picked, or "the others".
 Out: those sessions closed, here and in the account's businesses; this one stays in and the list refreshes by itself. Event `accounts.session.closed`.
@@ -714,7 +714,7 @@ Status: done
 Actor: any person with an account; a superuser of the staff
 Screen: Account › API keys, admin › Accounts › API keys
 Steps:
-1. In **Account › API keys**, the person taps "Revoke" on the key's row: "Revoke "…"" says "Whatever uses this key stops working at once. It cannot be undone: you would have to create another one.".
+1. In **Account › API keys**, the person taps the "Revoke" icon of the key's row: "Revoke "…"" says "Whatever uses this key stops working at once. It cannot be undone: you would have to create another one.".
 2. They confirm with "Revoke key": "Key revoked: "…"" and the key leaves the list.
 3. Facing an incident, a superuser of the staff finds the key in the admin (by its name, its beginning or its account; each row says its "Permissions" in the words of the account, such as "Businesses · read"), marks it and chooses "Revoke the selected keys (they stop working at once)": "Keys revoked: 1.".
 In: the chosen key.

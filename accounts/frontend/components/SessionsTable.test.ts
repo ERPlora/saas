@@ -77,10 +77,11 @@ describe('SessionsTable', () => {
     expect(s.wrapper.findAll('[data-testid="session-last-used"]').map((cell) => cell.element.tagName)).toEqual(['DIV', 'DIV', 'DIV']);
   });
 
-  it('offers «Close session», with its text, on every row but this one, named with its device; no «rows per page»', async () => {
+  it('offers «Close session», its icon alone, on every row but this one, named and titled with its device; no «rows per page»', async () => {
     const s = await setup();
     expect(s.q('sessions-row-1-close')).toBeNull();
-    expect(s.q('sessions-row-2-close')?.textContent?.trim()).toBe('Close session');
+    expect(s.q('sessions-row-2-close')?.textContent?.trim()).toBe('');
+    expect(s.q('sessions-row-2-close')?.getAttribute('title')).toBe('Close session: iPhone');
     expect([accessibleName(s.q('sessions-row-2-close')), accessibleName(s.q('sessions-row-3-close'))]).toEqual([
       'Close session: iPhone',
       'Close session: Android',

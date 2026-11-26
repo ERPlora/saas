@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // The filters of Billing → Invoices in one control of the table's toolbar (a clean SaaS, the
-// toolbar on one line at 1440 px and two on a phone): a «Filters» button that counts the ones on, and a popover
+// toolbar on one line at 1440 px and two on a phone): a funnel button, named «Filters», that counts the ones on, and a popover
 // with the business (a popover select), the status (a segment: three visible options), the year (a popover
 // select) and «Clear filters» while any is on. Nothing slides up from the bottom. It keeps no state: the page
 // holds the filters (in the address) and hears `change` (`''` for «All») and `clear`. DataTable's own column
@@ -41,6 +41,7 @@ const open = shallowRef(false);
 const event = shallowRef<Event>();
 
 const active = computed(() => [props.business, props.status, props.year].filter((value) => value !== null && value !== '').length);
+const name = computed(() => (active.value ? t('billing.invoices.filters.buttonOn', { count: active.value }, active.value) : t('billing.invoices.filters.button')));
 
 function show(trigger: Event): void {
   event.value = trigger;
@@ -55,22 +56,29 @@ function pick(key: InvoiceFilterKey, value: unknown): void {
 
 <template>
   <ion-button
-    class="invoice-filters"
+    class="invoice-filters icon-action"
     data-testid="invoices-filters"
     size="small"
     fill="outline"
     aria-haspopup="dialog"
     :aria-expanded="open ? 'true' : 'false'"
-    :aria-label="active ? t('billing.invoices.filters.buttonOn', { count: active }, active) : undefined"
+    :aria-label="name"
+    :title="name"
     @click="show"
   >
     <HubIcon
+      v-if="active"
       slot="start"
       class="invoice-filters__icon"
       name="ion:funnel"
       aria-hidden="true"
     />
-    {{ $t('billing.invoices.filters.button') }}
+    <HubIcon
+      v-else
+      slot="icon-only"
+      name="ion:funnel"
+      aria-hidden="true"
+    />
     <span
       v-if="active"
       class="invoice-filters__count"
@@ -182,17 +190,11 @@ function pick(key: InvoiceFilterKey, value: unknown): void {
 </template>
 
 <style scoped>
-/* As tall as the toolbar's other controls (DataTable's 36–38 px); 44 px to tap on a phone or a touch screen. */
+/* As tall as the toolbar's other controls (DataTable's 36–38 px): `icon-action` (panel-chrome.css), 44 px to tap. */
 .invoice-filters {
-  min-height: 36px;
   margin: 0;
   text-transform: none;
   --border-radius: 10px;
-}
-@media (max-width: 640px), (pointer: coarse) {
-  .invoice-filters {
-    min-height: 44px;
-  }
 }
 .invoice-filters__icon {
   margin-inline-end: 0.4em;
@@ -202,7 +204,6 @@ function pick(key: InvoiceFilterKey, value: unknown): void {
   place-items: center;
   min-width: 1.25rem;
   height: 1.25rem;
-  margin-inline-start: 0.4rem;
   padding: 0 0.3rem;
   border-radius: 999px;
   font-size: 0.72rem;
