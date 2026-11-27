@@ -58,15 +58,28 @@ describe('panel-chrome.css', () => {
   it('on a phone or a touch screen every target is 44 px', () => {
     const touch = media(TOUCH);
     expect(rule('ion-button, ion-buttons ion-button.in-buttons', touch)).toContain('min-height: 44px');
-    expect(rule('ion-button.button-has-icon-only, ion-buttons ion-button.in-buttons.button-has-icon-only', touch)).toContain('min-width: 44px');
+    expect(rule('ion-buttons ion-button.in-buttons.button-has-icon-only', touch)).toContain('min-width: 44px');
     expect(rule('ion-menu-button, ion-back-button', touch)).toBe('min-width: 44px; min-height: 44px;');
     expect(rule('ion-segment-button', touch)).toContain('min-height: 44px');
     expect(rule('ion-chip', touch)).toContain('min-height: 44px');
   });
 
   // Same weight as the touch rule's `ion-button` and before it: on a phone or a touch screen it is 44 px like any other.
-  it('an action that is its icon (`icon-action`, alone or with its count) is at least a 36 px square to click', () => {
-    expect(rule('ion-button:where(.icon-action)')).toBe('min-width: 36px; min-height: 36px;');
+  it('a small action that is its icon with its count (`icon-action`) is 36 px tall, like the icon-only squares', () => {
+    expect(rule('ion-button:where(.icon-action)')).toBe('min-height: 36px;');
     expect(CSS.indexOf('ion-button:where(.icon-action)')).toBeLessThan(CSS.indexOf(`@media ${TOUCH}`));
+  });
+});
+
+describe('the icon-only square', () => {
+  // The shared theme's, not the panel's: 36 px with a pointer and 44 px on a phone or a touch screen.
+  const SHARED = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../packages/ui/src/shell/theme/brand.css'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\s+/g, ' ');
+
+  it('comes from the shared theme, and the panel only adds it to the buttons of a toolbar', () => {
+    expect(SHARED).toContain('ion-button.button-has-icon-only { min-width: 36px; min-height: 36px; }');
+    expect(SHARED).toContain('@media (pointer: coarse), (max-width: 640px) { ion-button.button-has-icon-only { min-width: 44px; min-height: 44px; } }');
+    expect(CSS.match(/[^ ]*button-has-icon-only[^ ,{]*/g)).toEqual(['ion-button.in-buttons.button-has-icon-only']);
   });
 });

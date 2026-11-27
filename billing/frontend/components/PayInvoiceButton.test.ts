@@ -31,8 +31,8 @@ function deferred() {
 
 const button = (s: Awaited<ReturnType<typeof mountBilling>>, index = 0) => s.wrapper.findAll('[data-testid="pay-invoice"]')[index];
 /** The button is its card and the amount it pays, a datum: what it does is its name and its title. */
-const PAY = { text: '€36.29', name: 'Pay the invoice · €36.29', title: 'Pay the invoice · €36.29', square: true };
-const PAYING = { text: '€36.29', name: 'Paying…', title: 'Paying…', square: true };
+const PAY = { text: '€36.29', name: 'Pay the invoice · €36.29', title: 'Pay the invoice · €36.29', square: false };
+const PAYING = { text: '€36.29', name: 'Paying…', title: 'Paying…', square: false };
 
 describe('PayInvoiceButton', () => {
   it('shows the amount it pays beside its card, named by what it does, and goes to Stripe’s page for that invoice', async () => {
@@ -129,6 +129,6 @@ describe('PayInvoiceButton', () => {
 
   it('speaks Spanish', async () => {
     const s = await mountBilling(PayInvoiceButton, { props: { invoice: unpaidRow('i1') }, locale: 'es' });
-    expect(iconAction(button(s).element)).toEqual({ text: '36,29\u00a0€', name: 'Pagar la factura · 36,29\u00a0€', title: 'Pagar la factura · 36,29\u00a0€', square: true });
+    expect(iconAction(button(s).element)).toEqual({ text: '36,29\u00a0€', name: 'Pagar la factura · 36,29\u00a0€', title: 'Pagar la factura · 36,29\u00a0€', square: false });
   });
 });

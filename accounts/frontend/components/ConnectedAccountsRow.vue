@@ -103,7 +103,6 @@ async function disconnect(): Promise<void> {
     </div>
     <ion-button
       v-if="google"
-      class="icon-action"
       data-testid="google-disconnect"
       fill="outline"
       :disabled="onlyWayIn"

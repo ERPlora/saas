@@ -364,9 +364,9 @@ describe('MembersTab: on a phone', () => {
     expect(s.actionsOf('carlos')).toEqual(['change_role', 'menu']);
     expect(s.actionsOf('jorge')).toEqual(['resend', 'menu']);
     expect(offeredRowActions(s.wrapper, 'jorge')).toEqual(['resend', 'cancel', 'change_role']);
-    // Its text is the action's short words; its name for a screen reader adds whom it affects.
+    // It is its icon alone; its name and its title add whom it affects.
     const main = s.testid('members-row-carlos-change_role');
-    expect([main.text(), accessibleName(main)]).toEqual(['Change role', 'Change role: Carlos Ruiz']);
-    expect(s.testid('members-row-jorge-resend').text()).toBe('Resend');
+    expect([main.text(), accessibleName(main), main.attributes('title')]).toEqual(['', 'Change role: Carlos Ruiz', 'Change role: Carlos Ruiz']);
+    expect(s.testid('members-row-jorge-resend').text()).toBe('');
   });
 });

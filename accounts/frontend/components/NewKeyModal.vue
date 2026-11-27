@@ -117,7 +117,6 @@ async function copy(): Promise<void> {
             >{{ created.secret }}</code>
           </span>
           <ion-button
-            class="icon-action"
             data-testid="new-key-copy"
             fill="clear"
             data-autofocus

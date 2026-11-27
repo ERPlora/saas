@@ -71,7 +71,6 @@ async function clear(): Promise<void> {
       @change="onPicked"
     >
     <ion-button
-      class="icon-action"
       data-testid="photo-change"
       fill="outline"
       size="small"
@@ -95,7 +94,6 @@ async function clear(): Promise<void> {
     </ion-button>
     <ion-button
       v-if="profile.photo"
-      class="icon-action"
       data-testid="photo-remove"
       fill="clear"
       size="small"

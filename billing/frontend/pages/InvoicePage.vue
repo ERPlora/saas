@@ -186,7 +186,6 @@ async function downloadPdf(): Promise<void> {
             <div class="invoice-actions">
               <ion-button
                 v-if="invoice.can.pdf"
-                class="icon-action"
                 fill="outline"
                 :disabled="fetching"
                 data-testid="invoice-pdf"

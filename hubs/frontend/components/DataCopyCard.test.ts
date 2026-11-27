@@ -82,7 +82,7 @@ describe('DataCopyCard', () => {
 
     const button = m.wrapper.findAll('[data-testid="data-copy-download"]')[0];
     expect(button.text()).toBe('');
-    expect(button.classes()).toContain('icon-action');
+    expect(button.element.querySelector(':scope > [slot="icon-only"]')).not.toBeNull();
     expect(accessibleName(button)).toMatch(/^Download the copy of .*2026/);
     expect(button.attributes('title')).toBe(accessibleName(button));
     await button.trigger('click');

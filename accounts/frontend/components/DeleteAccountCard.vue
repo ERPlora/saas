@@ -125,7 +125,6 @@ const deleting = shallowRef(false);
           </p>
         </div>
         <ion-button
-          class="icon-action"
           data-testid="profile-delete"
           fill="outline"
           color="danger"

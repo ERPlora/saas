@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:3f919a25e46cc9318e6727b871558f22163a50b291c806dc792211310090fc68 -->
+<!-- generated from WORKBOOK.md sha256:98bd6649c7e103ffd791d32df9d95963851e8962b4e3eb5be9fd0bbce866133d -->
 
 ## What it is for and who it is for
 
@@ -686,7 +686,7 @@ Status: done
 Actor: any person with an account; a superuser of the staff, for a team account
 Screen: Account › API keys, admin › Accounts › API keys
 Steps:
-1. In **Account › API keys**, the person taps "New key": "New API key" asks for the "Name", its "Permissions" ("Businesses · read", "Businesses · write", "Invoices · read") and when it "Expires" ("In 90 days", "In 30 days" or "Never").
+1. In **Account › API keys**, the person taps the "+" "New key": "New API key" asks for the "Name", its "Permissions" ("Businesses · read", "Businesses · write", "Invoices · read") and when it "Expires" ("In 90 days", "In 30 days" or "Never").
 2. If their last sign-in is not recent, first they confirm it is them with their password (or by signing in with Google again).
 3. They tap "Create key": they see the whole key once, with "Copy the key" and "Copy it now and keep it somewhere safe: you will not see it again."; with "I have saved it", the window closes, says "Key created: «…»" and the key stays on the list with its beginning only.
 4. A superuser of the staff creates a key for a team account from the admin, with "Add API key": they choose the account, the name, the permissions and the expiry, and the page shows them the key once, "Copy it now: it will not be shown again.".

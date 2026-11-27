@@ -33,7 +33,6 @@ const changing = shallowRef(false);
     </div>
     <ion-button
       v-if="hasPassword"
-      class="icon-action"
       data-testid="password-row-change"
       fill="outline"
       :aria-label="$t('accounts.account.password.submit')"
@@ -48,7 +47,6 @@ const changing = shallowRef(false);
     </ion-button>
     <ion-button
       v-else
-      class="icon-action"
       data-testid="password-row-create"
       fill="outline"
       :router-link="PASSWORD_RESET"

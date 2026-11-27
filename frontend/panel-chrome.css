@@ -41,23 +41,23 @@
   --border-color: var(--ep-primary-text, var(--ion-color-primary));
 }
 
-/* An action that is its icon, alone or with its count (`icon-action`), is a square to click and not a sliver of its
-   icon. `:where` keeps the weight of a bare `ion-button`, so the rule below still makes it 44 px. */
+/* The shared theme makes a button that is only its icon a square to click. A small one with its count beside the icon
+   (`icon-action`) stands as tall. `:where` keeps the weight of a bare `ion-button`, so the rule below still makes it
+   44 px. */
 ion-button:where(.icon-action) {
-  min-width: 36px;
   min-height: 36px;
 }
 
 /* On a phone or a touch screen every target is 44 px: buttons of any size,
-   icon-only ones also wide, the menu and back buttons, segments and tabs, chips. Ionic's native button inherits
-   the host's `min-height`. A button in a toolbar (Back, a dialog's ✕) is sized by Ionic's scoped
-   `.sc-ion-buttons-*-s ion-button` rule: the `in-buttons` class Ionic gives it outweighs that one. */
+   icon-only ones in a toolbar also wide (the shared theme widens the others), the menu and back buttons, segments and
+   tabs, chips. Ionic's native button inherits the host's `min-height`. A button in a toolbar (Back, a dialog's ✕) is
+   sized by Ionic's scoped `.sc-ion-buttons-*-s ion-button` rule: the `in-buttons` class Ionic gives it outweighs
+   that one. */
 @media (max-width: 640px), (pointer: coarse) {
   ion-button,
   ion-buttons ion-button.in-buttons {
     min-height: 44px;
   }
-  ion-button.button-has-icon-only,
   ion-buttons ion-button.in-buttons.button-has-icon-only {
     min-width: 44px;
   }

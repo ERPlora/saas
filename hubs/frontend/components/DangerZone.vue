@@ -53,7 +53,6 @@ async function recover(): Promise<void> {
         </div>
         <ion-button
           v-if="business.can.restore"
-          class="icon-action"
           data-testid="danger-restore"
           :disabled="restore.pending.value"
           :aria-label="$t('hubs.danger.restore')"
@@ -75,7 +74,6 @@ async function recover(): Promise<void> {
         </ion-button>
         <ion-button
           v-else-if="business.can.delete"
-          class="icon-action"
           data-testid="danger-delete"
           color="danger"
           :aria-label="$t('hubs.danger.deleteAction')"
