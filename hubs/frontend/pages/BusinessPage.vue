@@ -201,7 +201,6 @@ async function recover(): Promise<void> {
             #actions
           >
             <ion-button
-              class="icon-action"
               data-testid="business-restore"
               size="small"
               :disabled="restore.pending.value"

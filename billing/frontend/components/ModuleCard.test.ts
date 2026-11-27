@@ -45,13 +45,13 @@ describe('ModuleCard', () => {
 
   it('adds it at the business’s billing: the button is «+» and the price, named by what it does', async () => {
     const s = await card();
-    expect(iconAction(s.el('module-add').element)).toEqual({ text: '€9.00/month', name: 'Add · €9.00/month', title: 'Add · €9.00/month', square: true });
+    expect(iconAction(s.el('module-add').element)).toEqual({ text: '€9.00/month', name: 'Add · €9.00/month', title: 'Add · €9.00/month', square: false });
     await s.el('module-add').trigger('click');
     expect(s.wrapper.emitted('add')).toHaveLength(1);
     const annual = await card({}, { interval: 'year', locale: 'es' });
     expect(annual.el('module-price').text()).toBe(nb('90,00 €/año + IVA'));
     const added = nb('Añadir · 90,00 €/año');
-    expect(iconAction(annual.el('module-add').element)).toEqual({ text: nb('90,00 €/año'), name: added, title: added, square: true });
+    expect(iconAction(annual.el('module-add').element)).toEqual({ text: nb('90,00 €/año'), name: added, title: added, square: false });
   });
 
   it('a module without an annual price is not sold to an annual business', async () => {

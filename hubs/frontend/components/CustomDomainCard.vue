@@ -376,7 +376,7 @@ async function confirmRemove(): Promise<void> {
 
         <ion-button
           v-if="domain && changes && domain.state !== 'removing'"
-          class="ion-margin-top icon-action"
+          class="ion-margin-top"
           data-testid="domain-remove"
           fill="outline"
           color="danger"

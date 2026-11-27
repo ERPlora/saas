@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:4bb16c81da248c7865a3203be0ce339fbd887c2610eb51aa14696b41f6a25cf2 -->
+<!-- generated from WORKBOOK.md sha256:349a7b0693d53997245a3957246c0e42a84da33806bb78c5b53b9f73ebd80e10 -->
 
 ## What it is for and who uses it
 
@@ -127,7 +127,7 @@ sparkles), pressed while the panel is open. The panel opens on the right: from 7
 which narrows and keeps working; on a phone it covers it over a veil. On top, "Assistant", "New conversation" (once there is one) and × ("Close"); in the middle, the conversation: without one, "Ask me about your businesses, your
 invoices or your account." and three shortcuts ("Which businesses do I have?", "How much do I pay a month?" and "How do
 I create a business?"); with one, the person's bubbles and the answers, with "Go to …" for the panel's screens they
-name, what was done under each change ("Done: …", "Not done, cancelled: …"), "Read aloud" (in the device's
+name, what was done under each change ("Done: …", "Not done, cancelled: …"), the speaker "Read aloud" (in the device's
 own voice) and "Report a problem". At the bottom, the notice of how many messages are left (from 80 % of the month), the clip to
 attach, the microphone "Dictate by voice" ("Stop recording" while it records; it spins while it transcribes) and the
 box "Write a message…" with "Send" ("Stop" while it answers). A change the model asks for opens the card
@@ -471,7 +471,7 @@ Status: done
 Actor: the Hub's assistant of a business, or the one of erplora.com's panel
 Screen: none
 Steps:
-1. The person presses "Read aloud" on an answer: the Hub and erplora.com's panel read it with the device's own voice, asking nothing of erplora.com, which has no voice of its own.
+1. The person presses the speaker "Read aloud" on an answer: the Hub and erplora.com's panel read it with the device's own voice, asking nothing of erplora.com, which has no voice of its own.
 2. If erplora.com is asked to read an answer all the same (the text, its language, Spanish or English, and a voice if wanted), it answers that reading aloud is not available, and whoever asked reads it with the device's voice. Nothing is counted and no message is spent.
 In: the business, the text, the language and the voice.
 Out: the answer that it is not available; the text stays neither kept nor in a log.

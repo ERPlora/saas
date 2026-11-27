@@ -92,7 +92,7 @@ Si la comprobación no puede hacerse, otro aviso lo dice y deja reintentar.
 
 ### Negocios
 La portada del panel: la lista de los negocios de la cuenta con «Negocio», «Dirección web», «Estado», «Plan»,
-«Rol» y «Último uso», el buscador, «Crear negocio» y, por fila, «Abrir», «Gestionar» y «Recuperar». En el móvil
+«Rol» y «Último uso», el buscador, el «+» «Crear negocio» y, por fila, los iconos «Abrir», «Gestionar» y «Recuperar». En el móvil
 son tarjetas. Encima, las invitaciones y las ofertas de propiedad. Una factura sin pagar no sale en la lista: se
 avisa en la campana de la barra superior (BILLING-F16).
 
@@ -243,7 +243,7 @@ Estado: hecho
 Actor: propietario, integración
 Pantalla: Negocios › Crear negocio, Resumen del negocio, Tienda
 Pasos:
-1. En **Negocios**, «Crear negocio» abre el diálogo con el formulario de HUBS-F01; el negocio nace en Gratis.
+1. En **Negocios**, el «+» «Crear negocio» abre el diálogo con el formulario de HUBS-F01; el negocio nace en Gratis.
 2. En el Resumen del negocio, la tarjeta del plan ofrece «Mejorar plan», que abre la Tienda con ese negocio elegido.
 3. Elige el plan y el periodo y paga con el pago seguro de Stripe (BILLING-F07 y BILLING-F08); el negocio sigue funcionando todo el tiempo y cambia de plan en cuanto Stripe lo confirma.
 4. Una integración hace lo mismo con la sesión de la cuenta: crea el negocio y después empieza su pago.
@@ -524,7 +524,7 @@ Estado: hecho
 Actor: propietario, administrador, integración
 Pantalla: Miembros › Invitar
 Pasos:
-1. En la pestaña «Miembros» del negocio, «Invitar» abre «Invitar a …» con «Correo», «Rol» (Empleado de entrada; solo los roles por debajo del propio: el propietario da también Administrador; Gestoría es para la asesoría que lleva las cuentas, que solo lee) y «Mensaje (opcional)»; debajo, cuántas plazas del plan quedan y, con Gestoría elegida, «La gestoría no ocupa plaza del plan.».
+1. En la pestaña «Miembros» del negocio, el «+» «Invitar» abre «Invitar a …» con «Correo», «Rol» (Empleado de entrada; solo los roles por debajo del propio: el propietario da también Administrador; Gestoría es para la asesoría que lleva las cuentas, que solo lee) y «Mensaje (opcional)»; debajo, cuántas plazas del plan quedan y, con Gestoría elegida, «La gestoría no ocupa plaza del plan.».
 2. Pulsa «Enviar invitación»: sale «Invitación enviada a …» y la persona aparece en la lista como invitación pendiente, con «Reenviar» y «Cancelar invitación».
 3. La persona recibe un correo con quién la invita, a qué negocio, con qué rol, hasta cuándo vale y el enlace para aceptarla; si aún no tiene cuenta, también cómo entrar (con Google o poniendo su contraseña).
 4. «Reenviar» manda el correo otra vez y le da 7 días más; «Cancelar invitación» la retira y su enlace ya no deja entrar a nadie. Una integración hace lo mismo con la sesión de la cuenta.

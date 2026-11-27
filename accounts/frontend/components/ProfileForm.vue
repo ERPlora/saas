@@ -148,7 +148,6 @@ function openEmail(mode: 'change' | 'verify' | 'resume'): void {
         <span class="email-actions">
           <ion-button
             v-if="!profile.email_verified"
-            class="icon-action"
             data-testid="profile-email-verify"
             fill="clear"
             size="small"
@@ -163,7 +162,6 @@ function openEmail(mode: 'change' | 'verify' | 'resume'): void {
             />
           </ion-button>
           <ion-button
-            class="icon-action"
             data-testid="profile-email-change"
             fill="clear"
             size="small"

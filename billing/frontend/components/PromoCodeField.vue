@@ -102,7 +102,7 @@ function removePromo(): void {
       <ion-button
         v-if="promo"
         fill="clear"
-        class="btn-neutral icon-action"
+        class="btn-neutral"
         data-testid="store-promo-remove"
         :aria-label="$t('billing.promo.remove')"
         :title="$t('billing.promo.remove')"

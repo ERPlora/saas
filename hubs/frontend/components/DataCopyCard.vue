@@ -154,7 +154,6 @@ onMounted(load);
             <span class="copy-row__meta">{{ $t(`hubs.business.dataCopy.kind.${copy.kind}`) }} · {{ formatBytes(copy.bytes, locale) }}</span>
           </div>
           <ion-button
-            class="icon-action"
             size="small"
             fill="outline"
             data-testid="data-copy-download"

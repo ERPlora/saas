@@ -709,7 +709,7 @@ Estado: hecho
 Actor: cualquier persona con cuenta; un superusuario del personal, para una cuenta del equipo
 Pantalla: Cuenta › Claves de API, admin › Cuentas › Claves de API
 Pasos:
-1. En **Cuenta › Claves de API**, la persona pulsa «Nueva clave»: «Nueva clave de API» pide el «Nombre», sus «Permisos» («Negocios · lectura», «Negocios · escritura», «Facturas · lectura») y cuándo «Caduca» («En 90 días», «En 30 días» o «Nunca»).
+1. En **Cuenta › Claves de API**, la persona pulsa el «+» «Nueva clave»: «Nueva clave de API» pide el «Nombre», sus «Permisos» («Negocios · lectura», «Negocios · escritura», «Facturas · lectura») y cuándo «Caduca» («En 90 días», «En 30 días» o «Nunca»).
 2. Si su última entrada no es reciente, antes confirma que es ella con su contraseña (o entrando otra vez con Google).
 3. Pulsa «Crear clave»: ve la clave entera una sola vez, con «Copiar la clave» y «Cópiala ahora y guárdala en un sitio seguro: no la volverás a ver.»; con «Ya la he guardado», la ventana se cierra, avisa «Clave creada: «…»» y la clave queda en la lista solo con su principio.
 4. Un superusuario del personal crea una clave para una cuenta del equipo desde el admin, con «Añadir clave de API»: elige la cuenta, el nombre, los permisos y la caducidad, y la página le enseña la clave una sola vez, «Cópiala ahora: no se volverá a mostrar.».
