@@ -38,7 +38,6 @@ function press(): void {
 
 <template>
   <ion-button
-    class="icon-action"
     data-testid="pay-invoice"
     :fill="fill"
     :disabled="disabled"

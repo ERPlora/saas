@@ -1,4 +1,4 @@
-<!-- generated from WORKBOOK.md sha256:cba0d5674d0c2d2194bbd359b15dd109f4a625624fa2b5df710244e59f5abeeb -->
+<!-- generated from WORKBOOK.md sha256:f8d64f21813b7a6b46d7a0655ed5ddbe0d4b933cc305e7988d437840abfd1d2f -->
 
 ## What it is for and who it is for
 
@@ -77,7 +77,7 @@ and "It opens by itself when it finishes" on the Entrance or "Ready to open" in 
 
 ### Businesses
 The panel's home: the list of the account's businesses with "Business", "Web address", "Status", "Plan", "Role"
-and "Last used", the search box, "Create business" and, per row, "Open", "Manage" and "Recover". On the phone
+and "Last used", the search box, the "+" "Create business" and, per row, the icons "Open", "Manage" and "Recover". On the phone
 they are cards. Above, the invitations and the ownership offers. An unpaid invoice is not on the list: it is
 announced in the bell of the top bar (BILLING-F16).
 
@@ -226,7 +226,7 @@ Status: done
 Actor: owner, integration
 Screen: Businesses › Create business, Business summary, Store
 Steps:
-1. In **Businesses**, "Create business" opens the dialog with the form of HUBS-F01; the business is born on Free.
+1. In **Businesses**, the "+" "Create business" opens the dialog with the form of HUBS-F01; the business is born on Free.
 2. In the Business summary, the plan card offers "Upgrade plan", which opens the Store with that business chosen.
 3. They choose the plan and the period and pay with Stripe's secure payment (BILLING-F07 and BILLING-F08); the business keeps working all the time and changes plan as soon as Stripe confirms it.
 4. An integration does the same with the account's session: it creates the business and then starts its payment.
@@ -507,7 +507,7 @@ Status: done
 Actor: owner, administrator, integration
 Screen: Members › Invite
 Steps:
-1. In the business's "Members" tab, "Invite" opens "Invite to …" with "Email", "Role" (Employee to start with; only the roles below one's own: the owner also hands out Admin; Accountant is for the accountancy firm that keeps the books, which only reads) and "Message (optional)"; below, how many places of the plan are left and, with Accountant picked, "An accountancy firm takes no place on the plan.".
+1. In the business's "Members" tab, the "+" "Invite" opens "Invite to …" with "Email", "Role" (Employee to start with; only the roles below one's own: the owner also hands out Admin; Accountant is for the accountancy firm that keeps the books, which only reads) and "Message (optional)"; below, how many places of the plan are left and, with Accountant picked, "An accountancy firm takes no place on the plan.".
 2. They press "Send invitation": "Invitation sent to …" shows and the person appears in the list as a pending invitation, with "Resend" and "Cancel invitation".
 3. The person receives an email with who invites them, to which business, with which role, until when it is valid and the link to accept it; if they have no account yet, also how to get in (with Google or by setting their password).
 4. "Resend" sends the email again and gives it 7 more days; "Cancel invitation" withdraws it and its link no longer lets anyone in. An integration does the same with the account's session.

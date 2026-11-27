@@ -91,7 +91,6 @@ const { surface } = useSurface();
           class="card-actions"
         >
           <ion-button
-            class="icon-action"
             data-testid="payment-change"
             :fill="method.last_failure ? 'solid' : 'outline'"
             :disabled="!!portal.opening.value"

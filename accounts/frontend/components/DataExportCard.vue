@@ -58,7 +58,6 @@ async function download(): Promise<void> {
           </p>
         </div>
         <ion-button
-          class="icon-action"
           data-testid="profile-export"
           fill="outline"
           :disabled="running"

@@ -354,7 +354,6 @@ onBeforeUnmount(() => {
         </ion-label>
         <ion-button
           slot="end"
-          class="icon-action"
           fill="clear"
           size="small"
           data-testid="checkout-change-details"

@@ -3,7 +3,8 @@
 // beside its icon. These read the panel's sources: a DataTable row action that paints its text (`showLabel`) or an
 // `ion-button` that paints text beside its icon fails here unless it is listed below with why, and so does an
 // exception that is no longer used: the lists only shrink. Every icon-only button carries its name and its title,
-// and the common square of `icon-action` unless a toolbar (`ion-buttons`) sizes it.
+// and holds its icon in the `icon-only` slot, which the shared theme makes a square; the panel's `icon-action` only
+// lifts a small button that shows a datum beside its icon to the height of those squares.
 import { describe, expect, it } from 'vitest';
 
 /** `<file>#<action id>` → why its icon cannot stand alone. */
@@ -107,8 +108,8 @@ interface IconButton {
   text: string;
   /** Its `data-testid` (bound or not), or the first i18n key it paints. */
   id: string;
-  /** Inside an `ion-buttons` toolbar slot, which sizes its buttons. */
-  inToolbar: boolean;
+  /** An icon in the `icon-only` slot: Ionic marks the button `button-has-icon-only`, squared by the shared theme. */
+  iconOnlySlot: boolean;
 }
 
 /** Every `ion-button` of the panel's components that holds an icon. */
@@ -118,16 +119,13 @@ function iconButtons(): IconButton[] {
     .flatMap(({ file, source }) =>
       [...source.matchAll(/<ion-button\b([^>]*)>([\s\S]*?)<\/ion-button>/g)]
         .filter((match) => /<(?:HubIcon|ion-icon)\b/.test(match[2]))
-        .map((match) => {
-          const before = source.slice(0, match.index);
-          return {
-            file,
-            attributes: match[1],
-            text: match[2].replace(/<[^>]*>/g, '').trim(),
-            id: /\bdata-testid="([^"]+)"/.exec(match[1])?.[1] ?? /\$t\('([^']+)'/.exec(match[2])?.[1] ?? '?',
-            inToolbar: before.lastIndexOf('<ion-buttons') > before.lastIndexOf('</ion-buttons>'),
-          };
-        }),
+        .map((match) => ({
+          file,
+          attributes: match[1],
+          text: match[2].replace(/<[^>]*>/g, '').trim(),
+          id: /\bdata-testid="([^"]+)"/.exec(match[1])?.[1] ?? /\$t\('([^']+)'/.exec(match[2])?.[1] ?? '?',
+          iconOnlySlot: /\bslot="icon-only"/.test(match[2]),
+        })),
     );
 }
 
@@ -143,12 +141,19 @@ describe('action buttons of the panel', () => {
     expect([...new Set(labelled.map(({ file, id }) => `${file}#${id}`))].sort()).toEqual(Object.keys(LABELLED_BUTTONS).sort());
   });
 
-  it('that are only their icon carry its name and its title, and the common square outside a toolbar', () => {
+  it('that are only their icon carry its name and its title, and hold it in the `icon-only` slot the theme squares', () => {
     const iconOnly = iconButtons().filter((button) => button.text === '');
     expect(iconOnly.length).toBeGreaterThan(5);
     const unnamed = iconOnly.filter(({ attributes }) => !/[\s:]aria-label=/.test(attributes) || !/[\s:]title=/.test(attributes));
-    const unsized = iconOnly.filter(({ attributes, inToolbar }) => !inToolbar && !/\bicon-action\b/.test(attributes));
+    const unslotted = iconOnly.filter(({ iconOnlySlot }) => !iconOnlySlot);
     expect(unnamed.map(({ file, id }) => `${file}#${id}`)).toEqual([]);
-    expect(unsized.map(({ file, id }) => `${file}#${id}`)).toEqual([]);
+    expect(unslotted.map(({ file, id }) => `${file}#${id}`)).toEqual([]);
+  });
+
+  it('take `icon-action` only when small with a datum beside the icon, to stand as tall as the icon-only squares', () => {
+    const marked = iconButtons().filter(({ attributes }) => /\bicon-action\b/.test(attributes));
+    expect(marked.length).toBeGreaterThan(0);
+    const needless = marked.filter(({ attributes, text }) => text === '' || !/\ssize="small"/.test(attributes));
+    expect(needless.map(({ file, id }) => `${file}#${id}`)).toEqual([]);
   });
 });

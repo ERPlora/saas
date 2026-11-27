@@ -68,10 +68,10 @@ describe('BusinessListPage: on a phone', () => {
     expect(s.wrapper.find('.card-pills').exists()).toBe(false);
   });
 
-  it('a card’s main button says «Open» in short words; to a screen reader it adds the business', async () => {
+  it('a card’s main button is the enter arrow alone, like the list’s; its name and title add the business', async () => {
     const s = await setup();
     const open = s.wrapper.get('[data-testid="businesses-row-bakery-open"]');
-    expect([open.text(), accessibleName(open)]).toEqual(['Open', 'Open: Panadería López']);
+    expect([open.text(), accessibleName(open), open.attributes('title')]).toEqual(['', 'Open: Panadería López', 'Open: Panadería López']);
   });
 
   it('a business never used has no line for it', async () => {

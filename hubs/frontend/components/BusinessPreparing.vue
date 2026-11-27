@@ -98,7 +98,6 @@ onMounted(() => {
     </InlineFeedback>
     <ion-button
       v-if="id"
-      class="icon-action"
       fill="outline"
       data-testid="preparing-check"
       :disabled="check.pending.value"

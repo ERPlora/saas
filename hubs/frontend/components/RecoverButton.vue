@@ -42,7 +42,6 @@ async function recover(): Promise<void> {
 <template>
   <ion-button
     v-if="business.can.restore"
-    :class="{ 'icon-action': !expand }"
     data-testid="recover-business"
     :size="size === 'default' ? undefined : size"
     :expand="expand"

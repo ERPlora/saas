@@ -75,8 +75,11 @@ async function answerAndListen(page: Page, panel: Locator, words: (typeof WORDS)
   const answer = panel.getByTestId('assistant-bubble-assistant').last();
   await expect(answer).toContainText(words.answer);
   // Under the answer, beside «Report a problem» (outside its bubble).
+  // Its icon alone: the words are its name and its title.
   const listen = panel.getByTestId('assistant-listen').last();
-  await expect(listen).toContainText(words.listen);
+  await expect(listen).toHaveText('');
+  await expect(listen.getByRole('button')).toHaveAccessibleName(words.listen);
+  await expect(listen).toHaveAttribute('title', words.listen);
   for (const size of DESKTOP_FIRST) {
     await page.setViewportSize({ width: size.width, height: size.height });
     await expect(listen).toBeVisible();
@@ -108,7 +111,7 @@ for (const language of ['es', 'en'] as const) {
     await expect.poll(() => spoken(page)).toEqual([expect.objectContaining({ text: words.answer, lang: words.device })]);
     expect(asked).toEqual([]);
     await expect(panel.getByTestId('assistant-listen-failed')).toHaveCount(0);
-    await expect(listen).toContainText(words.listen);
+    await expect(listen).toHaveAttribute('title', words.listen);
     await settled(page);
     await page.screenshot({ path: shot(`assistant-voice-device-${language}`) });
 
@@ -147,7 +150,7 @@ for (const language of ['es', 'en'] as const) {
     expect(response.request().postDataJSON()).toEqual({ text: words.answer, language, voice: '' });
     await expect.poll(() => spoken(page)).toEqual([expect.objectContaining({ text: words.answer, lang: words.device })]);
     await expect(panel.getByTestId('assistant-listen-failed')).toHaveCount(0);
-    await expect(listen).toContainText(words.listen);
+    await expect(listen).toHaveAttribute('title', words.listen);
 
     expect(errors).toEqual([]);
     expect(consoleErrors).toEqual([]);

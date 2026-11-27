@@ -163,7 +163,6 @@ function cancel(): void {
         </ion-button>
         <ion-button
           v-else
-          class="icon-action"
           expand="block"
           fill="outline"
           :disabled="!!hint"

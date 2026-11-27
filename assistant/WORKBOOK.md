@@ -142,7 +142,7 @@ se acopla junto a la pantalla, que se estrecha y sigue funcionando; en el móvil
 («Cerrar»); en medio, la conversación: sin ella, «Pregúntame
 por tus negocios, tus facturas o tu cuenta.» y tres atajos («¿Qué negocios tengo?», «¿Cuánto pago al mes?» y «¿Cómo
 creo un negocio?»); con ella, las burbujas de la persona y las respuestas, con «Ir a …» para las pantallas del panel
-que nombran, lo hecho bajo cada cambio («Hecho: …», «No se hizo, cancelado: …»), «Leer en voz alta» (con la voz
+que nombran, lo hecho bajo cada cambio («Hecho: …», «No se hizo, cancelado: …»), el altavoz «Leer en voz alta» (con la voz
 del propio dispositivo) y «Denunciar un problema». Abajo, el aviso de cuántos mensajes quedan (desde el 80 % del mes), el clip de
 adjuntar, el micrófono «Dictar por voz» («Detener la grabación» mientras graba; gira mientras transcribe) y la caja
 «Escribe un mensaje…» con «Enviar» («Parar» mientras contesta). Un cambio que pide el modelo abre
@@ -486,7 +486,7 @@ Estado: hecho
 Actor: el asistente del Hub de un negocio, o el del panel de erplora.com
 Pantalla: ninguna
 Pasos:
-1. La persona pulsa «Leer en voz alta» en una respuesta: el Hub y el panel de erplora.com la leen con la voz del propio dispositivo, sin pedir nada a erplora.com, que no tiene voz propia.
+1. La persona pulsa el altavoz «Leer en voz alta» en una respuesta: el Hub y el panel de erplora.com la leen con la voz del propio dispositivo, sin pedir nada a erplora.com, que no tiene voz propia.
 2. Si aun así se le pide a erplora.com que lea una respuesta (el texto, su idioma, español o inglés, y si se quiere una voz), contesta que la lectura en voz alta no está disponible, y quien la pidió la lee con la voz del dispositivo. No se cuenta nada ni se gasta ningún mensaje.
 Entra: el negocio, el texto, el idioma y la voz.
 Sale: la respuesta de que no está disponible; el texto no queda guardado ni en un registro.
