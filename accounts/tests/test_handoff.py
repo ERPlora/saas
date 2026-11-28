@@ -361,6 +361,22 @@ class TestTheJumpToTheHubAdmin:
         assert response.status_code == 403
         assert not AuthExchangeCode.objects.exists()
 
+    def test_the_staff_without_the_second_factor_go_back_to_hubs_with_the_reason(self, client, platform, settings):
+        from django.contrib.messages import get_messages
+        from django.urls import reverse
+
+        from accounts import handoff
+
+        settings.ACCOUNTS_MFA_ENABLED = True
+
+        response = client.get(HUB_LOGIN, self.JUMP)
+
+        assert (response.status_code, response.url) == (302, reverse("accounts_hubs"))
+        assert [str(message) for message in get_messages(response.wsgi_request)] == [
+            str(handoff.REFUSED_WITHOUT_SECOND_FACTOR)
+        ]
+        assert not AuthExchangeCode.objects.exists()
+
     def test_staff_without_a_platform_role_are_forbidden(self, client, ana):
         ana.is_staff = True
         ana.save()
