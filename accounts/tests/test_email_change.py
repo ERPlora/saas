@@ -46,6 +46,15 @@ def _verify(client, code):
     return api_post(client, VERIFY, {"code": code})
 
 
+def _the_code_finds_the_address_taken(client, account) -> None:
+    """The code mailed is typed once another account answers to the address: 409, and the account keeps its own."""
+    response = _verify(client, _code_in(mail.outbox[0]))
+
+    assert (response.status_code, response.json()["error"]["code"]) == (409, "accounts.email_taken")
+    account.refresh_from_db()
+    assert account.email == "ana@example.com"
+
+
 class TestARecentSignInIsNeeded:
     def test_an_old_sign_in_is_asked_for_the_password_and_nothing_is_sent(self, signed_in_long_ago, ana):
         response = api_post(signed_in_long_ago, CHANGE, {"email": NEW})
@@ -199,10 +208,11 @@ class TestTheNewAddressCountsOnlyOnceProven:
 
         assert answers == [2, 1, 0]
 
-    def test_an_account_has_a_budget_of_tries(self, signed_in, ana, monkeypatch):
+    @pytest.mark.parametrize("budget, rate", [("EMAIL_CODE_TRIES_PER_MINUTE", "2/m"), ("EMAIL_CODE_TRIES_PER_HOUR", "2/h")])
+    def test_an_account_has_a_budget_of_tries(self, signed_in, ana, monkeypatch, budget, rate):
         from accounts.services import email_address
 
-        monkeypatch.setattr(email_address, "EMAIL_CODE_TRIES_PER_MINUTE", "2/m")
+        monkeypatch.setattr(email_address, budget, rate)
         api_post(signed_in, CHANGE, {"email": NEW})
         _verify(signed_in, "000000")
         _verify(signed_in, "000001")
@@ -256,11 +266,7 @@ class TestTheNewAddressCountsOnlyOnceProven:
         get_user_model().objects.create_user(email=NEW, password=None)
         monkeypatch.setattr(email_address, "email_belongs_to_another_account", lambda user, email: False)
 
-        response = _verify(signed_in, _code_in(mail.outbox[0]))
-
-        assert (response.status_code, response.json()["error"]["code"]) == (409, "accounts.email_taken")
-        ana.refresh_from_db()
-        assert ana.email == "ana@example.com"
+        _the_code_finds_the_address_taken(signed_in, ana)
 
     def test_only_the_session_that_asked_can_type_the_code(self, signed_in, ana, password):
         api_post(signed_in, CHANGE, {"email": NEW})
@@ -309,11 +315,7 @@ class TestTheNewAddressCountsOnlyOnceProven:
         api_post(signed_in, CHANGE, {"email": NEW})
         get_user_model().objects.create_user(email=NEW, password=None)
 
-        response = _verify(signed_in, _code_in(mail.outbox[0]))
-
-        assert (response.status_code, response.json()["error"]["code"]) == (409, "accounts.email_taken")
-        ana.refresh_from_db()
-        assert ana.email == "ana@example.com"
+        _the_code_finds_the_address_taken(signed_in, ana)
 
     def test_verifying_without_asking_first(self, signed_in):
         response = _verify(signed_in, "123456")
@@ -455,18 +457,6 @@ class TestTheAddressAsked:
 
 
 class TestTheCodeTyped:
-    def test_an_account_has_a_budget_of_tries_an_hour_too(self, signed_in, monkeypatch):
-        from accounts.services import email_address
-
-        monkeypatch.setattr(email_address, "EMAIL_CODE_TRIES_PER_HOUR", "2/h")
-        api_post(signed_in, CHANGE, {"email": NEW})
-        _verify(signed_in, "000000")
-        _verify(signed_in, "000001")
-
-        response = _verify(signed_in, _code_in(mail.outbox[0]))
-
-        assert (response.status_code, response.json()["error"]["code"]) == (429, "accounts.too_many_attempts")
-
     def test_spaces_around_the_code_do_not_count(self, signed_in):
         api_post(signed_in, CHANGE, {"email": NEW})
 
@@ -511,11 +501,7 @@ class TestTheCodeTyped:
         bo = get_user_model().objects.create_user(email="bo@example.com", password=None)
         EmailAddress.objects.create(user=bo, email=NEW.upper(), verified=False, primary=False)
 
-        response = _verify(signed_in, _code_in(mail.outbox[0]))
-
-        assert (response.status_code, response.json()["error"]["code"]) == (409, "accounts.email_taken")
-        ana.refresh_from_db()
-        assert ana.email == "ana@example.com"
+        _the_code_finds_the_address_taken(signed_in, ana)
 
     def test_switching_records_an_event_so_the_live_profile_shows_it(self, signed_in):
         from live.models import OutboxEvent
