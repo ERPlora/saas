@@ -170,7 +170,7 @@ async def test_the_conversation_is_translated_to_anthropic_blocks(fake_provider)
     ]
 
 
-async def test_what_anthropic_cannot_read_is_left_out_or_goes_as_it_came(fake_provider):
+async def test_what_the_api_cannot_read_is_left_out_or_goes_as_it_came(fake_provider):
     by_address = {"type": "image_url", "image_url": {"url": "https://example.com/a.png"}}
     conversation = [
         {"role": "user", "content": [{"type": "text", "text": "Look"}, by_address]},
