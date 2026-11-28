@@ -214,3 +214,25 @@ async def test_a_provider_that_stops_answering_mid_stream_is_a_retriable_timeout
         ("error", {"message": "openai: the provider took too long to answer", "retriable": True, "status": None}),
         ("finish", {"reason": "error"}),
     ]
+
+
+async def test_an_unreadable_chunk_is_left_out_and_nothing_after_the_end_is_read(fake_provider):
+    fake_provider.reply(
+        "POST",
+        "/v1/chat/completions",
+        sse=[
+            openai_chunk("Ho"),
+            "not json",
+            openai_chunk(tool_calls=[{"function": {"name": "list_tables"}}], finish="stop"),
+            "[DONE]",
+            openai_chunk("never read"),
+        ],
+    )
+
+    events = await collect(client(fake_provider), TurnRequest(model_id="gpt-4o", messages=[]))
+
+    assert [(e.type, e.payload) for e in events] == [
+        ("text_delta", {"text": "Ho"}),
+        ("tool_call", {"call_id": "", "name": "list_tables", "arguments": "{}"}),
+        ("finish", {"reason": "tool_use"}),
+    ]

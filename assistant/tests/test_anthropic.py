@@ -166,6 +166,29 @@ async def test_the_conversation_is_translated_to_anthropic_blocks(fake_provider)
     ]
 
 
+async def test_what_anthropic_cannot_read_is_left_out_or_goes_as_it_came(fake_provider):
+    fake_provider.reply("POST", "/v1/messages", sse=stream({"type": "message_stop"}))
+    by_address = {"type": "image_url", "image_url": {"url": "https://example.com/a.png"}}
+    conversation = [
+        {"role": "user", "content": [{"type": "text", "text": "Look"}, by_address]},
+        {"role": "assistant", "content": "", "tool_calls": [{"id": "toolu_1", "function": {"name": "find_customer", "arguments": "{broken"}}]},
+        {"role": "developer", "content": "Not a role Anthropic reads."},
+        {"role": "tool", "tool_call_id": "toolu_1", "content": "plain"},
+        {"role": "assistant", "content": ""},
+        {"role": "user", "content": [by_address]},
+    ]
+
+    await collect(client(fake_provider), TurnRequest(model_id="claude-sonnet-4-6", messages=conversation))
+
+    assert fake_provider.requests[0].body["messages"] == [
+        {"role": "user", "content": [{"type": "text", "text": "Look"}]},
+        {"role": "assistant", "content": [{"type": "tool_use", "id": "toolu_1", "name": "find_customer", "input": {}}]},
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "toolu_1", "content": "plain"}]},
+        {"role": "assistant", "content": ""},
+        {"role": "user", "content": [by_address]},
+    ]
+
+
 async def test_the_results_of_several_tools_go_in_one_user_turn_in_the_order_they_were_asked(fake_provider):
     """Anthropic wants every result of one answer's tools in the user turn right after it, before any text."""
     fake_provider.reply("POST", "/v1/messages", sse=stream({"type": "message_stop"}))

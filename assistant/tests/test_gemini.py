@@ -205,3 +205,102 @@ async def test_a_schema_keeps_only_what_gemini_reads():
         "properties": {"a": {"type": "string"}},
     }
     assert sanitize_schema({"items": [{"$ref": "#/$defs/Missing"}]}) == {"items": [{"$ref": "#/$defs/Missing"}]}
+
+
+async def test_what_the_assistant_said_goes_before_its_calls_and_what_gemini_cannot_read_goes_plain(fake_provider):
+    fake_provider.reply("POST", STREAM, sse=[chunk({"text": "ok"}, finish="STOP")])
+    conversation = [
+        {"role": "user", "content": "Ana?"},
+        {"role": "assistant", "content": "Let me look.", "tool_calls": [{"id": "call_1", "function": {"name": "find_customer", "arguments": "{broken"}}]},
+        {"role": "tool", "tool_call_id": "call_1", "content": "[1, 2]"},
+        {"role": "tool", "tool_call_id": "call_9", "content": {"found": False}},
+        {"role": "developer", "content": "Not a role Gemini reads."},
+        {"role": "assistant", "content": ""},
+    ]
+
+    await collect(client(fake_provider), TurnRequest(model_id="gemini-2.5-pro", messages=conversation))
+
+    assert fake_provider.requests[0].body["contents"] == [
+        {"role": "user", "parts": [{"text": "Ana?"}]},
+        {"role": "model", "parts": [{"text": "Let me look."}, {"functionCall": {"name": "find_customer", "args": {}}}]},
+        {
+            "role": "user",
+            "parts": [
+                {"functionResponse": {"name": "find_customer", "response": {"result": [1, 2]}}},
+                {"functionResponse": {"name": "", "response": {"found": False}}},
+            ],
+        },
+        {"role": "model", "parts": [{"text": ""}]},
+    ]
+
+
+async def test_thoughts_and_unreadable_chunks_are_left_out_and_a_call_keeps_the_id_gemini_gave_it(fake_provider):
+    fake_provider.reply(
+        "POST",
+        STREAM,
+        sse=[
+            chunk({"text": "Thinking it over.", "thought": True}),
+            "not json",
+            chunk(
+                {"text": "Hola"},
+                {"functionCall": {"id": "fc_7", "name": "find_customer", "args": {"name": "Ana"}}},
+                {"functionCall": {"name": ""}},
+                {"functionCall": {"name": "list_tables"}},
+            ),
+            chunk(finish="STOP"),
+        ],
+    )
+
+    events = await collect(client(fake_provider), TurnRequest(model_id="gemini-2.5-pro", messages=[]))
+
+    assert [(e.type, e.payload) for e in events] == [
+        ("text_delta", {"text": "Hola"}),
+        ("tool_call", {"call_id": "fc_7", "name": "find_customer", "arguments": '{"name": "Ana"}'}),
+        ("tool_call", {"call_id": "gemini_call_1", "name": "list_tables", "arguments": "{}"}),
+        ("finish", {"reason": "tool_use"}),
+    ]
+
+
+async def test_an_answer_cut_short_with_a_call_keeps_why_it_stopped(fake_provider):
+    fake_provider.reply("POST", STREAM, sse=[chunk({"functionCall": {"name": "list_tables"}}, finish="MAX_TOKENS", usage={"promptTokenCount": 9})])
+
+    events = await collect(client(fake_provider), TurnRequest(model_id="gemini-2.5-pro", messages=[]))
+
+    assert [(e.type, e.payload) for e in events] == [
+        ("tool_call", {"call_id": "gemini_call_0", "name": "list_tables", "arguments": "{}"}),
+        ("usage", {"input_tokens": 9, "output_tokens": 0}),
+        ("finish", {"reason": "length"}),
+    ]
+
+
+async def test_an_error_in_the_stream_without_its_code_nor_its_words_can_be_tried_again(fake_provider):
+    fake_provider.reply("POST", STREAM, sse=[chunk({"text": "Ho"}), {"error": {"code": "UNAVAILABLE"}}, chunk({"text": "la"})])
+
+    events = await collect(client(fake_provider), TurnRequest(model_id="gemini-2.5-pro", messages=[]))
+
+    assert [(e.type, e.payload) for e in events] == [
+        ("text_delta", {"text": "Ho"}),
+        ("error", {"message": "gemini: error", "retriable": True, "status": None}),
+        ("finish", {"reason": "error"}),
+    ]
+
+
+async def test_the_list_leaves_out_what_does_not_chat_and_fills_in_what_it_does_not_say(fake_provider):
+    fake_provider.reply(
+        "GET",
+        "/v1beta/models",
+        json={
+            "models": [
+                {"name": "models/gemini-embedding-001", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/imagen-4", "supportedGenerationMethods": ["generateContent"]},
+                {"supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/gemini-2.5-flash-lite"},
+                {"name": "models/gemini-2.5-flash", "supportedGenerationMethods": ["generateContent"]},
+            ]
+        },
+    )
+
+    models = await client(fake_provider).list_models()
+
+    assert [(m.model_id, m.display_name, m.context_window) for m in models] == [("gemini-2.5-flash", "gemini-2.5-flash", 0)]
+    assert len(fake_provider.requests) == 1
