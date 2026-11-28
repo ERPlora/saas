@@ -46,6 +46,15 @@ def _verify(client, code):
     return api_post(client, VERIFY, {"code": code})
 
 
+def _the_code_finds_the_address_taken(client, account) -> None:
+    """The code mailed is typed once another account answers to the address: 409, and the account keeps its own."""
+    response = _verify(client, _code_in(mail.outbox[0]))
+
+    assert (response.status_code, response.json()["error"]["code"]) == (409, "accounts.email_taken")
+    account.refresh_from_db()
+    assert account.email == "ana@example.com"
+
+
 class TestARecentSignInIsNeeded:
     def test_an_old_sign_in_is_asked_for_the_password_and_nothing_is_sent(self, signed_in_long_ago, ana):
         response = api_post(signed_in_long_ago, CHANGE, {"email": NEW})
@@ -199,10 +208,11 @@ class TestTheNewAddressCountsOnlyOnceProven:
 
         assert answers == [2, 1, 0]
 
-    def test_an_account_has_a_budget_of_tries(self, signed_in, ana, monkeypatch):
+    @pytest.mark.parametrize("budget, rate", [("EMAIL_CODE_TRIES_PER_MINUTE", "2/m"), ("EMAIL_CODE_TRIES_PER_HOUR", "2/h")])
+    def test_an_account_has_a_budget_of_tries(self, signed_in, ana, monkeypatch, budget, rate):
         from accounts.services import email_address
 
-        monkeypatch.setattr(email_address, "EMAIL_CODE_TRIES_PER_MINUTE", "2/m")
+        monkeypatch.setattr(email_address, budget, rate)
         api_post(signed_in, CHANGE, {"email": NEW})
         _verify(signed_in, "000000")
         _verify(signed_in, "000001")
@@ -256,11 +266,7 @@ class TestTheNewAddressCountsOnlyOnceProven:
         get_user_model().objects.create_user(email=NEW, password=None)
         monkeypatch.setattr(email_address, "email_belongs_to_another_account", lambda user, email: False)
 
-        response = _verify(signed_in, _code_in(mail.outbox[0]))
-
-        assert (response.status_code, response.json()["error"]["code"]) == (409, "accounts.email_taken")
-        ana.refresh_from_db()
-        assert ana.email == "ana@example.com"
+        _the_code_finds_the_address_taken(signed_in, ana)
 
     def test_only_the_session_that_asked_can_type_the_code(self, signed_in, ana, password):
         api_post(signed_in, CHANGE, {"email": NEW})
@@ -309,11 +315,7 @@ class TestTheNewAddressCountsOnlyOnceProven:
         api_post(signed_in, CHANGE, {"email": NEW})
         get_user_model().objects.create_user(email=NEW, password=None)
 
-        response = _verify(signed_in, _code_in(mail.outbox[0]))
-
-        assert (response.status_code, response.json()["error"]["code"]) == (409, "accounts.email_taken")
-        ana.refresh_from_db()
-        assert ana.email == "ana@example.com"
+        _the_code_finds_the_address_taken(signed_in, ana)
 
     def test_verifying_without_asking_first(self, signed_in):
         response = _verify(signed_in, "123456")
@@ -416,3 +418,100 @@ class TestAllauthsEmailPageIsNotASecondDoor:
 
         assert response.status_code == 404
         assert mail.outbox == []
+
+
+class TestTheAddressAsked:
+    def test_a_look_alike_address_is_kept_in_its_plain_form(self, signed_in):
+        response = api_post(signed_in, CHANGE, {"email": "Ana.Garcia@ｎew.example"})
+
+        assert response.json()["pending_email"] == NEW
+        assert mail.outbox[0].to == [NEW]
+
+    def test_a_full_width_at_sign_is_no_address(self, english, signed_in):
+        """The address is checked as it was typed, before its letters are folded to their plain form."""
+        response = api_post(signed_in, CHANGE, {"email": "ana.garcia＠new.example"})
+
+        assert response.json()["error"]["fields"] == {"email": "Enter a valid email address."}
+        assert mail.outbox == []
+
+    def test_asking_at_once_for_another_address_sends_it_a_code(self, signed_in):
+        """Only a repeat of the same address waits: a corrected typo gets its own code."""
+        api_post(signed_in, CHANGE, {"email": NEW})
+
+        response = api_post(signed_in, CHANGE, {"email": "another@new.example"})
+
+        assert response.json()["pending_email"] == "another@new.example"
+        assert [message.to for message in mail.outbox] == [[NEW], ["another@new.example"]]
+
+    def test_a_code_that_cannot_be_mailed_is_a_503_that_says_so(self, signed_in, monkeypatch):
+        from django.core.mail import EmailMultiAlternatives
+
+        def refuse(self, *args, **kwargs):
+            raise OSError("the mail server is away")
+
+        monkeypatch.setattr(EmailMultiAlternatives, "send", refuse)
+
+        response = api_post(signed_in, CHANGE, {"email": NEW})
+
+        assert (response.status_code, response.json()["error"]["code"]) == (503, "accounts.code_not_sent")
+
+
+class TestTheCodeTyped:
+    def test_spaces_around_the_code_do_not_count(self, signed_in):
+        api_post(signed_in, CHANGE, {"email": NEW})
+
+        assert _verify(signed_in, f" {_code_in(mail.outbox[0])} ").json()["verified"] is True
+
+    def test_the_right_code_after_a_wrong_one_says_the_tries_left(self, signed_in):
+        api_post(signed_in, CHANGE, {"email": NEW})
+        _verify(signed_in, "000000")
+
+        response = _verify(signed_in, _code_in(mail.outbox[0]))
+
+        assert (response.json()["verified"], response.json()["attempts_left"]) == (True, 1)
+
+    def test_the_third_wrong_code_ends_the_change_at_once(self, signed_in):
+        from accounts.models import EmailChangeRequest
+
+        api_post(signed_in, CHANGE, {"email": NEW})
+
+        *_, third = (_verify(signed_in, "000000") for _ in range(3))
+
+        assert third.json()["profile"]["pending_email"] is None
+        assert not EmailChangeRequest.objects.exists()
+
+    def test_a_change_whose_tries_another_request_spent_takes_not_even_the_right_code(self, signed_in, ana):
+        """Two requests at once: the one that finds the tries already spent ends the change."""
+        from accounts.models import EmailChangeRequest
+
+        api_post(signed_in, CHANGE, {"email": NEW})
+        EmailChangeRequest.objects.update(attempts=3)
+
+        response = _verify(signed_in, _code_in(mail.outbox[0]))
+
+        assert (response.status_code, response.json()["error"]["code"]) == (409, "accounts.no_email_change")
+        ana.refresh_from_db()
+        assert ana.email == "ana@example.com"
+
+    def test_an_address_another_account_put_on_record_meanwhile_is_refused(self, signed_in, ana):
+        """Also one it never proved, and in other letter case: the database alone would not stop that one."""
+        from django.contrib.auth import get_user_model
+
+        api_post(signed_in, CHANGE, {"email": NEW})
+        bo = get_user_model().objects.create_user(email="bo@example.com", password=None)
+        EmailAddress.objects.create(user=bo, email=NEW.upper(), verified=False, primary=False)
+
+        _the_code_finds_the_address_taken(signed_in, ana)
+
+    def test_switching_records_an_event_so_the_live_profile_shows_it(self, signed_in):
+        from live.models import OutboxEvent
+
+        from accounts import events
+
+        api_post(signed_in, CHANGE, {"email": NEW})
+        _verify(signed_in, _code_in(mail.outbox[0]))
+
+        assert list(OutboxEvent.objects.values_list("name", flat=True)) == [
+            events.EMAIL_CHANGE_REQUESTED,
+            events.PROFILE_UPDATED,
+        ]

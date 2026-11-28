@@ -60,6 +60,11 @@ def vp8l(width=3, height=2) -> bytes:
     return webp_chunk(b"VP8L", b"\x2f" + struct.pack("<I", bits) + b"\x00\x00\x00")
 
 
+def vp8(width=3, height=2) -> bytes:
+    """A lossy bitstream's key frame header: a frame tag, the start code and the size."""
+    return webp_chunk(b"VP8 ", b"\x00\x00\x00\x9d\x01\x2a" + struct.pack("<HH", width, height))
+
+
 def vp8x(width, height, flags=0) -> bytes:
     canvas = (width - 1).to_bytes(3, "little") + (height - 1).to_bytes(3, "little")
     return webp_chunk(b"VP8X", bytes([flags, 0, 0, 0]) + canvas)
