@@ -93,3 +93,13 @@ def test_the_html_is_in_the_recipients_language_with_the_code_in_its_box():
     html = message.alternatives[0].content
     assert '<html lang="es">' in html
     assert re.search(r'monospace[^>]*>042317</p>', html)
+
+
+def test_a_mail_that_cannot_even_be_made_is_reported_too(monkeypatch, caplog):
+    def broken(*args, **kwargs):
+        raise ValueError("the template is broken")
+
+    monkeypatch.setattr(emails, "branded_message", broken)
+
+    assert emails.send_email_code("ana@new.example", "042317", language="en") is False
+    assert "accounts.mail_failed kind=email_code" in caplog.text
