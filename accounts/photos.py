@@ -15,6 +15,7 @@ import binascii
 import re
 import struct
 import zlib
+from collections.abc import Iterator
 
 #: At most this many bytes (decoded). Shown as a data URL in ``accounts.profile.get``, whose live result must
 #: stay under 256 KB.
@@ -129,59 +130,91 @@ def _entropy_end(data: bytes, start: int) -> int:
             return j
 
 
-def _clean_jpeg(data: bytes) -> bytes:  # noqa: C901, PLR0912
-    """The frame's segments before the first scan (``head``), then the scans with what goes between them
-    (``body``) up to the end marker; nothing after it. Application segments and comments go, wherever they are."""
-    head: list[bytes] = []
-    body: list[bytes] = []
-    orientation = None
-    size = None
-    scanned = False
+def _marker_at(data: bytes, i: int) -> int:
+    """Where the marker that should start at ``i`` starts: past the fill bytes (``0xFF``) a marker may have before it."""
+    if i + 1 >= len(data) or data[i] != 0xFF:
+        raise PhotoRejected("corrupt")
+    while data[i + 1] == 0xFF:
+        i += 1
+        if i + 1 >= len(data):
+            raise PhotoRejected("corrupt")
+    return i
+
+
+def _segment_end(data: bytes, i: int, marker: int) -> int:
+    """Where the segment of ``marker`` at ``i`` ends, by the length in its header. A restart marker or ``TEM`` carries
+    no length and has no place outside a scan."""
+    if 0xD0 <= marker <= 0xD7 or marker == 0x01 or i + 4 > len(data):
+        raise PhotoRejected("corrupt")
+    (length,) = struct.unpack(">H", data[i + 2 : i + 4])
+    end = i + 2 + length
+    if length < 2 or end > len(data):
+        raise PhotoRejected("corrupt")
+    return end
+
+
+def _check_frame(payload: bytes) -> None:
+    if len(payload) < 5:
+        raise PhotoRejected("corrupt")
+    height, width = struct.unpack(">HH", payload[1:5])
+    _check_side(width, height)
+
+
+def _jpeg_segments(data: bytes) -> Iterator[tuple[int, bytes]]:
+    """Each segment after the start marker as ``(marker, its bytes)``, up to the end marker; nothing after it is
+    read. A scan runs to the end of its entropy-coded data, and a frame's size is checked. A scan before any frame,
+    or an end before any scan, is no picture."""
+    framed = scanned = False
     i = 2
     while True:
-        if i + 1 >= len(data) or data[i] != 0xFF:
-            raise PhotoRejected("corrupt")
-        while data[i + 1] == 0xFF:  # fill bytes before a marker
-            i += 1
-            if i + 1 >= len(data):
-                raise PhotoRejected("corrupt")
+        i = _marker_at(data, i)
         marker = data[i + 1]
         if marker == _EOI:
             if not scanned:
-                raise PhotoRejected("corrupt")  # no scan: nothing to show
-            body.append(b"\xff\xd9")
-            break  # whatever follows (a trailer, an archive) is not the picture
-        if 0xD0 <= marker <= 0xD7 or marker == 0x01 or i + 4 > len(data):
-            raise PhotoRejected("corrupt")
-        (length,) = struct.unpack(">H", data[i + 2 : i + 4])
-        end = i + 2 + length
-        if length < 2 or end > len(data):
-            raise PhotoRejected("corrupt")
-        payload = data[i + 4 : end]
+                raise PhotoRejected("corrupt")
+            yield marker, data[i : i + 2]
+            return
+        end = _segment_end(data, i, marker)
+        if marker in _SOF:
+            _check_frame(data[i + 4 : end])
+            framed = True
         if marker == _SOS:
-            if size is None:
+            if not framed:
                 raise PhotoRejected("corrupt")
             scanned = True
-            stop = _entropy_end(data, end)
-            body.append(data[i:stop])
-            i = stop
-            continue
-        if marker in _SOF:
-            if len(payload) < 5:
-                raise PhotoRejected("corrupt")
-            height, width = struct.unpack(">HH", payload[1:5])
-            size = (width, height)
-            _check_side(width, height)
-        if marker == _APP1 and payload.startswith(b"Exif\x00\x00") and not scanned:
-            orientation = exif_orientation(payload[6:]) or orientation
-        dropped = marker == _COM or (0xE0 <= marker <= 0xEF and (scanned or marker not in _KEPT_APP))
-        if not dropped:  # EXIF, XMP, IPTC and the rest of what a camera writes go, and comments
-            (body if scanned else head).append(data[i:end])
+            end = _entropy_end(data, end)
+        yield marker, data[i:end]
         i = end
-    if orientation not in (None, 1):
-        first_is_jfif = bool(head) and head[0][1] == 0xE0
-        head.insert(1 if first_is_jfif else 0, _orientation_segment(orientation))
-    return b"\xff\xd8" + b"".join(head) + b"".join(body)
+
+
+def _dropped(marker: int, scanned: bool) -> bool:
+    """Comments and application segments go: EXIF, XMP, IPTC and the rest of what a camera writes. Before the first
+    scan, JFIF, the colour profile and Adobe's colour transform stay."""
+    return marker == _COM or (0xE0 <= marker <= 0xEF and (scanned or marker not in _KEPT_APP))
+
+
+def _clean_jpeg(data: bytes) -> bytes:
+    """Its segments up to the end marker, without comments nor what a camera writes; a JPEG turned by its EXIF keeps
+    that orientation in a minimal one."""
+    kept: list[bytes] = []
+    orientation = None
+    scanned = False
+    for marker, segment in _jpeg_segments(data):
+        scanned = scanned or marker == _SOS
+        if marker == _APP1 and not scanned and segment[4:].startswith(b"Exif\x00\x00"):
+            orientation = exif_orientation(segment[10:]) or orientation
+        if not _dropped(marker, scanned):
+            kept.append(segment)
+    return b"\xff\xd8" + b"".join(_with_orientation(kept, orientation))
+
+
+def _with_orientation(segments: list[bytes], orientation: int | None) -> list[bytes]:
+    """``segments`` with a minimal EXIF that holds ``orientation``, right after JFIF (which has to come first); an
+    upright photo needs none."""
+    if orientation in (None, 1):
+        return segments
+    at = 1 if segments and segments[0][1] == 0xE0 else 0
+    return [*segments[:at], _orientation_segment(orientation), *segments[at:]]
 
 
 # --- PNG ------------------------------------------------------------------------------------------
@@ -191,10 +224,10 @@ _PNG_KEPT = {b"IHDR", b"PLTE", b"IDAT", b"IEND", b"tRNS", b"gAMA", b"cHRM", b"sR
 _PNG_ANIMATION = {b"acTL", b"fcTL", b"fdAT"}
 
 
-def _clean_png(data: bytes) -> bytes:  # noqa: C901
-    kept = [data[:8]]
+def _png_chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
+    """Each chunk after the signature as ``(kind, its bytes)``, its CRC checked, up to ``IEND``; nothing after it is
+    read."""
     i = 8
-    kinds = []
     while i < len(data):
         if i + 12 > len(data):
             raise PhotoRejected("corrupt")
@@ -203,23 +236,34 @@ def _clean_png(data: bytes) -> bytes:  # noqa: C901
         end = i + 12 + length
         if end > len(data):
             raise PhotoRejected("corrupt")
-        body = data[i + 8 : i + 8 + length]
-        if struct.unpack(">I", data[i + 8 + length : end])[0] != zlib.crc32(kind + body):
+        if struct.unpack(">I", data[end - 4 : end])[0] != zlib.crc32(data[i + 4 : end - 4]):
             raise PhotoRejected("corrupt")
+        yield kind, data[i:end]
+        if kind == b"IEND":
+            return
+        i = end
+
+
+def _check_png_header(kind: bytes, chunk: bytes) -> None:
+    """The first chunk is the header, 13 bytes that start with the size."""
+    if kind != b"IHDR" or len(chunk) != 12 + 13:
+        raise PhotoRejected("corrupt")
+    _check_side(*struct.unpack(">II", chunk[8:16]))
+
+
+def _clean_png(data: bytes) -> bytes:
+    kept = [data[:8]]
+    kinds = []
+    for kind, chunk in _png_chunks(data):
         if not kinds:
-            if kind != b"IHDR" or length != 13:
-                raise PhotoRejected("corrupt")
-            _check_side(*struct.unpack(">II", body[:8]))
+            _check_png_header(kind, chunk)
         if kind in _PNG_ANIMATION:
             raise PhotoRejected("animated")
         if kind in _PNG_KEPT:
-            kept.append(data[i:end])
+            kept.append(chunk)
         elif kind[:1].isupper():
             raise PhotoRejected("corrupt")  # a critical chunk nobody knows: no browser would show it
         kinds.append(kind)
-        i = end
-        if kind == b"IEND":
-            break
     if b"IDAT" not in kinds or kinds[-1:] != [b"IEND"]:
         raise PhotoRejected("corrupt")
     return b"".join(kept)
@@ -246,7 +290,8 @@ def _vp8l_size(body: bytes) -> tuple[int, int]:
     raise PhotoRejected("corrupt")
 
 
-def _clean_webp(data: bytes) -> bytes:  # noqa: C901
+def _webp_chunks(data: bytes) -> list[tuple[bytes, bytes]]:
+    """Every chunk after the RIFF header as ``(kind, its data)``; the RIFF size has to be the file's."""
     (riff_size,) = struct.unpack("<I", data[4:8])
     if riff_size + 8 != len(data) or riff_size < 4:
         raise PhotoRejected("corrupt")
@@ -257,11 +302,15 @@ def _clean_webp(data: bytes) -> bytes:  # noqa: C901
             raise PhotoRejected("corrupt")
         kind = data[i : i + 4]
         (size,) = struct.unpack("<I", data[i + 4 : i + 8])
-        end = i + 8 + size + (size % 2)
+        end = i + 8 + size + (size % 2)  # an odd chunk is padded to an even size
         if end > len(data):
             raise PhotoRejected("corrupt")
         chunks.append((kind, data[i + 8 : i + 8 + size]))
         i = end
+    return chunks
+
+
+def _check_one_still_picture(chunks: list[tuple[bytes, bytes]]) -> None:
     kinds = [kind for kind, _ in chunks]
     if b"ANIM" in kinds or b"ANMF" in kinds:
         raise PhotoRejected("animated")
@@ -270,17 +319,27 @@ def _clean_webp(data: bytes) -> bytes:  # noqa: C901
         raise PhotoRejected("corrupt")
     kind, body = images[0]
     _check_side(*(_vp8_size(body) if kind == b"VP8 " else _vp8l_size(body)))
+
+
+def _vp8x_without_metadata(body: bytes) -> bytes:
+    """The extended header, checked (no animation, a canvas within the limits), saying it holds no EXIF nor XMP."""
+    if len(body) < 10:
+        raise PhotoRejected("corrupt")
+    if body[0] & _VP8X_ANIMATION:
+        raise PhotoRejected("animated")
+    width = int.from_bytes(body[4:7], "little") + 1
+    height = int.from_bytes(body[7:10], "little") + 1
+    _check_side(width, height)
+    return bytes([body[0] & ~(_VP8X_EXIF | _VP8X_XMP)]) + body[1:]
+
+
+def _clean_webp(data: bytes) -> bytes:
+    chunks = _webp_chunks(data)
+    _check_one_still_picture(chunks)
     out = []
     for kind, body in chunks:
         if kind == b"VP8X":
-            if len(body) < 10:
-                raise PhotoRejected("corrupt")
-            if body[0] & _VP8X_ANIMATION:
-                raise PhotoRejected("animated")
-            width = int.from_bytes(body[4:7], "little") + 1
-            height = int.from_bytes(body[7:10], "little") + 1
-            _check_side(width, height)
-            body = bytes([body[0] & ~(_VP8X_EXIF | _VP8X_XMP)]) + body[1:]
+            body = _vp8x_without_metadata(body)
         if kind in _WEBP_KEPT:
             out.append(kind + struct.pack("<I", len(body)) + body + (b"\x00" if len(body) % 2 else b""))
     payload = b"WEBP" + b"".join(out)

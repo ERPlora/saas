@@ -1,23 +1,5 @@
 [
   {
-    "path": "accounts/photos.py",
-    "file_name": "photos.py",
-    "functions": [
-      {
-        "name": "_clean_png",
-        "complexity": 22
-      },
-      {
-        "name": "_clean_webp",
-        "complexity": 25
-      },
-      {
-        "name": "_clean_jpeg",
-        "complexity": 46
-      }
-    ]
-  },
-  {
     "path": "apps/tests/test_lint.py",
     "file_name": "test_lint.py",
     "functions": [
