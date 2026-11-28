@@ -435,6 +435,71 @@ class TestTheBrakeOfTheJump:
         assert client.get(HUB_LOGIN, jump).url == "/login/error?code=too_many"
 
 
+class TestWhatEachJumpLogs:
+    """Each jump leaves one line in the log saying how it ended, with the account and the hub where they are known,
+    and never what came from outside when it was no hub."""
+
+    @staticmethod
+    def _logged(caplog) -> list[tuple[str, str]]:
+        return [(record.levelname, record.getMessage()) for record in caplog.records if record.name == "accounts.handoff"]
+
+    def test_a_link_with_no_hub(self, client, member, caplog):
+        client.get(HUB_LOGIN, {"hub": "evil.example/x", "state": STATE})
+
+        assert self._logged(caplog) == [("WARNING", "hub_login.invalid_hub")]
+
+    def test_a_link_the_hub_never_builds(self, client, member, caplog):
+        client.get(HUB_LOGIN, {"hub": "a", "state": "x" * 129})
+
+        assert self._logged(caplog) == [("WARNING", "hub_login.invalid_link hub=a")]
+
+    def test_one_jump_too_many(self, client, member, settings, caplog):
+        settings.HUB_LOGIN_RATELIMIT = "1/5m"
+        client.get(HUB_LOGIN, {"hub": "a", "state": STATE})
+
+        client.get(HUB_LOGIN, {"hub": "a", "state": STATE})
+
+        assert self._logged(caplog) == [("WARNING", f"hub_login.too_many user={member.pk}")]
+
+    def test_a_member_still_without_the_second_factor(self, client, member, settings, caplog):
+        settings.ACCOUNTS_MFA_ENABLED = True
+        totp_auth.TOTP.activate(member, totp_auth.generate_totp_secret())
+        client.force_login(member)
+
+        client.get(HUB_LOGIN, {"hub": "a", "state": STATE})
+
+        assert self._logged(caplog) == [("INFO", "hub_login.second_factor_required hub=a")]
+
+    def test_a_stranger(self, client, ana, caplog):
+        client.force_login(ana)
+
+        client.get(HUB_LOGIN, {"hub": "a", "state": STATE})
+
+        assert self._logged(caplog) == [("INFO", "hub_login.not_a_member hub=a")]
+
+    def test_the_staff_jump(self, client, password, caplog):
+        staff, _ = platform_staff.create_platform_user("boss@erplora.com", "admin", password)
+        client.force_login(staff)
+
+        client.get(HUB_LOGIN, TestTheJumpToTheHubAdmin.JUMP)
+
+        assert self._logged(caplog) == [("INFO", f"hub_login.hub_admin user={staff.pk} hub=a")]
+
+    def test_the_staff_still_without_the_second_factor(self, client, password, settings, caplog):
+        settings.ACCOUNTS_MFA_ENABLED = True
+        staff, _ = platform_staff.create_platform_user("boss@erplora.com", "admin", password)
+        client.force_login(staff)
+
+        client.get(HUB_LOGIN, TestTheJumpToTheHubAdmin.JUMP)
+
+        assert self._logged(caplog) == [("INFO", f"hub_login.hub_admin.second_factor_required user={staff.pk} hub=a")]
+
+    def test_a_customer_asking_for_the_hub_admin(self, client, member, caplog):
+        client.get(HUB_LOGIN, TestTheJumpToTheHubAdmin.JUMP)
+
+        assert self._logged(caplog) == [("WARNING", f"hub_login.hub_admin.denied user={member.pk}")]
+
+
 class TestLaunch:
     """The launcher is the Vue page ``/launch`` (accounts.hub.list); ``/launch/`` only leads there."""
 
