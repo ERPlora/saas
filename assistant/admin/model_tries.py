@@ -54,17 +54,20 @@ def parse_tools(raw: str) -> list[ToolSpec] | None:
         return None
     if not isinstance(data, list):
         return None
-    tools = []
-    for item in data:
-        spec = item.get("function", item) if isinstance(item, dict) else None
-        name = spec.get("name") if isinstance(spec, dict) else None
-        if not isinstance(name, str) or not name.strip():
-            return None
-        parameters = spec.get("parameters") or {"type": "object", "properties": {}}
-        if not isinstance(parameters, dict):
-            return None
-        tools.append(ToolSpec(name=name.strip(), description=str(spec.get("description") or ""), parameters=parameters))
-    return tools
+    tools = [tool_of(item) for item in data]
+    return None if any(tool is None for tool in tools) else tools
+
+
+def tool_of(item) -> ToolSpec | None:
+    """One tool typed, named, with an object of parameters (none: no parameters); ``None`` if it is not one."""
+    spec = item.get("function", item) if isinstance(item, dict) else None
+    name = spec.get("name") if isinstance(spec, dict) else None
+    if not isinstance(name, str) or not name.strip():
+        return None
+    parameters = spec.get("parameters") or {"type": "object", "properties": {}}
+    if not isinstance(parameters, dict):
+        return None
+    return ToolSpec(name=name.strip(), description=str(spec.get("description") or ""), parameters=parameters)
 
 
 def too_many_tries(request) -> bool:

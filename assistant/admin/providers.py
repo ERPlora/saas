@@ -84,6 +84,18 @@ class AIModelAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at", "updated_at")
 
 
+async def listed_rows(connection) -> tuple[list[dict], str | None]:
+    """The chat models the provider lists, each ticked if it is one of ours already; or why there are none."""
+    try:
+        client = get_provider(kind=connection.kind, api_key=connection.api_key.get_secret_value(), base_url=connection.base_url)
+        listed = await client.list_models()
+    except ProviderError as problem:
+        return [], _("The provider did not give its models: %(reason)s") % {"reason": problem.message}
+    existing = set(connection.existing)
+    rows = [{"model": model, "checked": model.model_id in existing} for model in listed]
+    return rows, None if rows else _("The provider listed no chat models.")
+
+
 @admin.register(AIProvider)
 class AIProviderAdmin(admin.ModelAdmin):
     inlines = [ModelInline]
@@ -118,7 +130,7 @@ class AIProviderAdmin(admin.ModelAdmin):
             *super().get_urls(),
         ]
 
-    async def models_view(self, request, object_id):  # noqa: C901
+    async def models_view(self, request, object_id):
         refused = await staff_gate(self.admin_site, request, CHOOSE_PERMISSIONS)
         if refused is not None:
             return refused
@@ -129,32 +141,22 @@ class AIProviderAdmin(admin.ModelAdmin):
         ctx = await sync_to_async(staff_context)(request)
         if request.method == "POST":
             return await sync_to_async(self._save_choice)(request, ctx, object_id)
-        provider, rows, error = None, [], None
+        provider, rows, error = await self._choice(ctx, object_id)
+        if provider is None:
+            raise Http404
+        return await sync_to_async(self._render_choice)(request, object_id, provider, rows, error)
+
+    async def _choice(self, ctx, object_id):
+        """The provider, the rows of the models it lists and what kept it from listing them."""
         try:
             connection = await sync_to_async(queries.provider_keys.provider_connection)(ctx, ProviderRef(id=object_id))
         except NotFound:
             raise Http404 from None
         except OperationError as problem:
-            error = problem.message
             provider = await sync_to_async(lambda: AIProvider.objects.filter(pk=object_id).first())()
-        else:
-            provider = connection
-        if error is None:
-            try:
-                client = get_provider(
-                    kind=connection.kind, api_key=connection.api_key.get_secret_value(), base_url=connection.base_url
-                )
-                listed = await client.list_models()
-            except ProviderError as problem:
-                error = _("The provider did not give its models: %(reason)s") % {"reason": problem.message}
-            else:
-                existing = set(connection.existing)
-                rows = [{"model": model, "checked": model.model_id in existing} for model in listed]
-                if not rows:
-                    error = _("The provider listed no chat models.")
-        if provider is None:
-            raise Http404
-        return await sync_to_async(self._render_choice)(request, object_id, provider, rows, error)
+            return provider, [], problem.message
+        rows, error = await listed_rows(connection)
+        return connection, rows, error
 
     def _render_choice(self, request, object_id, provider, rows, error):
         context = {

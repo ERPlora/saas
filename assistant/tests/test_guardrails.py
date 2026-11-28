@@ -37,17 +37,24 @@ def may_touch_the_database(relative: str) -> bool:
     return relative in DATABASE_FILES or (len(parts) == 2 and parts[0] in DATABASE_PACKAGES)
 
 
+def is_log_call(node: ast.AST) -> bool:
+    return isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in LOG_CALLS
+
+
+def name_of(node: ast.AST) -> str | None:
+    """The name a variable or an attribute reads."""
+    if isinstance(node, ast.Name):
+        return node.id
+    return node.attr if isinstance(node, ast.Attribute) else None
+
+
 def logged_secrets(source: str) -> list[str]:
     """Every logging call that passes a name or attribute that is a provider's key."""
     found = []
-    for node in ast.walk(ast.parse(source)):
-        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in LOG_CALLS):
-            continue
-        for argument in [*node.args, *(keyword.value for keyword in node.keywords)]:
-            for inner in ast.walk(argument):
-                name = inner.id if isinstance(inner, ast.Name) else inner.attr if isinstance(inner, ast.Attribute) else None
-                if name in SECRETS:
-                    found.append(f"line {node.lineno}: logs {name}")
+    for call in filter(is_log_call, ast.walk(ast.parse(source))):
+        for argument in [*call.args, *(keyword.value for keyword in call.keywords)]:
+            names = (name_of(inner) for inner in ast.walk(argument))
+            found += [f"line {call.lineno}: logs {name}" for name in names if name in SECRETS]
     return found
 
 

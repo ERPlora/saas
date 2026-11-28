@@ -92,57 +92,69 @@ class FakeProvider:
                 return queued.pop(0)
             return self._fallback.get(key)
 
-    def _handler(self):  # noqa: C901
-        fake = self
-
-        class Handler(BaseHTTPRequestHandler):
-            # HTTP/1.0: the end of a body is the end of the connection, as a stream's is.
-            protocol_version = "HTTP/1.0"
-
-            def log_message(self, format, *args):  # noqa: A002 - the stdlib's name
-                return
-
-            def _serve(self):
-                length = int(self.headers.get("Content-Length") or 0)
-                raw = self.rfile.read(length) if length else b""
-                try:
-                    body = json.loads(raw) if raw else None
-                except ValueError:
-                    body = raw.decode(errors="replace")
-                path = self.path.split("?", 1)[0]
-                with fake._lock:
-                    fake.requests.append(
-                        Seen(self.command, self.path, {k.lower(): v for k, v in self.headers.items()}, body)
-                    )
-                reply = fake._next(self.command, path)
-                if reply is None:
-                    reply = Reply(status=404, json={"error": {"message": f"No route {self.command} {path}"}})
-                self.send_response(reply.status)
-                for name, value in reply.headers.items():
-                    self.send_header(name, value)
-                if reply.sse is not None:
-                    self.send_header("Content-Type", "text/event-stream")
-                    self.end_headers()
-                    for event in reply.sse:
-                        self.wfile.write(sse_line(event))
-                        self.wfile.flush()
-                        if reply.delay:
-                            time.sleep(reply.delay)
-                    return
-                if reply.answer is not None:
-                    payload = json.dumps(reply.answer(body)).encode()
-                else:
-                    payload = reply.body if reply.body is not None else json.dumps(reply.json).encode()
-                if "Content-Type" not in reply.headers:
-                    self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(payload)))
-                self.end_headers()
-                self.wfile.write(payload)
-
-            do_GET = _serve
-            do_POST = _serve
+    def _handler(self) -> type[BaseHTTPRequestHandler]:
+        class Handler(ScriptedHandler):
+            fake = self
 
         return Handler
+
+
+class ScriptedHandler(BaseHTTPRequestHandler):
+    """Answers each request with what its ``fake`` scripted for it, and records the request."""
+
+    # HTTP/1.0: the end of a body is the end of the connection, as a stream's is.
+    protocol_version = "HTTP/1.0"
+    fake: FakeProvider
+
+    def log_message(self, format, *args):  # noqa: A002 - the stdlib's name
+        return
+
+    def _serve(self):
+        body = self._body()
+        path = self.path.split("?", 1)[0]
+        with self.fake._lock:
+            self.fake.requests.append(Seen(self.command, self.path, {k.lower(): v for k, v in self.headers.items()}, body))
+        reply = self.fake._next(self.command, path)
+        if reply is None:
+            reply = Reply(status=404, json={"error": {"message": f"No route {self.command} {path}"}})
+        self.send_response(reply.status)
+        for name, value in reply.headers.items():
+            self.send_header(name, value)
+        if reply.sse is not None:
+            self._stream(reply)
+        else:
+            self._answer(reply, body)
+
+    def _body(self) -> Any:
+        length = int(self.headers.get("Content-Length") or 0)
+        raw = self.rfile.read(length) if length else b""
+        try:
+            return json.loads(raw) if raw else None
+        except ValueError:
+            return raw.decode(errors="replace")
+
+    def _stream(self, reply: Reply) -> None:
+        self.send_header("Content-Type", "text/event-stream")
+        self.end_headers()
+        for event in reply.sse:
+            self.wfile.write(sse_line(event))
+            self.wfile.flush()
+            if reply.delay:
+                time.sleep(reply.delay)
+
+    def _answer(self, reply: Reply, body: Any) -> None:
+        if reply.answer is not None:
+            payload = json.dumps(reply.answer(body)).encode()
+        else:
+            payload = reply.body if reply.body is not None else json.dumps(reply.json).encode()
+        if "Content-Type" not in reply.headers:
+            self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    do_GET = _serve
+    do_POST = _serve
 
 
 def openai_chunk(content: str | None = None, *, finish: str | None = None, tool_calls=None, usage=None) -> dict:
