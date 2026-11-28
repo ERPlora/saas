@@ -235,6 +235,15 @@ async def test_a_pdf_goes_as_a_document_block(fake_provider):
     ]
 
 
+async def test_an_answer_that_gives_no_counts_has_no_usage(fake_provider):
+    text = {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "Hi"}}
+    fake_provider.reply("POST", "/v1/messages", sse=stream(text, {"type": "message_stop"}))
+
+    events = await collect(client(fake_provider), TurnRequest(model_id="claude-sonnet-4-6", messages=[]))
+
+    assert [(e.type, e.payload) for e in events] == [("text_delta", {"text": "Hi"}), ("finish", {"reason": "stop"})]
+
+
 @pytest.mark.parametrize(("raw", "reason"), [("max_tokens", "length"), ("stop_sequence", "stop"), ("refusal", "content_filter"), ("end_turn", "stop")])
 async def test_the_end_of_the_answer_is_named_alike(fake_provider, raw, reason):
     fake_provider.reply("POST", "/v1/messages", sse=stream({"type": "message_delta", "delta": {"stop_reason": raw}, "usage": {"output_tokens": 1}}, {"type": "message_stop"}))
