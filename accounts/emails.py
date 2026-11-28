@@ -7,8 +7,11 @@ and reported to the caller (``False``), never raised; the code itself is never l
 """
 
 import logging
+from collections.abc import Callable
+from functools import partial
 
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 from django.utils import translation
 from django.utils.translation import gettext as _
 
@@ -20,9 +23,10 @@ logger = logging.getLogger(__name__)
 CODE_MINUTES = 15
 
 
-def _send(subject: str, lines: list[str], to: str, kind: str, *, language: str, code: str | None = None) -> bool:  # noqa: PLR0913
+def _send(kind: str, message: Callable[[], EmailMultiAlternatives]) -> bool:
+    """Build the mail and send it; if either fails, the failure is logged as ``kind`` and answered ``False``."""
     try:
-        branded_message(subject, lines, [to], language=language, code=code).send()
+        message().send()
     except Exception:  # noqa: BLE001 - any failure of the mail backend is reported, not raised
         logger.exception("accounts.mail_failed kind=%s", kind)
         return False
@@ -41,7 +45,7 @@ def send_email_code(email: str, code: str, *, language: str) -> bool:
             _("It works for %(minutes)s minutes. If you did not ask for it, ignore this mail: nothing changes.")
             % {"minutes": CODE_MINUTES},
         ]
-    return _send(subject, lines, email, "email_code", language=language, code=code)
+    return _send("email_code", partial(branded_message, subject, lines, [email], language=language, code=code))
 
 
 def send_email_changed(old_email: str, new_email: str, *, language: str) -> bool:
@@ -53,7 +57,7 @@ def send_email_changed(old_email: str, new_email: str, *, language: str) -> bool
             "",
             _("If you did not change it, write to %(support)s at once.") % {"support": settings.SUPPORT_EMAIL},
         ]
-    return _send(subject, lines, old_email, "email_changed", language=language)
+    return _send("email_changed", partial(branded_message, subject, lines, [old_email], language=language))
 
 
 def send_api_key_created(email: str, name: str, scopes: list[str], *, language: str) -> bool:
@@ -69,7 +73,7 @@ def send_api_key_created(email: str, name: str, scopes: list[str], *, language: 
             _("If you did not create it, revoke it in Account → API keys and write to %(support)s at once.")
             % {"support": settings.SUPPORT_EMAIL},
         ]
-    return _send(subject, lines, email, "api_key_created", language=language)
+    return _send("api_key_created", partial(branded_message, subject, lines, [email], language=language))
 
 
 def send_support_report(user, *, subject: str, description: str, context: list[tuple[str, str]]) -> bool:
@@ -77,11 +81,7 @@ def send_support_report(user, *, subject: str, description: str, context: list[t
     with «Reply». In English, as the contact form's: it is the team's mail, not the account's. ``context`` is what goes
     under the text (the account, its businesses, the page, the browser). The text itself is never logged."""
     lines = [description, "", "---", *(f"{label}: {value}" for label, value in context)]
-    try:
-        branded_message(
-            f"[Support] {subject}", lines, [settings.SUPPORT_EMAIL], language="en", reply_to=[user.email]
-        ).send()
-    except Exception:  # noqa: BLE001 - any failure of the mail backend is reported, not raised
-        logger.exception("accounts.mail_failed kind=support_report")
-        return False
-    return True
+    report = partial(
+        branded_message, f"[Support] {subject}", lines, [settings.SUPPORT_EMAIL], language="en", reply_to=[user.email]
+    )
+    return _send("support_report", report)

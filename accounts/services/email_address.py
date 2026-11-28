@@ -61,6 +61,24 @@ def _hash_code(code: str) -> str:
     return hashlib.sha256(code.encode()).hexdigest()
 
 
+def _typed_email(request, value: str) -> str:
+    """``value`` as the account would keep it (allauth's cleaning folds it to its plain form), or a 422 on the email:
+    an address as typed, and one that fits the account."""
+    from allauth.account.adapter import get_adapter
+    from django.core.exceptions import ValidationError
+    from django.core.validators import validate_email
+
+    email = value.strip().lower()
+    try:
+        validate_email(email)
+        email = get_adapter(request).clean_email(email)
+    except ValidationError:
+        raise _email_refused(gettext("Enter a valid email address.")) from None
+    if len(email) > get_user_model()._meta.get_field("email").max_length:
+        raise _email_refused(gettext("Enter a valid email address."))
+    return email
+
+
 def _no_email_change() -> Conflict:
     return Conflict(
         gettext("There is no change of email waiting for a code: ask for a new one."), code="accounts.no_email_change"
@@ -75,7 +93,7 @@ def _no_email_change() -> Conflict:
     output=ProfileOut,
     ai=INTERNAL,  # reauthentication
 )
-def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:  # noqa: C901
+def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:
     """Mail a 6-digit code to the new address; the account switches to it once the code is typed in this same
     session (``accounts.email.verify``), and until then it keeps answering to the old one. The change
     waits in ``EmailChangeRequest`` (bound to this session, the code kept as its hash). The account's own address,
@@ -86,10 +104,7 @@ def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:  # noqa: C
     for neither. Always allauth's budget for an account's addresses (429 ``accounts.too_many_attempts``) and three
     codes an hour per address (429 ``accounts.too_many_codes``).
     """
-    from allauth.account.adapter import get_adapter
     from allauth.core import ratelimit
-    from django.core.exceptions import ValidationError
-    from django.core.validators import validate_email
 
     user = account_lookup.account_of(ctx)
     if data.email.strip().lower() != user.email.lower():
@@ -104,14 +119,7 @@ def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:  # noqa: C
     request = ctx.request
     if not ratelimit.consume(request, action="manage_email", user=user):
         raise too_many_attempts()
-    email = data.email.strip().lower()
-    try:
-        validate_email(email)
-        email = get_adapter(request).clean_email(email)
-    except ValidationError:
-        raise _email_refused(gettext("Enter a valid email address.")) from None
-    if len(email) > get_user_model()._meta.get_field("email").max_length:
-        raise _email_refused(gettext("Enter a valid email address."))
+    email = _typed_email(request, data.email)
     if email == user.email.lower() and ways_in.email_is_proven(user, user.email):
         raise _email_refused(gettext("That is already your email."))
     if email_belongs_to_another_account(user, email):
@@ -151,6 +159,22 @@ def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:  # noqa: C
     return account_profile.profile_of(user, request)
 
 
+def _spend_a_try(request, user, change: EmailChangeRequest) -> int:
+    """Spend one try of ``change`` before its code is compared, and say how many it has spent: within the account's
+    budget a minute and an hour (429), and one conditional ``UPDATE`` that two requests at once cannot both pass
+    on the last try."""
+    from django.db.models import F
+
+    for rate in (EMAIL_CODE_TRIES_PER_MINUTE, EMAIL_CODE_TRIES_PER_HOUR):
+        if _spent(request, rate, f"accounts.email_code.tries.{rate}", f"user:{user.pk}"):
+            raise too_many_attempts()
+    tries = EmailChangeRequest.objects.filter(pk=change.pk, attempts__lt=EMAIL_CODE_ATTEMPTS)
+    if not tries.update(attempts=F("attempts") + 1):
+        EmailChangeRequest.objects.filter(pk=change.pk).delete()
+        raise _no_email_change()
+    return EmailChangeRequest.objects.filter(pk=change.pk).values_list("attempts", flat=True).get()
+
+
 @operation(
     "accounts.email.verify",
     kind="command",
@@ -160,7 +184,7 @@ def email_change(ctx: OperationContext, data: EmailChangeIn) -> dict:  # noqa: C
     repeatable=True,  # Its database, and its tries once per request (_spent): a cut before the COMMIT runs it again.
     ai=INTERNAL,  # reauthentication
 )
-def email_verify(ctx: OperationContext, data: EmailVerifyIn) -> dict:  # noqa: C901
+def email_verify(ctx: OperationContext, data: EmailVerifyIn) -> dict:
     """The code mailed by ``accounts.email.change``, typed in the session that asked for it: the account answers to
     the new address from now on, proven (its only address on record), and the old one is told.
 
@@ -173,21 +197,13 @@ def email_verify(ctx: OperationContext, data: EmailVerifyIn) -> dict:  # noqa: C
     from allauth.account.models import EmailAddress
     from allauth.account.signals import email_changed
     from django.db import IntegrityError
-    from django.db.models import F
 
     user = account_lookup.account_of(ctx)
     request = ctx.request
     change = account_profile.email_change_of(user, request)
     if change is None:
         raise _no_email_change()
-    for rate in (EMAIL_CODE_TRIES_PER_MINUTE, EMAIL_CODE_TRIES_PER_HOUR):
-        if _spent(request, rate, f"accounts.email_code.tries.{rate}", f"user:{user.pk}"):
-            raise too_many_attempts()
-    tries = EmailChangeRequest.objects.filter(pk=change.pk, attempts__lt=EMAIL_CODE_ATTEMPTS)
-    if not tries.update(attempts=F("attempts") + 1):
-        EmailChangeRequest.objects.filter(pk=change.pk).delete()
-        raise _no_email_change()
-    attempts = EmailChangeRequest.objects.filter(pk=change.pk).values_list("attempts", flat=True).get()
+    attempts = _spend_a_try(request, user, change)
     if not hmac.compare_digest(change.code_hash, _hash_code(data.code.strip())):
         left = max(EMAIL_CODE_ATTEMPTS - attempts, 0)
         if not left:

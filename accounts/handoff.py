@@ -102,7 +102,7 @@ def reauthenticate_url(next_path: str) -> str:
 
 @require_GET
 @never_cache
-def hub_login(request: HttpRequest) -> HttpResponse:  # noqa: PLR0911
+def hub_login(request: HttpRequest) -> HttpResponse:
     slug = request.GET.get("hub", "")
     audience = request.GET.get("audience", AuthExchangeCode.HUB_SESSION_AUDIENCE)
     state = request.GET.get("state", "")
@@ -124,21 +124,8 @@ def hub_login(request: HttpRequest) -> HttpResponse:  # noqa: PLR0911
     staff_jump = audience == AuthExchangeCode.HUB_ADMIN_AUDIENCE
     try:
         code = hub_jump.issue_code(request.user, slug, audience=audience, second_factor=mfa.mfa_completed(request))
-    except hub_jump.SecondFactorRequired:
-        if staff_jump:
-            logger.info("hub_login.hub_admin.second_factor_required user=%s hub=%s", request.user.pk, slug)
-            messages.error(request, REFUSED_WITHOUT_SECOND_FACTOR)
-            return redirect("accounts_hubs")
-        logger.info("hub_login.second_factor_required hub=%s", slug)
-        return HttpResponseRedirect(reauthenticate_url(request.get_full_path()))
-    except hub_jump.HubAccessDenied:
-        if staff_jump:
-            # Signed in without a platform role: 403, never a login.
-            logger.warning("hub_login.hub_admin.denied user=%s", request.user.pk)
-            raise PermissionDenied from None
-        # The page names only the hub's HOST (the person came from it), never its business name.
-        logger.info("hub_login.not_a_member hub=%s", slug)
-        return HttpResponseRedirect(login_error_url("not_a_member", hub=slug))
+    except (hub_jump.SecondFactorRequired, hub_jump.HubAccessDenied) as refusal:
+        return _refused_jump(request, slug, refusal, staff_jump=staff_jump)
     if staff_jump:
         logger.info("hub_login.hub_admin user=%s hub=%s", request.user.pk, slug)
     context = {
@@ -153,6 +140,24 @@ def hub_login(request: HttpRequest) -> HttpResponse:  # noqa: PLR0911
     response = render(request, "accounts/hub_login_form.html", context)
     response["Referrer-Policy"] = "no-referrer"
     return response
+
+
+def _refused_jump(request: HttpRequest, slug: str, refusal: Exception, *, staff_jump: bool) -> HttpResponse:
+    """Where a jump goes that may not mint a code. Without the second factor, the staff go back to «Hubs» of the admin
+    with a message and a member to its code, then here again. Without access, the staff get a 403, never a login, and
+    a member the page that names only the hub's host (the person came from it), never its business name."""
+    if isinstance(refusal, hub_jump.SecondFactorRequired):
+        if staff_jump:
+            logger.info("hub_login.hub_admin.second_factor_required user=%s hub=%s", request.user.pk, slug)
+            messages.error(request, REFUSED_WITHOUT_SECOND_FACTOR)
+            return redirect("accounts_hubs")
+        logger.info("hub_login.second_factor_required hub=%s", slug)
+        return HttpResponseRedirect(reauthenticate_url(request.get_full_path()))
+    if staff_jump:
+        logger.warning("hub_login.hub_admin.denied user=%s", request.user.pk)
+        raise PermissionDenied from None
+    logger.info("hub_login.not_a_member hub=%s", slug)
+    return HttpResponseRedirect(login_error_url("not_a_member", hub=slug))
 
 
 @require_GET
