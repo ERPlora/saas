@@ -18,6 +18,7 @@ from assistant.providers.base import (
     Provider,
     ProviderEvent,
     TurnRequest,
+    closing_events,
     error_event,
     finish_event,
     redact,
@@ -28,6 +29,48 @@ from assistant.providers.base import (
 NOT_CHAT = ("embedding", "whisper", "tts", "dall-e", "moderation", "davinci", "babbage", "realtime", "transcribe", "image", "audio", "sora", "search")
 FINISH_REASONS = {"stop": "stop", "tool_calls": "tool_use", "function_call": "tool_use", "length": "length", "content_filter": "content_filter"}
 NEWER_MODELS = ("o1", "o3", "o4", "gpt-5")
+
+
+class Answer:
+    """What a streamed answer said so far: the fragments of the tools it is asking for, its counts and why it stopped."""
+
+    def __init__(self) -> None:
+        self.fragments: dict[int, dict[str, str]] = {}
+        self.usage: dict[str, int] = {}
+        self.reason = "stop"
+
+    def read(self, chunk: dict) -> list[str]:
+        """Take ``chunk`` in; the pieces of text it adds to the answer."""
+        if chunk.get("usage"):
+            self.usage = {
+                "input_tokens": int(chunk["usage"].get("prompt_tokens") or 0),
+                "output_tokens": int(chunk["usage"].get("completion_tokens") or 0),
+            }
+        texts = []
+        for choice in chunk.get("choices") or []:
+            if choice.get("finish_reason"):
+                self.reason = FINISH_REASONS.get(choice["finish_reason"], "stop")
+            delta = choice.get("delta") or {}
+            if delta.get("content"):
+                texts.append(delta["content"])
+            for piece in delta.get("tool_calls") or []:
+                self.add(piece)
+        return texts
+
+    def add(self, piece: dict) -> None:
+        """A streamed piece of a tool call, added to what came before of the call of its index."""
+        fragment = self.fragments.setdefault(int(piece.get("index") or 0), {"id": "", "name": "", "arguments": ""})
+        fragment["id"] += piece.get("id") or ""
+        function = piece.get("function") or {}
+        fragment["name"] += function.get("name") or ""
+        fragment["arguments"] += function.get("arguments") or ""
+
+    def calls(self) -> list[dict[str, str]]:
+        """The tool calls, whole, in the order they were asked."""
+        return [
+            {"call_id": fragment["id"], "name": fragment["name"], "arguments": Provider.normalize_tool_arguments(fragment["arguments"])}
+            for _, fragment in sorted(self.fragments.items())
+        ]
 
 
 class OpenAIProvider(Provider):
@@ -64,10 +107,8 @@ class OpenAIProvider(Provider):
             ]
         return f"{self.base_url}/chat/completions", self.headers(), body
 
-    async def parse_stream(self, response: httpx.Response, req: TurnRequest) -> AsyncIterator[ProviderEvent]:  # noqa: C901
-        fragments: dict[int, dict[str, str]] = {}
-        usage: dict[str, int] = {}
-        reason = "stop"
+    async def parse_stream(self, response: httpx.Response, req: TurnRequest) -> AsyncIterator[ProviderEvent]:
+        answer = Answer()
         async for _, data in sse_events(response):
             if data.strip() == "[DONE]":
                 break
@@ -80,34 +121,10 @@ class OpenAIProvider(Provider):
                 yield error_event(f"{self.kind}: {message}", retriable=True)
                 yield finish_event("error")
                 return
-            if chunk.get("usage"):
-                usage = {
-                    "input_tokens": int(chunk["usage"].get("prompt_tokens") or 0),
-                    "output_tokens": int(chunk["usage"].get("completion_tokens") or 0),
-                }
-            for choice in chunk.get("choices") or []:
-                if choice.get("finish_reason"):
-                    reason = FINISH_REASONS.get(choice["finish_reason"], "stop")
-                delta = choice.get("delta") or {}
-                if delta.get("content"):
-                    yield ProviderEvent("text_delta", {"text": delta["content"]})
-                for piece in delta.get("tool_calls") or []:
-                    fragment = fragments.setdefault(int(piece.get("index") or 0), {"id": "", "name": "", "arguments": ""})
-                    fragment["id"] += piece.get("id") or ""
-                    function = piece.get("function") or {}
-                    fragment["name"] += function.get("name") or ""
-                    fragment["arguments"] += function.get("arguments") or ""
-        for index in sorted(fragments):
-            fragment = fragments[index]
-            yield ProviderEvent(
-                "tool_call",
-                {"call_id": fragment["id"], "name": fragment["name"], "arguments": self.normalize_tool_arguments(fragment["arguments"])},
-            )
-        if usage:
-            yield ProviderEvent("usage", usage)
-        if fragments and reason == "stop":
-            reason = "tool_use"
-        yield finish_event(reason)
+            for text in answer.read(chunk):
+                yield ProviderEvent("text_delta", {"text": text})
+        for event in closing_events(answer.calls(), answer.usage, answer.reason):
+            yield event
 
     def is_chat_model(self, model_id: str) -> bool:
         lowered = model_id.lower()

@@ -21,6 +21,7 @@ from assistant.providers.base import (
     Provider,
     ProviderEvent,
     TurnRequest,
+    closing_events,
     error_event,
     finish_event,
     is_retriable_status,
@@ -62,6 +63,82 @@ def finish_reason(raw: str) -> str:
     return "stop"
 
 
+def merge_turns(contents: list[dict]) -> list[dict]:
+    """One content per turn: consecutive contents of one role become one with all their parts."""
+    merged: list[dict] = []
+    for item in contents:
+        if merged and merged[-1]["role"] == item["role"]:
+            merged[-1] = {"role": item["role"], "parts": merged[-1]["parts"] + item["parts"]}
+        else:
+            merged.append(item)
+    return merged
+
+
+def response_of(content: Any) -> dict:
+    """A tool's result as the object of a ``functionResponse``: its JSON if that is an object, else ``{"result": …}``."""
+    try:
+        response = json.loads(content) if isinstance(content, str) else content
+    except ValueError:
+        response = {"result": content}
+    return response if isinstance(response, dict) else {"result": response}
+
+
+def chat_model(item: dict) -> DiscoveredModel | None:
+    """A model of Gemini's list, if it generates content and is of no family that does not chat (``NOT_CHAT``)."""
+    model_id = str(item.get("name") or "").removeprefix("models/")
+    if not model_id or "generateContent" not in (item.get("supportedGenerationMethods") or []):
+        return None
+    if any(family in model_id.lower() for family in NOT_CHAT):
+        return None
+    return DiscoveredModel(
+        model_id=model_id,
+        display_name=item.get("displayName") or model_id,
+        context_window=int(item.get("inputTokenLimit") or 0),
+    )
+
+
+class Answer:
+    """What a streamed answer said so far: the tools it asked for, its counts and why it stopped."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, str]] = []
+        self.usage: dict[str, int] = {}
+        self.reason = "stop"
+
+    def read(self, chunk: dict) -> list[str]:
+        """Take ``chunk`` in; the pieces of text it adds to the answer."""
+        texts = []
+        for candidate in chunk.get("candidates") or []:
+            if candidate.get("finishReason"):
+                self.reason = finish_reason(str(candidate["finishReason"]))
+            for part in (candidate.get("content") or {}).get("parts") or []:
+                if text := self.take(part):
+                    texts.append(text)
+        self.count(chunk.get("usageMetadata"))
+        return texts
+
+    def take(self, part: dict) -> str:
+        """The text of ``part``, none for a thought; the tool call it carries is kept for the end."""
+        call = part.get("functionCall")
+        if call and call.get("name"):
+            self.calls.append(
+                {
+                    "call_id": call.get("id") or f"gemini_call_{len(self.calls)}",
+                    "name": call["name"],
+                    "arguments": Provider.normalize_tool_arguments(call.get("args") or {}),
+                }
+            )
+        return "" if part.get("thought") else part.get("text") or ""
+
+    def count(self, metadata: dict | None) -> None:
+        """Gemini's counts so far: a later one replaces the earlier, and the output includes its thoughts."""
+        if metadata:
+            self.usage = {
+                "input_tokens": int(metadata.get("promptTokenCount") or 0),
+                "output_tokens": int(metadata.get("candidatesTokenCount") or 0) + int(metadata.get("thoughtsTokenCount") or 0),
+            }
+
+
 class GeminiProvider(Provider):
     kind = "gemini"
 
@@ -75,48 +152,40 @@ class GeminiProvider(Provider):
         inline = self.inline_data(part)
         return None if inline is None else {"inlineData": {"mimeType": inline[0], "data": inline[1]}}
 
-    def to_contents(self, messages: list[dict]) -> tuple[str, list[dict]]:  # noqa: C901, PLR0912
+    def to_contents(self, messages: list[dict]) -> tuple[str, list[dict]]:
         system, rest = self.split_system_messages(messages)
         names: dict[str, str] = {}
         contents: list[dict] = []
         for message in rest:
             role = message.get("role")
-            content = message.get("content", "")
             if role == "user":
-                if isinstance(content, list):
-                    parts = [piece for piece in map(self.user_part, content) if piece is not None]
-                else:
-                    parts = [{"text": content}]
-                contents.append({"role": "user", "parts": parts})
+                contents.append(self.user_content(message.get("content", "")))
             elif role == "assistant":
-                parts = []
-                if content:
-                    parts.append({"text": content})
-                for call in message.get("tool_calls") or []:
-                    function = call.get("function") or {}
-                    names[call.get("id", "")] = function.get("name", "")
-                    try:
-                        arguments = json.loads(function.get("arguments") or "{}")
-                    except (TypeError, ValueError):
-                        arguments = {}
-                    parts.append({"functionCall": {"name": function.get("name", ""), "args": arguments}})
-                contents.append({"role": "model", "parts": parts or [{"text": ""}]})
+                contents.append(self.model_content(message, names))
             elif role == "tool":
-                name = message.get("name") or names.get(message.get("tool_call_id", ""), "")
-                try:
-                    response = json.loads(content) if isinstance(content, str) else content
-                except ValueError:
-                    response = {"result": content}
-                if not isinstance(response, dict):
-                    response = {"result": response}
-                contents.append({"role": "user", "parts": [{"functionResponse": {"name": name, "response": response}}]})
-        merged: list[dict] = []
-        for item in contents:
-            if merged and merged[-1]["role"] == item["role"]:
-                merged[-1] = {"role": item["role"], "parts": merged[-1]["parts"] + item["parts"]}
-            else:
-                merged.append(item)
-        return system, merged
+                contents.append(self.tool_content(message, names))
+        return system, merge_turns(contents)
+
+    def user_content(self, content: str | list) -> dict:
+        if isinstance(content, list):
+            return {"role": "user", "parts": [piece for piece in map(self.user_part, content) if piece is not None]}
+        return {"role": "user", "parts": [{"text": content}]}
+
+    def model_content(self, message: dict, names: dict[str, str]) -> dict:
+        """What the assistant said and the tools it called; ``names`` learns the tool of each call."""
+        parts: list[dict] = [{"text": message["content"]}] if message.get("content") else []
+        for call in message.get("tool_calls") or []:
+            function = call.get("function") or {}
+            names[call.get("id", "")] = function.get("name", "")
+            parts.append({"functionCall": {"name": function.get("name", ""), "args": self.loaded_arguments(function)}})
+        return {"role": "model", "parts": parts or [{"text": ""}]}
+
+    @staticmethod
+    def tool_content(message: dict, names: dict[str, str]) -> dict:
+        """A tool's result, named after the tool of the call it answers."""
+        name = message.get("name") or names.get(message.get("tool_call_id", ""), "")
+        response = response_of(message.get("content", ""))
+        return {"role": "user", "parts": [{"functionResponse": {"name": name, "response": response}}]}
 
     def chat_request(self, req: TurnRequest) -> tuple[str, dict[str, str], dict[str, Any]]:
         system, contents = self.to_contents(req.messages)
@@ -140,50 +209,27 @@ class GeminiProvider(Provider):
         url = f"{self.base_url}/v1beta/models/{quote(req.model_id, safe='-._')}:streamGenerateContent?alt=sse"
         return url, self.headers(), body
 
-    async def parse_stream(self, response: httpx.Response, req: TurnRequest) -> AsyncIterator[ProviderEvent]:  # noqa: C901
-        calls: list[dict[str, str]] = []
-        usage: dict[str, int] = {}
-        reason = "stop"
+    async def parse_stream(self, response: httpx.Response, req: TurnRequest) -> AsyncIterator[ProviderEvent]:
+        answer = Answer()
         async for _, data in sse_events(response):
             try:
                 chunk = json.loads(data)
             except ValueError:
                 continue
             if isinstance(chunk.get("error"), dict):
-                error = chunk["error"]
-                status = error.get("code") if isinstance(error.get("code"), int) else None
-                message = redact(str(error.get("message") or "error"), self.api_key)
-                yield error_event(f"{self.kind}: {message}", retriable=is_retriable_status(status), status=status)
+                yield self.stream_error(chunk["error"])
                 yield finish_event("error")
                 return
-            for candidate in chunk.get("candidates") or []:
-                if candidate.get("finishReason"):
-                    reason = finish_reason(str(candidate["finishReason"]))
-                for part in (candidate.get("content") or {}).get("parts") or []:
-                    if part.get("text") and not part.get("thought"):
-                        yield ProviderEvent("text_delta", {"text": part["text"]})
-                    call = part.get("functionCall")
-                    if call and call.get("name"):
-                        calls.append(
-                            {
-                                "call_id": call.get("id") or f"gemini_call_{len(calls)}",
-                                "name": call["name"],
-                                "arguments": self.normalize_tool_arguments(call.get("args") or {}),
-                            }
-                        )
-            metadata = chunk.get("usageMetadata")
-            if metadata:
-                usage = {
-                    "input_tokens": int(metadata.get("promptTokenCount") or 0),
-                    "output_tokens": int(metadata.get("candidatesTokenCount") or 0) + int(metadata.get("thoughtsTokenCount") or 0),
-                }
-        for call in calls:
-            yield ProviderEvent("tool_call", call)
-        if usage:
-            yield ProviderEvent("usage", usage)
-        if calls and reason == "stop":
-            reason = "tool_use"
-        yield finish_event(reason)
+            for text in answer.read(chunk):
+                yield ProviderEvent("text_delta", {"text": text})
+        for event in closing_events(answer.calls, answer.usage, answer.reason):
+            yield event
+
+    def stream_error(self, error: dict) -> ProviderEvent:
+        """The ``error`` event of a failure the stream announced, with its status when it gives one."""
+        status = error.get("code") if isinstance(error.get("code"), int) else None
+        message = redact(str(error.get("message") or "error"), self.api_key)
+        return error_event(f"{self.kind}: {message}", retriable=is_retriable_status(status), status=status)
 
     async def list_models(self) -> list[DiscoveredModel]:
         found: dict[str, DiscoveredModel] = {}
@@ -191,17 +237,8 @@ class GeminiProvider(Provider):
         for _ in range(50):
             url = f"{self.base_url}/v1beta/models?pageSize=1000" + (f"&pageToken={quote(token)}" if token else "")
             page = await self.get_json(url, self.headers()) or {}
-            for item in page.get("models") or []:
-                model_id = str(item.get("name") or "").removeprefix("models/")
-                if not model_id or "generateContent" not in (item.get("supportedGenerationMethods") or []):
-                    continue
-                if any(family in model_id.lower() for family in NOT_CHAT):
-                    continue
-                found[model_id] = DiscoveredModel(
-                    model_id=model_id,
-                    display_name=item.get("displayName") or model_id,
-                    context_window=int(item.get("inputTokenLimit") or 0),
-                )
+            for model in filter(None, map(chat_model, page.get("models") or [])):
+                found[model.model_id] = model
             token = page.get("nextPageToken") or ""
             if not token:
                 break
