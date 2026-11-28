@@ -4,19 +4,23 @@ name: ci
 # check `test / test` before it reaches pre, which requires it: pre only moves fast-forward to a commit
 # that already passed it. main and pre run the same tests inside deploy.yml. No paths filter: a commit
 # without the check could not reach pre. The repo is public: no pull_request trigger, so a fork never
-# runs this workflow.
+# runs this workflow. The merge queue runs the tests once more for each change, on top of main and of the
+# changes ahead of it in the queue, before it merges: the event merge_group.
 
 on:
   push:
-    branches-ignore: [main, pre]
+    # gh-readonly-queue/**: the queue's own branches, already tested by their merge_group run.
+    branches-ignore: [main, pre, gh-readonly-queue/**]
+  merge_group:
 
 permissions:
   contents: read
 
-# A newer push to the same branch supersedes the run of the older one.
+# A newer push to the same branch supersedes the run of the older one. Each entry of the merge queue has a
+# ref of its own, and its run is never cancelled here: the queue stops the ones it drops.
 concurrency:
   group: ci-${{ github.repository }}-${{ github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
   test:

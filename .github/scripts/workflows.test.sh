@@ -236,12 +236,22 @@ check("setup-uv caches by uv.lock",
                              and (step.get("with") or {}).get("cache-dependency-glob") == "uv.lock"
                              for step in setup_uv))
 
-# --- ci.yml: a newer push supersedes the run of the older one -----------------------------------
+# --- ci.yml: every working branch and the merge queue; a newer push supersedes the run of the older one ---
 check("ci.yml runs test.yml", (ci.get("jobs", {}).get("test") or {}).get("uses") == "./.github/workflows/test.yml")
+check("ci.yml's only job is test, so the check main requires is still «test / test»", list(ci.get("jobs", {})) == ["test"])
+ci_on = ci.get(True) or {}
+check("ci.yml runs for the merge queue (merge_group), which waits for «test / test» before it merges",
+      "merge_group" in ci_on)
+# The queue tests each entry on a branch of its own, gh-readonly-queue/<base>/pr-<n>-<sha>, and a push to it would start
+# a second run of the same commit beside the merge_group one.
+check("a push runs ci.yml on every branch but main, pre and the merge queue's own (gh-readonly-queue/**)",
+      (ci_on.get("push") or {}) == {"branches-ignore": ["main", "pre", "gh-readonly-queue/**"]})
+# Each entry of the queue has a ref of its own, so its run is never in the group of another entry's or of a branch's;
+# and only a push cancels: the queue itself stops the runs of the entries it drops.
 ci_lock = ci.get("concurrency") or {}
-check("ci.yml cancels the run of an older push to the same branch",
+check("ci.yml cancels the run of an older push to the same branch, never a run of the merge queue",
       ci_lock.get("group") == "ci-${{ github.repository }}-${{ github.ref_name }}"
-      and ci_lock.get("cancel-in-progress") is True)
+      and ci_lock.get("cancel-in-progress") == "${{ github.event_name == 'push' }}")
 
 print()
 if failures:
