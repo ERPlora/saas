@@ -3,6 +3,8 @@ address (Account → «Change email») and the notice to the old one once the ch
 and Stripe send, so a change nobody asked for does not go unnoticed). Branded, as text and as HTML: what they look
 like is ``base/tests/test_emails.py``'s (ACCOUNTS-F46)."""
 
+import re
+
 import pytest
 from django.core import mail
 
@@ -58,3 +60,36 @@ def test_a_new_api_key_is_told_with_its_name_and_permissions_in_spanish(settings
     assert "Gestoría" in message.body
     assert "Facturas · lectura, Negocios · lectura" in message.body
     assert settings.SUPPORT_EMAIL in message.body
+
+
+@pytest.fixture
+def mail_cannot_leave(monkeypatch):
+    def broken(*args, **kwargs):
+        raise OSError("SMTP down")
+
+    monkeypatch.setattr("django.core.mail.EmailMessage.send", broken)
+
+
+SENDERS = {
+    "email_code": lambda: emails.send_email_code("ana@new.example", "042317", language="en"),
+    "email_changed": lambda: emails.send_email_changed("ana@example.com", "ana@new.example", language="en"),
+    "api_key_created": lambda: emails.send_api_key_created("ana@example.com", "Gestoría", ["billing.read"], language="en"),
+}
+
+
+@pytest.mark.parametrize("kind", SENDERS)
+def test_a_mail_that_cannot_leave_is_logged_with_its_kind_and_the_failure(mail_cannot_leave, caplog, kind):
+    assert SENDERS[kind]() is False
+
+    [record] = [record for record in caplog.records if record.name == "accounts.emails"]
+    assert record.getMessage() == f"accounts.mail_failed kind={kind}"
+    assert record.exc_info is not None
+
+
+def test_the_html_is_in_the_recipients_language_with_the_code_in_its_box():
+    emails.send_email_code("ana@new.example", "042317", language="es")
+
+    [message] = mail.outbox
+    html = message.alternatives[0].content
+    assert '<html lang="es">' in html
+    assert re.search(r'monospace[^>]*>042317</p>', html)

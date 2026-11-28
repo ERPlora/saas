@@ -151,3 +151,28 @@ class TestRefused:
         assert "support@example.com" in error["message"]
         assert "accounts.mail_failed kind=support_report" in caplog.text
 
+
+    def test_the_failure_is_logged_with_what_went_wrong(self, client, ana, monkeypatch, caplog):
+        def fail(*args, **kwargs):
+            raise ConnectionError("SES is down")
+
+        monkeypatch.setattr("django.core.mail.message.EmailMessage.send", fail)
+        client.force_login(ana)
+
+        _report(client)
+
+        [record] = [record for record in caplog.records if record.name == "accounts.emails"]
+        assert record.getMessage() == "accounts.mail_failed kind=support_report"
+        assert record.exc_info is not None
+
+
+def test_the_report_is_in_english_whatever_the_accounts_language(client, ana):
+    """It is the team's mail, as the contact form's, not the account's."""
+    ana.language = "es"
+    ana.save(update_fields=["language"])
+    client.force_login(ana)
+
+    _report(client)
+
+    [sent] = mail.outbox
+    assert '<html lang="en">' in sent.alternatives[0].content
