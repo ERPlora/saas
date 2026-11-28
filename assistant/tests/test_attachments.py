@@ -133,6 +133,23 @@ class TestDocumentsBecomeText:
         assert "# Stock\nProducto | Cantidad\nCafé | 12" in text
         assert "# Precios\nCafé | 1.5" in text
 
+    def test_a_spreadsheet_is_read_up_to_the_row_that_passes_the_limit_and_an_empty_sheet_says_nothing(self, monkeypatch):
+        monkeypatch.setattr(attachments, "MAX_EXTRACTED_CHARS", 20)
+        rows = [["aaaa", None, None], [None, "bb"], ["ccc"], ["dddd"], ["eeee"], ["ffff"]]
+        data = xlsx_with({"Empty": [], "A": rows, "B": [["zzzz"]]})
+
+        text = attachments.extract(data, attachments.SHEET, "stock.xlsx")
+
+        assert text == "# A\naaaa\n | bb\nccc\ndddd\neeee"
+
+    def test_the_next_sheet_is_read_with_what_the_earlier_ones_left_of_the_limit(self, monkeypatch):
+        monkeypatch.setattr(attachments, "MAX_EXTRACTED_CHARS", 12)
+        data = xlsx_with({"A": [["aaaa"], ["bbbb"]], "B": [["cccc"], ["dddd"], ["eeee"]], "C": [["ffff"]]})
+
+        text = attachments.extract(data, attachments.SHEET, "stock.xlsx")
+
+        assert text == "# A\naaaa\nbbbb\n\n# B\ncccc"
+
     @pytest.mark.parametrize(("mime", "name"), [("text/plain", "notas.txt"), ("text/csv", "ventas.csv"), ("", "readme.md"), ("application/json", "datos.json")])
     def test_plain_text_kinds_are_read_as_they_are(self, mime, name):
         text = expanded_parts(document("línea uno\nlínea dos".encode(), mime, name))[1]["text"]

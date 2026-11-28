@@ -10,84 +10,6 @@
     ]
   },
   {
-    "path": "assistant/attachments.py",
-    "file_name": "attachments.py",
-    "functions": [
-      {
-        "name": "_xlsx",
-        "complexity": 20
-      }
-    ]
-  },
-  {
-    "path": "assistant/providers/anthropic.py",
-    "file_name": "anthropic.py",
-    "functions": [
-      {
-        "name": "AnthropicProvider::to_messages",
-        "complexity": 24
-      }
-    ]
-  },
-  {
-    "path": "assistant/providers/base.py",
-    "file_name": "base.py",
-    "functions": [
-      {
-        "name": "sse_events",
-        "complexity": 18
-      }
-    ]
-  },
-  {
-    "path": "assistant/providers/gemini.py",
-    "file_name": "gemini.py",
-    "functions": [
-      {
-        "name": "GeminiProvider::list_models",
-        "complexity": 21
-      },
-      {
-        "name": "GeminiProvider::to_contents",
-        "complexity": 38
-      },
-      {
-        "name": "GeminiProvider::parse_stream",
-        "complexity": 41
-      }
-    ]
-  },
-  {
-    "path": "assistant/providers/openai.py",
-    "file_name": "openai.py",
-    "functions": [
-      {
-        "name": "OpenAIProvider::parse_stream",
-        "complexity": 35
-      }
-    ]
-  },
-  {
-    "path": "assistant/tests/fake_provider.py",
-    "file_name": "fake_provider.py",
-    "functions": [
-      {
-        "name": "FakeProvider::_handler",
-        "complexity": 28
-      }
-    ]
-  },
-  {
-    "path": "assistant/tests/test_guardrails.py",
-    "file_name": "test_guardrails.py",
-    "functions": [
-      {
-        "name": "logged_secrets",
-        "complexity": 22
-      }
-    ]
-  },
-  {
     "path": "base/tests/test_admin_django_catalog.py",
     "file_name": "test_admin_django_catalog.py",
     "functions": [
@@ -196,16 +118,6 @@
       {
         "name": "_apply_verdicts",
         "complexity": 23
-      }
-    ]
-  },
-  {
-    "path": "assistant/admin/model_tries.py",
-    "file_name": "model_tries.py",
-    "functions": [
-      {
-        "name": "parse_tools",
-        "complexity": 16
       }
     ]
   },

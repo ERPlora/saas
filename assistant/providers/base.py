@@ -103,33 +103,44 @@ class DiscoveredModel:
     context_window: int = 0
 
 
-async def sse_events(response: httpx.Response) -> AsyncIterator[tuple[str | None, str]]:  # noqa: C901
-    """``(event name, data)`` of each server-sent event of ``response``, however its bytes are split."""
-    name: str | None = None
-    data: list[str] = []
-    buffer = ""
+class _StreamedEvent:
+    """The server-sent event being read: its name and its lines of data."""
+
+    def __init__(self) -> None:
+        self.name: str | None = None
+        self.data: list[str] = []
+
+    def read(self, line: str) -> tuple[str | None, str] | None:
+        """Take a whole line in; the event it ends, when it is the blank line after one with data."""
+        if line == "":
+            ended = self.ended()
+            self.name, self.data = None, []
+            return ended
+        if line.startswith("event:"):
+            self.name = line[len("event:") :].strip()
+        elif line.startswith("data:"):
+            self.data.append(line[len("data:") :].removeprefix(" "))
+        return None
+
+    def ended(self) -> tuple[str | None, str] | None:
+        return (self.name, "\n".join(self.data)) if self.data else None
+
+
+async def sse_events(response: httpx.Response) -> AsyncIterator[tuple[str | None, str]]:
+    """``(event name, data)`` of each server-sent event of ``response``, however its bytes are split; a last line
+    without its end only adds its data."""
+    event = _StreamedEvent()
+    rest = ""
     async for text in response.aiter_text():
-        buffer += text
-        while True:
-            cut = buffer.find("\n")
-            if cut < 0:
-                break
-            line, buffer = buffer[:cut].rstrip("\r"), buffer[cut + 1 :]
-            if line == "":
-                if data:
-                    yield name, "\n".join(data)
-                name, data = None, []
-            elif line.startswith(":"):
-                continue
-            elif line.startswith("event:"):
-                name = line[len("event:") :].strip()
-            elif line.startswith("data:"):
-                data.append(line[len("data:") :].removeprefix(" "))
-    line = buffer.rstrip("\r")
-    if line.startswith("data:"):
-        data.append(line[len("data:") :].removeprefix(" "))
-    if data:
-        yield name, "\n".join(data)
+        *lines, rest = (rest + text).split("\n")
+        for line in lines:
+            if (ended := event.read(line.rstrip("\r"))) is not None:
+                yield ended
+    last = rest.rstrip("\r")
+    if last.startswith("data:"):
+        event.read(last)
+    if (ended := event.ended()) is not None:
+        yield ended
 
 
 def error_event(message: str, *, retriable: bool, status: int | None = None) -> ProviderEvent:
@@ -138,6 +149,16 @@ def error_event(message: str, *, retriable: bool, status: int | None = None) -> 
 
 def finish_event(reason: str) -> ProviderEvent:
     return ProviderEvent("finish", {"reason": reason})
+
+
+def closing_events(calls: list[dict[str, str]], usage: dict[str, int] | None, reason: str) -> list[ProviderEvent]:
+    """The events after a stream: each tool the answer asked for, its usage if it said any, and its end, ``tool_use``
+    for an answer that asked for tools and stopped as usual."""
+    events = [ProviderEvent("tool_call", call) for call in calls]
+    if usage:
+        events.append(ProviderEvent("usage", usage))
+    events.append(finish_event("tool_use" if calls and reason == "stop" else reason))
+    return events
 
 
 def upstream_message(body: bytes, status: int) -> str:
@@ -247,6 +268,14 @@ class Provider(ABC):
                 return json.dumps({"_raw": raw})
             return raw
         return json.dumps(raw)
+
+    @staticmethod
+    def loaded_arguments(function: dict) -> Any:
+        """The arguments of a tool call of the conversation, a JSON string, loaded; ``{}`` if they are not JSON."""
+        try:
+            return json.loads(function.get("arguments") or "{}")
+        except (TypeError, ValueError):
+            return {}
 
     @staticmethod
     def merge_consecutive_same_role(messages: list[dict]) -> list[dict]:

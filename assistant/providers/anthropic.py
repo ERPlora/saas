@@ -25,6 +25,7 @@ from assistant.providers.base import (
     Provider,
     ProviderEvent,
     TurnRequest,
+    closing_events,
     error_event,
     finish_event,
     is_retriable_status,
@@ -118,14 +119,11 @@ class Answer:
 
     def closing(self) -> list[ProviderEvent]:
         """The events after the stream: each tool asked for, whole, its usage if it said any, and its end."""
-        events = [
-            ProviderEvent("tool_call", {"call_id": tool["id"], "name": tool["name"], "arguments": arguments_of(tool)})
+        calls = [
+            {"call_id": tool["id"], "name": tool["name"], "arguments": arguments_of(tool)}
             for _, tool in sorted(self.tools.items())
         ]
-        if self.counted:
-            events.append(ProviderEvent("usage", self.usage()))
-        events.append(finish_event("tool_use" if self.tools and self.reason == "stop" else self.reason))
-        return events
+        return closing_events(calls, self.usage() if self.counted else None, self.reason)
 
 
 class AnthropicProvider(Provider):
@@ -150,33 +148,35 @@ class AnthropicProvider(Provider):
         translated: list[dict] = []
         for message in rest:
             role = message.get("role")
-            content = message.get("content", "")
             if role == "user":
-                if isinstance(content, list):
-                    blocks = [block for block in map(self.user_block, content) if block is not None]
-                    translated.append({"role": "user", "content": blocks or content})
-                else:
-                    translated.append({"role": "user", "content": content})
+                translated.append(self.user_message(message.get("content", "")))
             elif role == "assistant":
-                blocks = []
-                if content:
-                    blocks.append({"type": "text", "text": content})
-                for call in message.get("tool_calls") or []:
-                    function = call.get("function") or {}
-                    try:
-                        arguments = json.loads(function.get("arguments") or "{}")
-                    except (TypeError, ValueError):
-                        arguments = {}
-                    blocks.append({"type": "tool_use", "id": call.get("id", ""), "name": function.get("name", ""), "input": arguments})
-                translated.append({"role": "assistant", "content": blocks or content})
+                translated.append(self.assistant_message(message))
             elif role == "tool":
-                translated.append(
-                    {
-                        "role": "user",
-                        "content": [{"type": "tool_result", "tool_use_id": message.get("tool_call_id", ""), "content": content}],
-                    }
-                )
+                translated.append(self.tool_message(message))
         return system, self.merge_consecutive_same_role(translated)
+
+    def user_message(self, content: str | list) -> dict:
+        """A person's message, its parts as Anthropic's blocks; as it came if none of them is one."""
+        if not isinstance(content, list):
+            return {"role": "user", "content": content}
+        blocks = [block for block in map(self.user_block, content) if block is not None]
+        return {"role": "user", "content": blocks or content}
+
+    def assistant_message(self, message: dict) -> dict:
+        """What the assistant said and the tools it called, as ``text`` and ``tool_use`` blocks."""
+        content = message.get("content", "")
+        blocks: list[dict] = [{"type": "text", "text": content}] if content else []
+        for call in message.get("tool_calls") or []:
+            function = call.get("function") or {}
+            arguments = self.loaded_arguments(function)
+            blocks.append({"type": "tool_use", "id": call.get("id", ""), "name": function.get("name", ""), "input": arguments})
+        return {"role": "assistant", "content": blocks or content}
+
+    @staticmethod
+    def tool_message(message: dict) -> dict:
+        result = {"type": "tool_result", "tool_use_id": message.get("tool_call_id", ""), "content": message.get("content", "")}
+        return {"role": "user", "content": [result]}
 
     def chat_request(self, req: TurnRequest) -> tuple[str, dict[str, str], dict[str, Any]]:
         system, messages = self.to_messages(req.messages)

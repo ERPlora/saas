@@ -13,7 +13,9 @@ from asgiref.sync import async_to_sync
 from auditlog.models import LogEntry
 from live.models import OutboxEvent
 
+from assistant.admin.model_tries import parse_tools
 from assistant.models import AIModel, AIProvider
+from assistant.providers.base import ToolSpec
 from assistant.tests.conftest import API_KEY, grant
 from assistant.tests.fake_provider import openai_chunk
 
@@ -225,6 +227,27 @@ def test_tools_that_are_not_a_list_of_named_tools_are_refused_before_calling(as_
     assert seen == [{"type": "error", "message": message}, {"type": "done"}]
     assert fake_provider.requests == []
     assert not LogEntry.objects.filter(action=LogEntry.Action.ACCESS).exists()
+
+
+NO_PARAMETERS = {"type": "object", "properties": {}}
+
+
+@pytest.mark.parametrize(
+    ("typed", "tools"),
+    [
+        (None, []),
+        ("  ", []),
+        ('[{"function": {"name": " create_invoice ", "description": 4}}]', [ToolSpec("create_invoice", "4", NO_PARAMETERS)]),
+        ('[{"name": "x", "parameters": {"type": "object"}}]', [ToolSpec("x", "", {"type": "object"})]),
+        ('[{"name": "x", "parameters": ["not", "an", "object"]}]', None),
+        ('[{"name": "x"}, "not a tool"]', None),
+        ('[{"function": "not a tool"}]', None),
+        ('[{"name": "   "}]', None),
+        ('[{"name": 7}]', None),
+    ],
+)
+def test_the_tools_typed_are_named_tools_each_with_an_object_of_parameters(typed, tools):
+    assert parse_tools(typed) == tools
 
 
 def test_a_run_without_a_message_is_refused_before_calling(as_ai_admin, tried, fake_provider):

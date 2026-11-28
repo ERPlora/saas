@@ -23,6 +23,13 @@ async def collect(provider, req) -> list:
     return [event async for event in provider.stream_turn(req)]
 
 
+async def sent_messages(fake, conversation: list[dict]) -> list[dict]:
+    """The messages our client sends for ``conversation``."""
+    fake.reply("POST", "/v1/messages", sse=stream({"type": "message_stop"}))
+    await collect(client(fake), TurnRequest(model_id="claude-sonnet-4-6", messages=conversation))
+    return fake.requests[0].body["messages"]
+
+
 async def test_a_turn_streams_its_text_its_usage_and_its_end(fake_provider):
     fake_provider.reply(
         "POST",
@@ -149,7 +156,6 @@ async def test_the_usage_counts_the_whole_input_with_what_the_cache_read_and_wro
 
 
 async def test_the_conversation_is_translated_to_anthropic_blocks(fake_provider):
-    fake_provider.reply("POST", "/v1/messages", sse=stream({"type": "message_stop"}))
     conversation = [
         {"role": "user", "content": [{"type": "text", "text": "Look"}, {"type": "image_url", "image_url": {"url": "data:image/png;base64,iVBOR"}}]},
         {"role": "assistant", "content": "Let me check.", "tool_calls": [{"id": "toolu_1", "type": "function", "function": {"name": "find_customer", "arguments": '{"name": "Ana"}'}}]},
@@ -157,18 +163,35 @@ async def test_the_conversation_is_translated_to_anthropic_blocks(fake_provider)
         {"role": "user", "content": "And now?"},
     ]
 
-    await collect(client(fake_provider), TurnRequest(model_id="claude-sonnet-4-6", messages=conversation))
-
-    assert fake_provider.requests[0].body["messages"] == [
+    assert await sent_messages(fake_provider, conversation) == [
         {"role": "user", "content": [{"type": "text", "text": "Look"}, {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": "iVBOR"}}]},
         {"role": "assistant", "content": [{"type": "text", "text": "Let me check."}, {"type": "tool_use", "id": "toolu_1", "name": "find_customer", "input": {"name": "Ana"}}]},
         {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "toolu_1", "content": '{"found": true}'}, {"type": "text", "text": "And now?"}]},
     ]
 
 
+async def test_what_the_api_cannot_read_is_left_out_or_goes_as_it_came(fake_provider):
+    by_address = {"type": "image_url", "image_url": {"url": "https://example.com/a.png"}}
+    conversation = [
+        {"role": "user", "content": [{"type": "text", "text": "Look"}, by_address]},
+        {"role": "assistant", "content": "", "tool_calls": [{"id": "toolu_1", "function": {"name": "find_customer", "arguments": "{broken"}}]},
+        {"role": "developer", "content": "Not a role Anthropic reads."},
+        {"role": "tool", "tool_call_id": "toolu_1", "content": "plain"},
+        {"role": "assistant", "content": ""},
+        {"role": "user", "content": [by_address]},
+    ]
+
+    assert await sent_messages(fake_provider, conversation) == [
+        {"role": "user", "content": [{"type": "text", "text": "Look"}]},
+        {"role": "assistant", "content": [{"type": "tool_use", "id": "toolu_1", "name": "find_customer", "input": {}}]},
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "toolu_1", "content": "plain"}]},
+        {"role": "assistant", "content": ""},
+        {"role": "user", "content": [by_address]},
+    ]
+
+
 async def test_the_results_of_several_tools_go_in_one_user_turn_in_the_order_they_were_asked(fake_provider):
     """Anthropic wants every result of one answer's tools in the user turn right after it, before any text."""
-    fake_provider.reply("POST", "/v1/messages", sse=stream({"type": "message_stop"}))
     asked = [
         {"id": "toolu_b", "type": "function", "function": {"name": "list_products", "arguments": "{}"}},
         {"id": "toolu_a", "type": "function", "function": {"name": "list_customers", "arguments": "{}"}},
@@ -180,9 +203,7 @@ async def test_the_results_of_several_tools_go_in_one_user_turn_in_the_order_the
         {"role": "tool", "tool_call_id": "toolu_a", "content": '{"count": 30}'},
     ]
 
-    await collect(client(fake_provider), TurnRequest(model_id="claude-haiku-5-5", messages=conversation))
-
-    assert fake_provider.requests[0].body["messages"] == [
+    assert await sent_messages(fake_provider, conversation) == [
         {"role": "user", "content": "How many products and customers?"},
         {
             "role": "assistant",
@@ -202,14 +223,20 @@ async def test_the_results_of_several_tools_go_in_one_user_turn_in_the_order_the
 
 
 async def test_a_pdf_goes_as_a_document_block(fake_provider):
-    fake_provider.reply("POST", "/v1/messages", sse=stream({"type": "message_stop"}))
     pdf = {"type": "file", "file": {"filename": "albaran.pdf", "file_data": "data:application/pdf;base64,JVBERi0x"}}
 
-    await collect(client(fake_provider), TurnRequest(model_id="claude-sonnet-4-6", messages=[{"role": "user", "content": [{"type": "text", "text": "Read"}, pdf]}]))
-
-    assert fake_provider.requests[0].body["messages"] == [
+    assert await sent_messages(fake_provider, [{"role": "user", "content": [{"type": "text", "text": "Read"}, pdf]}]) == [
         {"role": "user", "content": [{"type": "text", "text": "Read"}, {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": "JVBERi0x"}}]},
     ]
+
+
+async def test_an_answer_that_gives_no_counts_has_no_usage(fake_provider):
+    text = {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "Hi"}}
+    fake_provider.reply("POST", "/v1/messages", sse=stream(text, {"type": "message_stop"}))
+
+    events = await collect(client(fake_provider), TurnRequest(model_id="claude-sonnet-4-6", messages=[]))
+
+    assert [(e.type, e.payload) for e in events] == [("text_delta", {"text": "Hi"}), ("finish", {"reason": "stop"})]
 
 
 @pytest.mark.parametrize(("raw", "reason"), [("max_tokens", "length"), ("stop_sequence", "stop"), ("refusal", "content_filter"), ("end_turn", "stop")])

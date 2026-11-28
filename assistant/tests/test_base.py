@@ -55,6 +55,20 @@ async def test_an_event_with_several_data_lines_joins_them_and_crlf_is_accepted(
     assert found == [(None, "first\nsecond"), (None, "last")]
 
 
+@pytest.mark.asyncio
+async def test_the_fields_of_an_event_other_than_its_name_and_data_are_left_out():
+    found = await events_of(b"id: 7\nretry: 1000\nevent: ping\n\n", b"event: delta\nid: 8\ndata:no space\n\n")
+
+    assert found == [("delta", "no space")]
+
+
+@pytest.mark.asyncio
+async def test_a_last_line_without_its_end_only_adds_its_data():
+    found = await events_of(b"event: first\ndata: one\nevent: late")
+
+    assert found == [("first", "one")]
+
+
 @pytest.mark.parametrize(
     ("status", "retriable"),
     [(None, True), (408, True), (409, True), (425, True), (429, True), (500, True), (503, True), (400, False), (401, False), (403, False), (404, False), (422, False)],

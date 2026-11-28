@@ -280,24 +280,41 @@ def _xlsx(raw: bytes) -> str:
     _unzippable(raw)
     book = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
     try:
-        sheets, total = [], 0
-        for sheet in book.worksheets:
-            lines = []
-            for row in sheet.iter_rows(values_only=True):
-                cells = list(row)
-                while cells and cells[-1] is None:
-                    cells.pop()
-                if not cells:
-                    continue
-                line = " | ".join("" if cell is None else str(cell) for cell in cells)
-                lines.append(line)
-                total += len(line) + 1
-                if total > MAX_EXTRACTED_CHARS:
-                    break
-            if lines:
-                sheets.append(f"# {sheet.title}\n" + "\n".join(lines))
-            if total > MAX_EXTRACTED_CHARS:
-                break
-        return "\n\n".join(sheets)
+        return _sheets_text(book.worksheets)
     finally:
         book.close()
+
+
+def _sheets_text(worksheets) -> str:
+    """A section ``# <title>`` per sheet with something in it, up to the row that passes ``MAX_EXTRACTED_CHARS``."""
+    sections, total = [], 0
+    for sheet in worksheets:
+        lines = _sheet_lines(sheet, MAX_EXTRACTED_CHARS - total)
+        total += sum(len(line) + 1 for line in lines)
+        if lines:
+            sections.append(f"# {sheet.title}\n" + "\n".join(lines))
+        if total > MAX_EXTRACTED_CHARS:
+            break
+    return "\n\n".join(sections)
+
+
+def _sheet_lines(sheet, room: int) -> list[str]:
+    """The rows of ``sheet`` with something in them, up to the one that passes ``room`` characters."""
+    lines, used = [], 0
+    for row in sheet.iter_rows(values_only=True):
+        line = _row_line(row)
+        if line is None:
+            continue
+        lines.append(line)
+        used += len(line) + 1
+        if used > room:
+            break
+    return lines
+
+
+def _row_line(row: tuple) -> str | None:
+    """A row's cells joined by « | », without its empty cells at the end; ``None`` for an empty row."""
+    cells = list(row)
+    while cells and cells[-1] is None:
+        cells.pop()
+    return " | ".join("" if cell is None else str(cell) for cell in cells) if cells else None
